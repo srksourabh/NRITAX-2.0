@@ -1,0 +1,21 @@
+{
+  "name": "nritax",
+  "version": "2.0.0",
+  "private": true,
+  "description": "File an Indian ITR-2 or ITR-3 return from anywhere, with the figures pulled in for you.",
+  "scripts": {
+    "dev": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "start": "npm --prefix web run start",
+    "lint": "npm --prefix web run lint",
+    "typecheck": "npm --prefix web run typecheck",
+    "test": "npm --prefix web run test",
+    "install:all": "npm --prefix web install",
+    "cas": "cd services/cas && uvicorn app.main:app --reload --port 8000",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

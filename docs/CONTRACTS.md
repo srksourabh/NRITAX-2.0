@@ -1,0 +1,102 @@
+# NRITAX build contracts
+
+Read this before writing any code in this repo. Every module obeys these rules so
+the pieces compose without a rewrite.
+
+## What we are building
+
+A PWA that lets a non-resident Indian file an ITR-2 or ITR-3 return for assessment
+year 2026-27 with as few manual steps as possible:
+
+1. Sign in with an email magic link or Google.
+2. Give PAN, name, date of birth. We pick ITR-2 or ITR-3 automatically.
+3. Grant e-consent once. We pull the departmental prefill JSON, Form 26AS credits
+   and AIS figures through an ERI provider.
+4. Optionally upload a CAMS/KFintech consolidated account statement. We parse it
+   and fill Schedule CG and Schedule 112A, including section 112A grandfathering.
+5. A short wizard asks only what prefill could not answer, and shows old regime
+   versus new regime side by side with real numbers.
+6. The CBDT validation rules run, then an AI audit pass reviews the return.
+7. We build the departmental JSON and upload it through the ERI provider.
+
+## Layout
+
+```
+web/                     Next.js 15 app router, TypeScript, Tailwind. The PWA.
+  src/lib/itr/           Form schema, validation rules, tax computation, JSON builder.
+  src/lib/eri/           ERI provider adapter + mock + live implementations.
+  src/lib/cas/           Client for the CAS parsing service.
+  src/lib/ai/            Claude-powered audit of a completed return.
+  src/lib/db/            Drizzle schema and connection.
+  src/app/               Routes and UI.
+services/cas/            Python FastAPI service wrapping the casparser library.
+docs/reference/          The two HTML prototypes this work is ported from.
+```
+
+## Non-negotiables
+
+- **Types come from `web/src/lib/itr/types.ts`**, `web/src/lib/eri/types.ts` and
+  `web/src/lib/cas/types.ts`. Import them; do not redeclare equivalent shapes.
+- **Field keys are fully qualified**: `"S.sal17_1"`, `"CG.ltcg112A"`, `"BP.d_totalPGBP"`.
+  The prefix is `ScheduleDef.id`. Table keys are bare, e.g. `"tds1"`.
+- **Money is whole rupees.** Use `r0` for figures and `r10` for tax amounts
+  (section 288B). Never store formatted strings.
+- **Dates are ISO `yyyy-mm-dd`.** The previous year runs 2025-04-01 to 2026-03-31.
+- **No `any`.** `strict` is on. If a departmental JSON node is genuinely untyped,
+  use `Record<string, unknown>` and narrow at the boundary.
+- **Nothing in `src/lib/itr` may import React, Next.js or touch the DOM.** It has
+  to run in a Node test and in a server action unchanged.
+- **Every exported function gets a short doc comment saying what it is for**, in
+  the same plain register as the existing files. Match the surrounding style.
+- **Tests are Vitest**, colocated as `*.test.ts` next to the module.
+
+## Porting from the HTML prototypes
+
+`docs/reference/ITR2-source.html` and `docs/reference/ITR3-source.html` contain
+working schema tables, rule sets and computation engines. They are the source of
+truth for field paths, enum codes, and rule numbers. Port them faithfully:
+
+- Keep the CBDT rule serial numbers exactly as they appear. They are how a
+  taxpayer traces a failure back to the published document.
+- Keep the departmental JSON paths byte-for-byte. A drifted path fails at upload
+  with an opaque error.
+- The prototypes use `/`-delimited paths (ITR-3) and `.`-delimited paths (ITR-2).
+  Normalise everything to `/`.
+- Where a prototype rule is commented as unverifiable in the browser, port it as
+  a rule that returns `null` and add a note — do not silently drop it.
+
+## Rates and thresholds for AY 2026-27
+
+New regime slabs: nil to 4,00,000 · 5% to 8,00,000 · 10% to 12,00,000 ·
+15% to 16,00,000 · 20% to 20,00,000 · 25% to 24,00,000 · 30% above.
+Basic exemption 4,00,000 under the new regime; under the old regime 2,50,000,
+3,00,000 for a senior citizen and 5,00,000 for a super senior citizen.
+
+Rebate under section 87A: new regime up to 60,000 where total income does not
+exceed 12,00,000, with marginal relief above it; old regime up to 12,500 where
+total income does not exceed 5,00,000. Residents and RNORs only, individuals only.
+
+Standard deduction under section 16(ia): 75,000 new regime, 50,000 old regime,
+capped at net salary. Surcharge 10 / 15 / 25 / 37 per cent at 50 lakh, 1 crore,
+2 crore and 5 crore, with the 37 per cent band unavailable under the new regime
+(capped at 25) and capital-gain and dividend income capped at 15 per cent.
+Health and education cess 4 per cent. Section 112A exemption 1,25,000.
+Section 71(3A) house property set-off ceiling 2,00,000.
+
+## Security rules
+
+- The taxpayer's Income Tax portal password is never collected, logged or stored.
+  If a flow appears to need it, the flow is wrong — raise it instead of adding a
+  field.
+- PAN, Aadhaar and bank account numbers are personal data. Never write them to
+  application logs. Mask them in any error message that could surface to a third
+  party.
+- Uploaded statements are parsed and discarded. Do not persist the PDF bytes.
+- All secrets come from environment variables. No key literals anywhere.
+
+## Environment
+
+Read `.env.example`. Nothing may hard-require a service that is absent in local
+development: with no `DATABASE_URL` the app uses an embedded Postgres file, with
+`ERI_PROVIDER=mock` the whole filing flow runs offline, and with the CAS service
+down the uploader falls back to manual entry with a clear message.

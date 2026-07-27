@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: nritax
+      POSTGRES_PASSWORD: nritax
+      POSTGRES_DB: nritax
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nritax']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  cas:
+    build: ./services/cas
+    environment:
+      CAS_SERVICE_TOKEN: ${CAS_SERVICE_TOKEN:-dev-cas-token}
+    ports:
+      - '8000:8000'
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: ./web
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cas:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://nritax:nritax@postgres:5432/nritax
+      CAS_SERVICE_URL: http://cas:8000
+      CAS_SERVICE_TOKEN: ${CAS_SERVICE_TOKEN:-dev-cas-token}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET before running docker compose}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      ERI_PROVIDER: ${ERI_PROVIDER:-mock}
+      ERI_SOFTWARE_ID: ${ERI_SOFTWARE_ID:-SW00000000}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - '3000:3000'
+
+volumes:
+  pgdata:
