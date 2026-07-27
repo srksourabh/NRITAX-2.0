@@ -100,3 +100,59 @@ Read `.env.example`. Nothing may hard-require a service that is absent in local
 development: with no `DATABASE_URL` the app uses an embedded Postgres file, with
 `ERI_PROVIDER=mock` the whole filing flow runs offline, and with the CAS service
 down the uploader falls back to manual entry with a clear message.
+
+## Sandbox.co.in provider, verified against the live API on 2026-07-27
+
+Verified with real calls against `test-api.sandbox.co.in`. Do not guess any of
+this.
+
+Servers: `https://test-api.sandbox.co.in` for development,
+`https://api.sandbox.co.in` for production. Read the host from `ERI_BASE_URL`.
+
+Authenticate with `POST /authenticate` carrying `x-api-key`, `x-api-secret` and
+`x-api-version: 1.0`. Success is HTTP 200 shaped
+`{ code, timestamp, transaction_id, data: { access_token } }`. The token lasts
+twenty-four hours — cache it in module scope and refresh on 401 rather than
+authenticating on every call.
+
+Every later call sends `Authorization: <access_token>` **with no `Bearer`
+prefix**, alongside `x-api-key` and `x-api-version`. Sending `Bearer` is the
+most likely mistake here. This was confirmed working: a real endpoint answered
+with a request-shape error rather than an authorisation error.
+
+The test environment replays saved examples. A well-formed request with inputs
+that are not one of their fixtures returns HTTP 404 with the message
+"Request does not match any saved example". That is a success as far as
+transport and auth are concerned, and integration tests must treat it as such.
+
+### Sandbox has no ERI endpoints
+
+The full catalogue was retrieved. Sandbox offers KYC, GST, TDS, Banking, and an
+Income Tax product that is calculators, reports and OCR. There is no client
+registration, no taxpayer consent, no prefill download, no ITR upload, no
+ITR-V, no AIS. Sandbox cannot file a return.
+
+So `sandbox.ts` is not an `EriProvider`. It implements `authenticate` for real,
+plus the enrichment calls below, and throws
+`EriError('NOT_AN_ERI', …)` from `requestConsent`, `fetchPrefill` and
+`uploadReturn`, with a comment saying why. The mock provider remains the
+default and remains complete: it is what the product runs on until a real ERI
+is contracted.
+
+### Sandbox endpoints we do want
+
+These automate real work and are worth wiring behind their own client, separate
+from the ERI interface.
+
+| Endpoint | Method | What it gives the filing |
+| --- | --- | --- |
+| `/kyc/pan/verify-details` | POST | Confirms PAN, name and date of birth against the department before anything else runs |
+| `/kyc/pan/aadhaar-link-status` | POST | An unlinked PAN is a hard filing blocker. Catch it on screen one, not at upload |
+| `/it/ocr/form-16/read` | POST | Salary, perquisites, exempt allowances, TDS — fills Schedule S and Schedule TDS1 |
+| `/it/ocr/form-26as/read` | POST | Tax credits — fills Schedule TDS2, TCS and advance-tax challans |
+| `/kyc/bank/ifsc-verification` | POST | Validates the refund account IFSC before the return is filed against it |
+| `/kyc/bank/penny-less` | POST | Confirms the refund account exists and matches the name, without a deposit |
+| `/it/calculator/tax-pnl/securities/domestic/submit-job` | POST | Capital gains from a broker tradebook, complementing the CAS parser for equities |
+
+Every one of these is optional. Absent credentials, the wizard asks the user
+instead and says why. Nothing here may become a hard dependency.
