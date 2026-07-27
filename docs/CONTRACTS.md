@@ -146,13 +146,33 @@ from the ERI interface.
 
 | Endpoint | Method | What it gives the filing |
 | --- | --- | --- |
-| `/kyc/pan/verify-details` | POST | Confirms PAN, name and date of birth against the department before anything else runs |
-| `/kyc/pan/aadhaar-link-status` | POST | An unlinked PAN is a hard filing blocker. Catch it on screen one, not at upload |
-| `/it/ocr/form-16/read` | POST | Salary, perquisites, exempt allowances, TDS — fills Schedule S and Schedule TDS1 |
-| `/it/ocr/form-26as/read` | POST | Tax credits — fills Schedule TDS2, TCS and advance-tax challans |
-| `/kyc/bank/ifsc-verification` | POST | Validates the refund account IFSC before the return is filed against it |
-| `/kyc/bank/penny-less` | POST | Confirms the refund account exists and matches the name, without a deposit |
-| `/it/calculator/tax-pnl/securities/domestic/submit-job` | POST | Capital gains from a broker tradebook, complementing the CAS parser for equities |
+| `/kyc/pan/verify` | POST | Confirms PAN, name and date of birth (live path; older docs said `verify-details`) |
+| `/kyc/pan-aadhaar/status` | POST | An unlinked PAN is a filing risk — surface it early |
+| `/it/ocr/form-16/pdf` | POST multipart | Salary / TDS from Form 16 PDF → Schedule S + TDS1 |
+| `/it/ocr/form-26as/pdf` | POST multipart | Tax credits from Form 26AS → TDS2 / TCS / challans |
+| `/bank/{ifsc}` | GET | Validates the refund account IFSC |
+| `/bank/{ifsc}/accounts/{acct}/penniless-verify` | GET | Confirms the refund account without a deposit |
+| `/kyc/digilocker/sessions/init` | POST | Starts DigiLocker consent (`redirect_url` **must be https**) |
+| `/kyc/digilocker/sessions/{id}/status` | GET | Poll until consent succeeded |
+| `/kyc/digilocker/sessions/{id}/documents/{doc}` | GET | Fetch consented PAN / Aadhaar |
+| `/it/calculator/tax-pnl/securities/domestic/submit-job` | POST | Capital gains from a broker tradebook, complementing CAS |
 
 Every one of these is optional. Absent credentials, the wizard asks the user
 instead and says why. Nothing here may become a hard dependency.
+
+### DigiLocker enablement (verified 2026-07-28)
+
+Auth works with the test keys, and IFSC returns real data. DigiLocker (and PAN
+KYC) currently answer HTTP 200 with an empty broken body (`"code": ,` and no
+`data`) — that means the **DigiLocker / KYC product is not enabled** on the
+Sandbox account, not that our client is wrong.
+
+To run live DigiLocker consent:
+
+1. Enable DigiLocker under KYC in the Sandbox dashboard for the API key in use.
+2. Set `DIGILOCKER_REDIRECT_URL` to a **public HTTPS** URL that lands on `/filing`
+   (DigiLocker rejects `http://localhost`). Use ngrok or a deployed host.
+3. Set `DIGILOCKER_MOCK=0` (or remove it) so the live API is used.
+
+Until the product is enabled, set `DIGILOCKER_MOCK=1` for a local consent
+stand-in that exercises the same wizard apply path without calling DigiLocker.

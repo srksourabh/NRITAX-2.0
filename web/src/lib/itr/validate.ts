@@ -69,7 +69,7 @@ function matches(value: string, expected: string | string[]): boolean {
 }
 
 /** Whether a schedule, section, table, field or column is on screen at all. */
-function visible(condition: FieldCondition | undefined, data: ReturnData): boolean {
+export function isVisible(condition: FieldCondition | undefined, data: ReturnData): boolean {
   if (!condition) return true;
   if (condition.regime && condition.regime !== data.meta.regime) return false;
   if (condition.form && condition.form !== data.meta.form) return false;
@@ -136,25 +136,25 @@ export function validateFields(data: ReturnData, schedules: readonly ScheduleDef
   };
 
   for (const schedule of schedules) {
-    if (!visible(schedule.showIf, data)) continue;
+    if (!isVisible(schedule.showIf, data)) continue;
 
     for (const section of schedule.sections) {
-      if (!visible(section.showIf, data)) continue;
+      if (!isVisible(section.showIf, data)) continue;
 
       for (const field of section.fields ?? []) {
-        if (!visible(field.showIf, data)) continue;
+        if (!isVisible(field.showIf, data)) continue;
         const key = `${schedule.id}.${field.key}`;
         const message = checkValue(field, data.fields[key]);
         if (message) note(schedule.name, key, field.label, message);
       }
 
       for (const table of section.tables ?? []) {
-        if (!visible(table.showIf, data)) continue;
+        if (!isVisible(table.showIf, data)) continue;
         const rows = data.tables[table.key] ?? [];
         rows.forEach((row, index) => {
           if (!started(row)) return;
           for (const column of table.columns) {
-            if (!visible(column.showIf, data)) continue;
+            if (!isVisible(column.showIf, data)) continue;
             const message = checkValue(column, row[column.key]);
             if (message) {
               note(

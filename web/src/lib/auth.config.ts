@@ -29,6 +29,9 @@ const google =
 
 export const authConfig = {
   providers: google,
+  pages: {
+    signIn: '/login',
+  },
   callbacks: {
     authorized({ request, auth }) {
       return isProtectedPath(request.nextUrl.pathname) ? auth?.user != null : true;

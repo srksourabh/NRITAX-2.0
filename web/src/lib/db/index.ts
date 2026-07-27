@@ -7,6 +7,9 @@
  * dialect, one exported `db` either way.
  */
 
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
+
 import { PGlite } from '@electric-sql/pglite';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import { drizzle as drizzlePglite } from 'drizzle-orm/pglite';
@@ -22,16 +25,32 @@ export type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 /** Set only when we are on the embedded driver; runMigrations needs the client. */
 let embedded: PGlite | null = null;
+let cached: Database | null = null;
 
 function connect(): Database {
   const url = process.env.DATABASE_URL?.trim();
   if (url) return drizzlePostgres(url, { schema });
 
-  embedded = new PGlite(EMBEDDED_DATA_DIR);
+  // Absolute path — relative dirs + Next Turbopack have produced
+  // `path` TypeErrors (`Received an instance of URL`) on Windows.
+  const dataDir = path.resolve(process.cwd(), EMBEDDED_DATA_DIR);
+  mkdirSync(path.dirname(dataDir), { recursive: true });
+  embedded = new PGlite(dataDir);
   return drizzlePglite({ client: embedded, schema });
 }
 
-export const db: Database = connect();
+/** Open the database on first use — not at import time during `next build`. */
+export function getDb(): Database {
+  if (!cached) cached = connect();
+  return cached;
+}
+
+/** @deprecated Prefer getDb(); kept for call sites that already import `db`. */
+export const db: Database = new Proxy({} as Database, {
+  get(_target, property, receiver) {
+    return Reflect.get(getDb(), property, receiver);
+  },
+}) as Database;
 
 /**
  * The embedded database's DDL, kept in step with schema.ts by hand.
@@ -138,6 +157,9 @@ let created = false;
  * request.
  */
 export async function runMigrations(): Promise<void> {
+  // Ensure the embedded client exists before checking it — callers often
+  // migrate before the first getDb()/auth() touch.
+  getDb();
   if (!embedded || created) return;
   await embedded.exec(EMBEDDED_SCHEMA);
   created = true;
