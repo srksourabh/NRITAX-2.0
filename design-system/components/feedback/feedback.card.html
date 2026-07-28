@@ -1,0 +1,30 @@
+<!-- @dsCard group="Components" viewport="700x400" name="Feedback" subtitle="Explainer, modal and bottom sheet, expert panel" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{padding:20px;background:var(--paper)}.two{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}</style>
+</head><body><div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { Explainer, Dialog, ExpertPanel, Button, Card } = window.NRITAX20DesignSystem_c86cd4;
+function Demo(){
+  const [open,setOpen]=React.useState(true);
+  return (<div className="two">
+    <div style={{display:'flex',flexDirection:'column',gap:'16px'}}>
+      <Card padding="16px">
+        <p style={{fontSize:'15px',lineHeight:1.55,color:'var(--ink)'}}>Your <Explainer term="Chapter VI-A" definition="The group of deductions you can claim from your income, like 80C and 80D. They only apply under the old regime."/> deductions come to ₹1,62,000. We read them from <Explainer term="26AS" definition="A statement from the department showing tax already deducted against your PAN. We use it so you do not have to type TDS by hand."/>.</p>
+      </Card>
+      <div style={{position:'relative',minHeight:'210px',border:'1px solid var(--neutral-200)',borderRadius:'12px',overflow:'hidden',background:'var(--neutral-50)'}}>
+        <Dialog open={open} onClose={()=>setOpen(true)} title="Switch to the old regime?"
+          description="This brings back 4 deductions worth ₹1,62,000 and raises your tax by ₹28,400."
+          footer={<><Button variant="secondary">Keep the new regime</Button><Button>Switch</Button></>}/>
+      </div>
+    </div>
+    <div style={{height:'360px'}}>
+      <ExpertPanel expert={{name:'Meera Raghavan',initials:'MR',credential:'CA · M. No. 2XXXXX',lastActive:'active 2 min ago'}}
+        messages={[{from:'expert',text:'I have looked at your 26AS. One TDS entry from HDFC is missing in your draft.',at:'10:12'},{from:'you',text:'Should I add it manually?',at:'10:14'},{from:'expert',text:'I have added it. Your refund goes up by ₹8,000.',at:'10:15'}]}/>
+    </div>
+  </div>);}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>

@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NRITAX — NRI local review (synthesis)</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    /* Local review chrome — page-only, tokens from design system */
+    .review-note {
+      border-bottom: 1px solid var(--neutral-200);
+      background: var(--primary-50);
+      color: var(--info-text);
+      font-size: var(--body-sm);
+      line-height: var(--body-sm-lh);
+      padding: 10px var(--gutter-mobile);
+    }
+    .review-note strong { font-weight: var(--weight-semibold); }
+    .review-note code {
+      font-family: var(--font-figure);
+      font-size: 11px;
+      background: var(--surface);
+      border: 1px solid var(--neutral-200);
+      border-radius: var(--radius-xs);
+      padding: 1px 5px;
+    }
+
+    .shell-header {
+      height: var(--shell-header-height);
+      background: var(--surface-shell);
+      color: var(--text-on-ink);
+      display: flex;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .shell-inner {
+      width: 100%;
+      max-width: var(--content-max-app);
+      margin: 0 auto;
+      padding: 0 var(--gutter);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .wordmark {
+      font-family: var(--font-display);
+      font-variation-settings: var(--font-display-settings);
+      font-weight: 600;
+      font-size: 18px;
+      letter-spacing: 0.02em;
+      color: var(--surface);
+      text-decoration: none;
+    }
+    .wordmark span {
+      font-family: var(--font-figure);
+      font-weight: 400;
+      font-size: 12px;
+      margin-left: 6px;
+      opacity: 0.72;
+    }
+    .shell-meta {
+      font-size: var(--caption);
+      color: rgba(252,253,252,0.72);
+      font-variant-numeric: tabular-nums;
+    }
+    .shell-actions { display: flex; gap: 8px; align-items: center; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: var(--control-height);
+      padding: var(--btn-pad-y) var(--btn-pad-x);
+      border-radius: var(--radius-md);
+      font-size: var(--label);
+      font-weight: var(--weight-medium);
+      line-height: 1;
+      border: 1px solid transparent;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background var(--motion-instant), border-color var(--motion-instant), color var(--motion-instant);
+    }
+    .btn:focus-visible { box-shadow: var(--focus-ring); }
+    .btn-primary { background: var(--primary); color: var(--surface); }
+    .btn-primary:hover { background: var(--primary-600); }
+    .btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--neutral-300); }
+    .btn-secondary:hover { background: var(--neutral-50); border-color: var(--primary-200); }
+    .btn-ghost-ink {
+      background: transparent;
+      color: rgba(252,253,252,0.88);
+      border-color: rgba(252,253,252,0.28);
+      min-height: 36px;
+      padding: 8px 14px;
+    }
+    .btn-ghost-ink:hover { background: rgba(252,253,252,0.08); }
+    .btn-block { width: 100%; }
+    .btn-lg { min-height: var(--control-height-mobile-primary); }
+
+    .eyebrow {
+      font-size: var(--caption);
+      font-weight: var(--weight-semibold);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .lede {
+      font-size: 17px;
+      line-height: 1.55;
+      color: var(--neutral-700);
+      max-width: 46ch;
+    }
+    .muted { color: var(--neutral-500); font-size: var(--body-sm); line-height: var(--body-sm-lh); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--neutral-200);
+      border-radius: var(--radius-lg);
+      padding: var(--card-pad);
+    }
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      margin-bottom: 16px;
+    }
+    .card-head h2 {
+      font-size: var(--h3);
+      font-weight: var(--weight-semibold);
+      color: var(--ink);
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label {
+      font-size: var(--label);
+      font-weight: var(--weight-medium);
+      color: var(--ink);
+    }
+    .field .hint { font-size: var(--caption); color: var(--neutral-500); }
+    .money {
+      display: flex;
+      align-items: stretch;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      overflow: hidden;
+      min-height: var(--control-height);
+    }
+    .money:focus-within {
+      border-color: var(--primary);
+      box-shadow: var(--focus-ring);
+    }
+    .money-prefix {
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      border-right: 1px solid var(--neutral-200);
+      font-family: var(--font-figure);
+      color: var(--neutral-500);
+      background: var(--neutral-50);
+    }
+    .money input {
+      flex: 1;
+      border: 0;
+      outline: none;
+      padding: var(--input-pad-y) var(--input-pad-x);
+      font-family: var(--font-figure);
+      font-variant-numeric: tabular-nums lining-nums;
+      font-size: var(--figure);
+      background: transparent;
+    }
+
+    .seg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .seg button {
+      min-height: 40px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--neutral-300);
+      background: var(--surface);
+      color: var(--ink);
+      font-size: var(--label);
+      font-weight: var(--weight-medium);
+      cursor: pointer;
+    }
+    .seg button[aria-pressed="true"] {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--surface);
+    }
+
+    .ledger {
+      border: 1px solid var(--neutral-200);
+      background: var(--surface);
+      max-width: var(--ledger-max-width);
+    }
+    .ledger-row {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) minmax(72px,auto) var(--ledger-amount-col);
+      gap: 8px;
+      align-items: baseline;
+      padding: var(--ledger-row-pad-y) 14px;
+      border-bottom: 1px solid var(--neutral-100);
+    }
+    .ledger-row:last-child { border-bottom: 0; }
+    .ledger-row .lbl { font-size: var(--body-sm); color: var(--ink); }
+    .ledger-row .stat {
+      font-family: var(--font-figure);
+      font-size: var(--statute);
+      color: var(--neutral-500);
+      text-align: right;
+    }
+    .ledger-row .amt {
+      font-family: var(--font-figure);
+      font-variant-numeric: tabular-nums lining-nums;
+      font-size: var(--figure);
+      text-align: right;
+      color: var(--ink);
+    }
+    .ledger-row.subtotal { border-top: 1px solid var(--rule); background: var(--neutral-50); }
+    .ledger-row.subtotal .lbl { font-weight: var(--weight-medium); }
+    .ledger-row.final {
+      border-top: var(--ledger-rule-width) solid var(--ink);
+      box-shadow: 0 var(--ledger-double-rule-gap) 0 var(--ink);
+      margin-top: 4px;
+      padding-top: 12px;
+      padding-bottom: 14px;
+      background: var(--surface);
+    }
+    .ledger-row.final .amt {
+      font-size: var(--figure-lg);
+      font-weight: var(--weight-medium);
+    }
+    .ledger-row.credit .amt { color: var(--credit); }
+    .ledger.on-ink {
+      border-color: rgba(252,253,252,0.16);
+      background: rgba(252,253,252,0.04);
+    }
+    .ledger.on-ink .ledger-row { border-bottom-color: rgba(252,253,252,0.08); }
+    .ledger.on-ink .lbl, .ledger.on-ink .amt { color: var(--surface); }
+    .ledger.on-ink .stat { color: rgba(252,253,252,0.55); }
+    .ledger.on-ink .ledger-row.subtotal { background: rgba(252,253,252,0.06); border-top-color: rgba(252,253,252,0.2); }
+    .ledger.on-ink .ledger-row.final {
+      border-top-color: var(--surface);
+      box-shadow: 0 var(--ledger-double-rule-gap) 0 var(--surface);
+    }
+    .ledger.on-ink .ledger-row.credit .amt { color: #5FBF95; }
+
+    .regime-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .regime {
+      border: 1px solid var(--neutral-200);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .regime.winner { border: 2px solid var(--credit); }
+    .regime-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .regime-top h3 {
+      font-size: var(--h3);
+      font-weight: var(--weight-semibold);
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: var(--weight-medium);
+      background: var(--credit-tint);
+      color: var(--credit-text);
+      border: 1px solid var(--credit-border);
+    }
+    .pill::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--credit);
+    }
+    .tax-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-top: 1px solid var(--neutral-200);
+      padding-top: 10px;
+    }
+    .tax-line .figure {
+      font-family: var(--font-figure);
+      font-size: var(--figure-lg);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .nri-rail {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0;
+      border-top: 1px solid var(--neutral-200);
+      border-bottom: 1px solid var(--neutral-200);
+      background: var(--surface);
+    }
+    .nri-rail article {
+      padding: 28px 24px;
+      border-right: 1px solid var(--neutral-200);
+    }
+    .nri-rail article:last-child { border-right: 0; }
+    .nri-rail h3 {
+      font-size: var(--h3);
+      font-weight: var(--weight-semibold);
+      margin-top: 8px;
+    }
+    .nri-rail p {
+      margin-top: 8px;
+      font-size: var(--body-sm);
+      line-height: var(--body-sm-lh);
+      color: var(--neutral-700);
+      max-width: 36ch;
+    }
+    .nri-rail .kicker {
+      font-family: var(--font-figure);
+      font-size: var(--statute);
+      color: var(--primary);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .step {
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+    .step .num {
+      font-family: var(--font-figure);
+      font-size: var(--statute);
+      color: var(--primary);
+    }
+    .step h3 {
+      margin-top: 8px;
+      font-size: var(--h3);
+      font-weight: var(--weight-semibold);
+    }
+    .step p {
+      margin-top: 8px;
+      font-size: var(--body-sm);
+      line-height: var(--body-sm-lh);
+      color: var(--neutral-700);
+    }
+
+    .charboxes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--charbox-gap);
+    }
+    .charboxes input {
+      width: var(--charbox-width);
+      height: var(--charbox-height);
+      text-align: center;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-xs);
+      font-family: var(--font-figure);
+      font-size: 16px;
+      text-transform: uppercase;
+      background: var(--surface);
+    }
+    .charboxes input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: var(--focus-ring);
+    }
+    .charboxes .gap {
+      width: var(--charbox-group-gap);
+    }
+
+    .secure {
+      border-left: 3px solid var(--primary);
+      background: var(--primary-50);
+      padding: 14px 16px;
+      font-size: var(--body-sm);
+      line-height: var(--body-sm-lh);
+      color: var(--info-text);
+    }
+
+    .deadline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border: 1px solid var(--due-border);
+      background: var(--due-tint);
+      border-radius: var(--radius-lg);
+    }
+    .deadline strong { color: var(--due-text); font-weight: var(--weight-semibold); }
+    .deadline .clock {
+      font-family: var(--font-figure);
+      font-variant-numeric: tabular-nums;
+      font-size: var(--figure-lg);
+      color: var(--due-text);
+    }
+
+    .site-footer {
+      background: var(--primary-800);
+      color: rgba(252,253,252,0.82);
+      padding: 40px var(--gutter);
+    }
+    .site-footer .inner {
+      max-width: var(--content-max-app);
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .site-footer a { color: var(--surface); }
+
+    /* Target journey flowchart */
+    .journey-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 8px;
+    }
+    .flow-step {
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+    .flow-rail {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .flow-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--primary);
+      background: var(--surface);
+      color: var(--primary);
+      font-family: var(--font-figure);
+      font-size: 11px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .flow-step[data-phase="decision"] .flow-dot {
+      background: var(--primary);
+      color: var(--surface);
+    }
+    .flow-step[data-phase="ai"] .flow-dot {
+      border-color: var(--due);
+      color: var(--due-text);
+    }
+    .flow-step[data-phase="ca"] .flow-dot {
+      border-color: var(--credit);
+      color: var(--credit-text);
+    }
+    .flow-step[data-phase="end"] .flow-dot {
+      background: var(--credit);
+      border-color: var(--credit);
+      color: var(--surface);
+    }
+    .flow-line {
+      width: 1px;
+      flex: 1;
+      min-height: 20px;
+      background: var(--neutral-200);
+      margin: 4px 0;
+    }
+    .flow-step:last-child .flow-line { display: none; }
+    .flow-card {
+      border: 1px solid var(--neutral-200);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+    .flow-card h3 {
+      font-size: var(--h3);
+      font-weight: var(--weight-semibold);
+      color: var(--ink);
+    }
+    .flow-card p {
+      margin-top: 6px;
+      font-size: var(--body-sm);
+      line-height: var(--body-sm-lh);
+      color: var(--neutral-700);
+      max-width: 62ch;
+    }
+    .flow-card .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .tag {
+      font-family: var(--font-figure);
+      font-size: var(--statute);
+      color: var(--neutral-700);
+      background: var(--neutral-50);
+      border: 1px solid var(--neutral-200);
+      border-radius: var(--radius-xs);
+      padding: 3px 7px;
+    }
+    .tag.primary { color: var(--info-text); background: var(--primary-50); border-color: var(--info-border); }
+    .tag.due { color: var(--due-text); background: var(--due-tint); border-color: var(--due-border); }
+    .tag.credit { color: var(--credit-text); background: var(--credit-tint); border-color: var(--credit-border); }
+    .flow-branch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .flow-branch button {
+      text-align: left;
+      border: 1px solid var(--neutral-300);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      padding: 12px 14px;
+      cursor: pointer;
+      color: var(--ink);
+      transition: border-color var(--motion-instant), background var(--motion-instant);
+    }
+    .flow-branch button:hover {
+      border-color: var(--primary-200);
+      background: var(--neutral-50);
+    }
+    .flow-branch button[aria-pressed="true"] {
+      border-color: var(--primary);
+      background: var(--primary-50);
+      box-shadow: inset 3px 0 0 var(--primary);
+    }
+    .flow-branch button strong {
+      display: block;
+      font-size: var(--label);
+      font-weight: var(--weight-semibold);
+    }
+    .flow-branch button span {
+      display: block;
+      margin-top: 4px;
+      font-size: var(--caption);
+      color: var(--neutral-500);
+      line-height: 1.4;
+    }
+    .track-banner {
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--info-border);
+      background: var(--primary-50);
+      color: var(--info-text);
+      font-size: var(--body-sm);
+    }
+    .flow-step.is-dim .flow-card { opacity: 0.45; }
+    .flow-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: var(--caption);
+      color: var(--neutral-500);
+    }
+    .flow-legend i {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    @media (max-width: 1024px) {
+      .regime-grid, .steps, .nri-rail, .flow-branch { grid-template-columns: 1fr; }
+      .nri-rail article { border-right: 0; border-bottom: 1px solid var(--neutral-200); }
+      .nri-rail article:last-child { border-bottom: 0; }
+      .shell-inner { padding: 0 var(--gutter-mobile); }
+    }
+    @media (max-width: 768px) {
+      .shell-meta { display: none; }
+      .ledger-row { grid-template-columns: minmax(0,1fr) var(--ledger-amount-col); }
+      .ledger-row .stat { display: none; }
+      .flow-step { grid-template-columns: 36px minmax(0, 1fr); gap: 12px; }
+      .flow-dot { width: 24px; height: 24px; font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="review-note" role="note">
+    <strong>Local review · not production.</strong>
+    Design-system ledger + MAIN product truth + MIRUDULA onboarding clarity.
+    Includes <a href="#journey" style="color:inherit;font-weight:600">target user journey</a> (login → ERI / manual upload).
+  </aside>
+
+  <header class="shell-header">
+    <div class="shell-inner">
+      <a class="wordmark" href="#top">NRITAX<span>2.0</span></a>
+      <p class="shell-meta">AY 2026-27 · ITR-2 &amp; ITR-3 · due 31 Jul</p>
+      <div class="shell-actions">
+        <a class="btn btn-ghost-ink" href="#journey">Journey</a>
+        <a class="btn btn-ghost-ink" href="#onboard">Profile</a>
+        <a class="btn btn-primary" href="#start" style="min-height:36px;padding:8px 14px">Start filing</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Hero: one composition — brand + one claim + interactive sheet -->
+    <section class="ntx-section" style="background:var(--paper);padding-top:48px">
+      <div class="ntx-shell ntx-grid-hero">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <p class="eyebrow">From Dubai, London, Singapore, Jersey City</p>
+          <h1 class="ntx-display-xl" style="color:var(--ink);max-width:11ch">File India tax without flying home</h1>
+          <p class="lede">
+            No Indian mobile OTP. No Income Tax portal password.
+            Prefill, CAS and helpers are optional — enter figures by hand and download JSON for the portal.
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:12px">
+            <a class="btn btn-primary btn-lg" href="#start">Start my return</a>
+            <a class="btn btn-secondary btn-lg" href="#compare">Compare regimes</a>
+          </div>
+          <p class="muted">Built for NRI residential status. FSI / FA schedules stay out of the way until you need them.</p>
+        </div>
+
+        <div class="card" id="compare">
+          <div class="card-head">
+            <h2>Your two regimes, live</h2>
+            <span class="muted">Nothing stored</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="field">
+              <label for="incomeType">What are you estimating?</label>
+              <div class="seg" role="group" aria-label="Income type">
+                <button type="button" id="typeSalary" aria-pressed="true">Indian salary</button>
+                <button type="button" id="typeCg" aria-pressed="false">MF capital gains</button>
+              </div>
+              <span class="hint" id="typeHint">Form 16 Part B style. Standard deduction applied per regime.</span>
+            </div>
+
+            <div class="field">
+              <label for="gross" id="grossLabel">Gross Indian salary · FY 2025-26</label>
+              <div class="money">
+                <span class="money-prefix">₹</span>
+                <input id="gross" inputmode="numeric" autocomplete="off" value="14,80,000" aria-describedby="typeHint" />
+              </div>
+            </div>
+
+            <div class="field" id="deductWrap">
+              <label for="deduct">Chapter VI-A you can still claim (old regime)</label>
+              <div class="money">
+                <span class="money-prefix">₹</span>
+                <input id="deduct" inputmode="numeric" autocomplete="off" value="1,50,000" />
+              </div>
+              <span class="hint">Typical 80C. Edit to match your Form 16 / proofs.</span>
+            </div>
+
+            <div class="regime-grid" aria-live="polite">
+              <div class="regime" id="newBox">
+                <div class="regime-top">
+                  <h3>New regime</h3>
+                  <span class="pill" id="newPill" hidden>Lower tax</span>
+                </div>
+                <div class="ledger" style="border:0;max-width:none">
+                  <div class="ledger-row"><span class="lbl">Total income</span><span class="stat">s.288A</span><span class="amt" id="newTi">—</span></div>
+                  <div class="ledger-row"><span class="lbl">Tax before cess</span><span class="stat"></span><span class="amt" id="newBase">—</span></div>
+                </div>
+                <div class="tax-line">
+                  <span style="font-size:var(--body-sm);font-weight:500">Tax with cess</span>
+                  <span class="figure" id="newTax">—</span>
+                </div>
+              </div>
+              <div class="regime" id="oldBox">
+                <div class="regime-top">
+                  <h3>Old regime</h3>
+                  <span class="pill" id="oldPill" hidden>Lower tax</span>
+                </div>
+                <div class="ledger" style="border:0;max-width:none">
+                  <div class="ledger-row"><span class="lbl">Total income</span><span class="stat">s.288A</span><span class="amt" id="oldTi">—</span></div>
+                  <div class="ledger-row"><span class="lbl">Tax before cess</span><span class="stat"></span><span class="amt" id="oldBase">—</span></div>
+                </div>
+                <div class="tax-line">
+                  <span style="font-size:var(--body-sm);font-weight:500">Tax with cess</span>
+                  <span class="figure" id="oldTax">—</span>
+                </div>
+              </div>
+            </div>
+
+            <p id="deltaLine" style="font-size:var(--body);color:var(--ink);font-weight:500"></p>
+            <p class="muted" id="switchNote"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NRI efficiency — not a feature grid -->
+    <section class="nri-rail" aria-label="Built for filing from abroad">
+      <article>
+        <p class="kicker">01 · ACCESS</p>
+        <h3>Sign in without an Indian number</h3>
+        <p>Email link or Google. Demo path for a dry run. The department portal still needs its own login — we never ask for that password.</p>
+      </article>
+      <article>
+        <p class="kicker">02 · HELPERS</p>
+        <h3>CAS and prefill, only if useful</h3>
+        <p>Mutual-fund CAS (CAMS / KFintech), ITD JSON, Form 16 / 26AS reads. Skip any of them and type the figures yourself.</p>
+      </article>
+      <article>
+        <p class="kicker">03 · EXIT</p>
+        <h3>Download JSON. Upload at the portal.</h3>
+        <p>Validate, download, then e-File → Upload JSON on incometax.gov.in. Phase 1 stays honest about what we do and don’t do.</p>
+      </article>
+    </section>
+
+    <!-- Ledger motif on ink — MAIN honesty + DS signature -->
+    <section class="ntx-section" style="background:var(--ink);color:var(--surface)">
+      <div class="ntx-shell ntx-grid-band">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <h2 class="ntx-display-lg">Every figure must survive a cold read</h2>
+          <p style="font-size:var(--body);line-height:var(--body-lh);color:rgba(252,253,252,0.82);max-width:48ch">
+            You file once a year, often late at night in another timezone.
+            The sheet names the source — Form 16, 26AS, AIS, a section of the Act — so you can check it against the papers on your desk before you download.
+          </p>
+          <div class="deadline" style="max-width:420px">
+            <div>
+              <strong>Due date</strong>
+              <p class="muted" style="margin-top:4px;color:var(--due-text)">31 July 2026 · your local clock</p>
+            </div>
+            <div class="clock" id="localDue" aria-live="polite">—</div>
+          </div>
+        </div>
+        <div class="ledger on-ink" aria-label="Sample computation sheet">
+          <div class="ledger-row"><span class="lbl">Gross salary</span><span class="stat">u/s 17(1)</span><span class="amt">₹14,80,000</span></div>
+          <div class="ledger-row"><span class="lbl">Less: standard deduction</span><span class="stat">u/s 16(ia)</span><span class="amt">₹75,000</span></div>
+          <div class="ledger-row subtotal"><span class="lbl">Income from salary</span><span class="stat"></span><span class="amt">₹14,05,000</span></div>
+          <div class="ledger-row"><span class="lbl">Listed equity LTCG</span><span class="stat">u/s 112A</span><span class="amt">₹2,14,300</span></div>
+          <div class="ledger-row"><span class="lbl">Less: exemption</span><span class="stat">u/s 112A</span><span class="amt">₹1,25,000</span></div>
+          <div class="ledger-row"><span class="lbl">TDS already paid</span><span class="stat">26AS</span><span class="amt">₹1,12,000</span></div>
+          <div class="ledger-row final credit"><span class="lbl">Refund due</span><span class="stat">estimate</span><span class="amt">₹8,557</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Flow from MIRUDULA, voice from DS, product from MAIN -->
+    <section class="ntx-section" style="background:var(--paper)">
+      <div class="ntx-shell" style="display:flex;flex-direction:column;gap:32px">
+        <div>
+          <p class="eyebrow">Once a year</p>
+          <h2 class="ntx-display-lg" style="color:var(--ink);margin-top:8px">Four moves. No theatre.</h2>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <p class="num">01</p>
+            <h3>Choose the form</h3>
+            <p>ITR-2 for salary, house property, capital gains. ITR-3 if you have business or profession income.</p>
+          </div>
+          <div class="step">
+            <p class="num">02</p>
+            <h3>Bring the papers</h3>
+            <p>Form 16, 26AS, AIS, CAS if you have mutual funds. Or type. Helpers never block the path.</p>
+          </div>
+          <div class="step">
+            <p class="num">03</p>
+            <h3>Pick the cheaper regime</h3>
+            <p>Side by side, in rupees. The loser is not coloured red — owing tax is not an error.</p>
+          </div>
+          <div class="step">
+            <p class="num">04</p>
+            <h3>Download and upload</h3>
+            <p>Validate → Download JSON → portal upload. Verify within 30 days when the acknowledgement lands.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Onboarding: MIRUDULA structure, DS character boxes, MAIN security -->
+    <section class="ntx-section" id="onboard" style="background:var(--surface);border-top:1px solid var(--neutral-200)">
+      <div class="ntx-shell ntx-grid-band">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <p class="eyebrow">Start securely</p>
+          <h2 class="ntx-display-lg" style="color:var(--ink)">Open a filing profile without sharing passwords</h2>
+          <p class="lede">
+            Capture only what routes the return: who you are, where you live, your PAN, which regime you are leaning toward.
+            Department credentials stay on the portal.
+          </p>
+          <div class="secure">
+            NRITAX never asks for or stores your Income Tax Department password.
+            Consent-based official workflows only, when those arrive.
+          </div>
+        </div>
+
+        <form class="card" id="profileForm" onsubmit="return false">
+          <div class="card-head">
+            <h2>Filing profile</h2>
+            <span class="muted">Local mock</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <div class="field">
+              <label for="fullName">Full name</label>
+              <input id="fullName" class="money" style="padding:11px 12px;font-family:var(--font-ui);width:100%;border:1px solid var(--border-input);border-radius:var(--radius-sm);min-height:var(--control-height)" placeholder="As on PAN" />
+            </div>
+            <div class="field">
+              <label for="country">Country of residence</label>
+              <select id="country" style="min-height:var(--control-height);border:1px solid var(--border-input);border-radius:var(--radius-sm);padding:0 12px;background:var(--surface)">
+                <option>United Arab Emirates</option>
+                <option>United States</option>
+                <option>United Kingdom</option>
+                <option>Singapore</option>
+                <option>Canada</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>PAN</label>
+              <div class="charboxes" id="panBoxes" aria-label="PAN character boxes"></div>
+              <span class="hint">Ten boxes. Same shape as the physical form — cuts transposition errors.</span>
+            </div>
+            <div class="field">
+              <label>Has Income Tax portal login?</label>
+              <div class="seg">
+                <button type="button" class="cred" data-v="yes" aria-pressed="false">Yes, I have it</button>
+                <button type="button" class="cred" data-v="no" aria-pressed="true">Not yet</button>
+              </div>
+              <span class="hint">We only need to know if you can upload JSON yourself.</span>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="saveProfile">Save profile and continue</button>
+            <p class="muted" id="profileMsg" hidden></p>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Target user journey flowchart -->
+    <section class="ntx-section" id="journey" style="background:var(--paper);border-top:1px solid var(--neutral-200)">
+      <div class="ntx-shell" style="display:flex;flex-direction:column;gap:28px">
+        <div class="journey-toolbar">
+          <div>
+            <p class="eyebrow">Target product journey</p>
+            <h2 class="ntx-display-lg" style="color:var(--ink);margin-top:8px">From login to ERI or manual upload</h2>
+            <p class="lede" style="margin-top:12px">
+              Full NRITAX 2.0 path. Phase 1 today ends at validated JSON download; everything after paywall / CA / ERI is the build-forward track.
+            </p>
+          </div>
+          <div class="flow-legend" aria-hidden="true">
+            <span><i style="color:var(--primary);background:var(--primary)"></i>Decision</span>
+            <span><i style="color:var(--due)"></i>AI assist</span>
+            <span><i style="color:var(--credit)"></i>CA / close</span>
+          </div>
+        </div>
+
+        <div class="flow" id="journeyFlow">
+          <div class="flow-step">
+            <div class="flow-rail"><span class="flow-dot">01</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <h3>Login</h3>
+              <p>Authenticate. No Income Tax portal password is collected here.</p>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="flow-rail"><span class="flow-dot">02</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <h3>Select filing year</h3>
+              <p>Choose assessment year / financial year for this return.</p>
+              <div class="tags"><span class="tag">AY 2026-27</span><span class="tag">FY 2025-26</span></div>
+            </div>
+          </div>
+
+          <div class="flow-step" data-phase="decision">
+            <div class="flow-rail"><span class="flow-dot">03</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <h3>ITR-2 · ITR-3 · I’m not sure</h3>
+              <p>Direct pick gets one killer confirmation. I’m not sure opens the clarifying quiz. Fail the killer → quiz. Later AI review can still flag wrong_form_suspected.</p>
+              <div class="flow-branch" role="group" aria-label="Form track">
+                <button type="button" id="trackItr2" aria-pressed="true">
+                  <strong>ITR-2 track</strong>
+                  <span>No business or profession — then confirm once.</span>
+                </button>
+                <button type="button" id="trackItr3" aria-pressed="false">
+                  <strong>ITR-3 track</strong>
+                  <span>Business / profession / partner — then confirm once.</span>
+                </button>
+              </div>
+              <div class="tags" style="margin-top:10px">
+                <span class="tag primary">I’m not sure → quiz</span>
+                <span class="tag">Killer gate</span>
+                <span class="tag due">warn / flag / block</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-step" id="trackStep">
+            <div class="flow-rail"><span class="flow-dot">04</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <div class="track-banner" id="trackBanner">Filing on the <strong>ITR-2</strong> track for this preview.</div>
+              <h3>Name · PAN · Mobile</h3>
+              <p>Identity block shared by both tracks. Then fetch or download the department pre-filled JSON.</p>
+              <div class="tags">
+                <span class="tag primary">Prefill JSON in</span>
+                <span class="tag">Store securely</span>
+                <span class="tag">Map → vertical fields</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="flow-rail"><span class="flow-dot">05</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <h3>Auto-enrich what is left</h3>
+              <p>Attempt CAS, DigiLocker, and email scanning for remaining fields. Nothing here is a hard gate — gaps stay editable.</p>
+              <div class="tags">
+                <span class="tag">CAS</span>
+                <span class="tag">DigiLocker</span>
+                <span class="tag">Email scan</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-step" data-phase="ai">
+            <div class="flow-rail"><span class="flow-dot">06</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <h3>Document AI for gaps</h3>
+              <p>User uploads Form 16 and other proofs. AI extracts only what maps cleanly into the open fields.</p>
+              <div class="tags"><span class="tag due">Form 16</span><span class="tag due">26AS / AIS</span><span class="tag due">Other proofs</span></div>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="flow-rail"><span class="flow-dot">07</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <h3>Manual confirmation wizard</h3>
+              <p>Ask only for what is still missing or needs a human yes/no — not a full re-key of the return.</p>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="flow-rail"><span class="flow-dot">08</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <h3>Old vs New regime</h3>
+              <p>Side-by-side comparison on the filer’s own numbers. Payable stays ink — owing tax is not an error state.</p>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="flow-rail"><span class="flow-dot">09</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <h3>Validate</h3>
+              <p>Schema and Income Tax guideline checks before any AI opinion layer.</p>
+            </div>
+          </div>
+
+          <div class="flow-step" data-phase="ai">
+            <div class="flow-rail"><span class="flow-dot">10</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <h3>AI full-form review</h3>
+              <p>warn / flag / block actions. Form suitability first — may emit wrong_form_suspected. Structured JSON; no invented facts; NRI traps next.</p>
+              <div class="tags">
+                <span class="tag due">warn</span>
+                <span class="tag due">flag</span>
+                <span class="tag due">block</span>
+                <span class="tag">WRONG_FORM</span>
+                <span class="tag">docs/prompts/itr-ai-full-form-review.md</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-step" data-phase="ca">
+            <div class="flow-rail"><span class="flow-dot">11</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <h3>Paywall → optional CA</h3>
+              <p>If the user wants a CA: schedule call with calendar invite. CA may send the draft back for edits; on approval, re-validate.</p>
+              <div class="tags"><span class="tag credit">Calendar invite</span><span class="tag credit">CA approve</span><span class="tag">Or self-serve</span></div>
+            </div>
+          </div>
+
+          <div class="flow-step" data-phase="end">
+            <div class="flow-rail"><span class="flow-dot">12</span><span class="flow-line"></span></div>
+            <div class="flow-card">
+              <h3>Final JSON → submit</h3>
+              <p>Re-validate, generate filing JSON, then file via own/partner ERI, third-party ERI, or manual portal upload with instructions.</p>
+              <div class="tags">
+                <span class="tag credit">ERI</span>
+                <span class="tag credit">Third-party ERI</span>
+                <span class="tag credit">Manual upload</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="muted">Source of truth for this chart: <code style="font-family:var(--font-figure);font-size:11px">docs/user-journey-target.md</code>. Phase 1 spine: <code style="font-family:var(--font-figure);font-size:11px">docs/user-journey-phase-1.md</code>.</p>
+      </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="ntx-section" id="start" style="background:var(--paper);padding-top:0">
+      <div class="ntx-shell">
+        <div style="border:1px solid var(--neutral-200);background:var(--surface);border-radius:var(--radius-lg);padding:40px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:24px;align-items:center">
+          <div style="max-width:52ch">
+            <h2 class="ntx-display-sm" style="color:var(--ink)">Ready when your papers are</h2>
+            <p style="margin-top:12px;font-size:var(--body);color:var(--neutral-700);line-height:var(--body-lh)">
+              Open ITR-2 or ITR-3, fill what you have, download JSON for the portal.
+              A CA path can take over later — this review stays on the self-serve track.
+            </p>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px">
+            <a class="btn btn-primary btn-lg" href="#journey">See full journey</a>
+            <a class="btn btn-secondary btn-lg" href="https://incometax.gov.in" target="_blank" rel="noopener noreferrer">Income Tax portal</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <div>
+        <div class="wordmark">NRITAX<span>2.0</span></div>
+        <p style="margin-top:10px;font-size:var(--body-sm);max-width:42ch">
+          Local synthesis preview. Design tokens from <code style="font-family:var(--font-figure)">design-system/</code>.
+          Product facts from <code style="font-family:var(--font-figure)">main</code>. Onboarding clarity from MIRUDULA-MAIN — without the AI packaging.
+        </p>
+      </div>
+      <p style="font-size:var(--caption)">Not a filing. Figures are illustrative.</p>
+    </div>
+  </footer>
+
+  <script>
+    const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
+    const CESS = 0.04;
+
+    function parseMoney(raw) {
+      const n = Number(String(raw).replace(/[^\d]/g, ''));
+      return Number.isFinite(n) ? n : 0;
+    }
+    function formatMoney(n) {
+      return inr.format(Math.max(0, Math.round(n)));
+    }
+    function round10(n) {
+      return Math.round(n / 10) * 10;
+    }
+
+    function newRegimeTax(ti) {
+      const slabs = [
+        [400000, 0], [800000, 0.05], [1200000, 0.10],
+        [1600000, 0.15], [2000000, 0.20], [2400000, 0.25],
+      ];
+      let tax = 0, prev = 0;
+      for (const [cap, rate] of slabs) {
+        if (ti > prev) tax += (Math.min(ti, cap) - prev) * rate;
+        prev = cap;
+      }
+      if (ti > 2400000) tax += (ti - 2400000) * 0.30;
+      return Math.round(tax * (1 + CESS));
+    }
+
+    function oldRegimeTax(ti) {
+      let tax = 0;
+      if (ti > 1000000) tax += (ti - 1000000) * 0.30;
+      if (ti > 500000) tax += (Math.min(ti, 1000000) - 500000) * 0.20;
+      if (ti > 250000) tax += (Math.min(ti, 500000) - 250000) * 0.05;
+      return Math.round(tax * (1 + CESS));
+    }
+
+    let mode = 'salary';
+
+    function recompute() {
+      const gross = parseMoney(document.getElementById('gross').value);
+      const deduct = parseMoney(document.getElementById('deduct').value);
+
+      let tiNew, tiOld, note;
+      if (mode === 'salary') {
+        tiNew = Math.max(0, round10(gross - 75000));
+        tiOld = Math.max(0, round10(gross - 50000 - deduct));
+        note = 'Old regime uses ₹50,000 standard deduction + your Chapter VI-A. New regime uses ₹75,000. Replace with Form 16 when you file.';
+      } else {
+        // Simplified NRI MF LTCG sketch: exemption 1.25L under 112A, then 12.5% new vs old slab path as illustration
+        const exempt = 125000;
+        const taxable = Math.max(0, gross - exempt);
+        tiNew = round10(taxable);
+        tiOld = round10(taxable);
+        note = 'Illustrative u/s 112A path for listed equity / equity MF. Real CAS rows (including NRI 112A) replace this in the filing app.';
+      }
+
+      const taxNew = mode === 'cg'
+        ? Math.round(tiNew * 0.125 * (1 + CESS))
+        : newRegimeTax(tiNew);
+      const taxOld = mode === 'cg'
+        ? Math.round(tiOld * 0.125 * (1 + CESS))
+        : oldRegimeTax(tiOld);
+
+      document.getElementById('newTi').textContent = '₹' + formatMoney(tiNew);
+      document.getElementById('oldTi').textContent = '₹' + formatMoney(tiOld);
+      document.getElementById('newBase').textContent = '₹' + formatMoney(Math.round(taxNew / 1.04));
+      document.getElementById('oldBase').textContent = '₹' + formatMoney(Math.round(taxOld / 1.04));
+      document.getElementById('newTax').textContent = '₹' + formatMoney(taxNew);
+      document.getElementById('oldTax').textContent = '₹' + formatMoney(taxOld);
+
+      const delta = taxOld - taxNew;
+      const material = Math.abs(delta) >= 500;
+      const newWins = material && delta > 0;
+      const oldWins = material && delta < 0;
+
+      document.getElementById('newBox').classList.toggle('winner', newWins);
+      document.getElementById('oldBox').classList.toggle('winner', oldWins);
+      document.getElementById('newPill').hidden = !newWins;
+      document.getElementById('oldPill').hidden = !oldWins;
+
+      document.getElementById('deltaLine').textContent = !material
+        ? 'Both regimes cost about the same for this sketch.'
+        : (newWins ? 'New regime is lower for you by ₹' : 'Old regime is lower for you by ₹') + formatMoney(Math.abs(delta)) + '.';
+      document.getElementById('switchNote').textContent = note;
+    }
+
+    function bindMoney(id) {
+      const el = document.getElementById(id);
+      el.addEventListener('input', () => {
+        const n = parseMoney(el.value);
+        const start = el.selectionStart;
+        el.value = n ? formatMoney(n) : '';
+        recompute();
+      });
+      el.addEventListener('blur', () => {
+        const n = parseMoney(el.value);
+        el.value = n ? formatMoney(n) : '';
+      });
+    }
+
+    document.getElementById('typeSalary').addEventListener('click', () => {
+      mode = 'salary';
+      document.getElementById('typeSalary').setAttribute('aria-pressed', 'true');
+      document.getElementById('typeCg').setAttribute('aria-pressed', 'false');
+      document.getElementById('grossLabel').textContent = 'Gross Indian salary · FY 2025-26';
+      document.getElementById('typeHint').textContent = 'Form 16 Part B style. Standard deduction applied per regime.';
+      document.getElementById('deductWrap').hidden = false;
+      document.getElementById('gross').value = '14,80,000';
+      recompute();
+    });
+    document.getElementById('typeCg').addEventListener('click', () => {
+      mode = 'cg';
+      document.getElementById('typeSalary').setAttribute('aria-pressed', 'false');
+      document.getElementById('typeCg').setAttribute('aria-pressed', 'true');
+      document.getElementById('grossLabel').textContent = 'Listed equity / equity MF LTCG · FY 2025-26';
+      document.getElementById('typeHint').textContent = 'Common NRI CAS path. Exemption ₹1,25,000 under u/s 112A in this sketch.';
+      document.getElementById('deductWrap').hidden = true;
+      document.getElementById('gross').value = '2,14,300';
+      recompute();
+    });
+
+    bindMoney('gross');
+    bindMoney('deduct');
+    recompute();
+
+    // Local due clock — NRI timezone awareness
+    function updateDue() {
+      const due = new Date('2026-07-31T23:59:59+05:30');
+      const now = new Date();
+      const ms = due - now;
+      const el = document.getElementById('localDue');
+      if (ms <= 0) {
+        el.textContent = 'Passed';
+        return;
+      }
+      const days = Math.floor(ms / 86400000);
+      el.textContent = days + 'd left';
+      el.title = 'IST deadline. Your local time: ' + now.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    }
+    updateDue();
+
+    // PAN character boxes
+    const pan = document.getElementById('panBoxes');
+    for (let i = 0; i < 10; i++) {
+      if (i === 5) {
+        const gap = document.createElement('span');
+        gap.className = 'gap';
+        gap.setAttribute('aria-hidden', 'true');
+        pan.appendChild(gap);
+      }
+      const input = document.createElement('input');
+      input.maxLength = 1;
+      input.inputMode = i < 5 || i === 9 ? 'text' : 'numeric';
+      input.autocomplete = 'off';
+      input.ariaLabel = 'PAN character ' + (i + 1);
+      input.addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 1);
+        if (e.target.value) {
+          const next = e.target.nextElementSibling?.tagName === 'INPUT'
+            ? e.target.nextElementSibling
+            : e.target.nextElementSibling?.nextElementSibling;
+          next && next.focus();
+        }
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !e.target.value) {
+          const prev = e.target.previousElementSibling?.tagName === 'INPUT'
+            ? e.target.previousElementSibling
+            : e.target.previousElementSibling?.previousElementSibling;
+          prev && prev.focus();
+        }
+      });
+      pan.appendChild(input);
+    }
+
+    document.querySelectorAll('.cred').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.cred').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+        btn.setAttribute('aria-pressed', 'true');
+      });
+    });
+
+    document.getElementById('saveProfile').addEventListener('click', () => {
+      const name = document.getElementById('fullName').value.trim();
+      const msg = document.getElementById('profileMsg');
+      msg.hidden = false;
+      msg.textContent = name
+        ? 'Profile held locally for this preview, ' + name.split(' ')[0] + '. In the real app this continues to /filing.'
+        : 'Add your name as on PAN, then continue.';
+    });
+
+    function setTrack(track) {
+      const is2 = track === 'ITR-2';
+      document.getElementById('trackItr2').setAttribute('aria-pressed', is2 ? 'true' : 'false');
+      document.getElementById('trackItr3').setAttribute('aria-pressed', is2 ? 'false' : 'true');
+      document.getElementById('trackBanner').innerHTML =
+        'Filing on the <strong>' + track + '</strong> track for this preview. Prefill mapping and schedules follow that form.';
+    }
+    document.getElementById('trackItr2').addEventListener('click', () => setTrack('ITR-2'));
+    document.getElementById('trackItr3').addEventListener('click', () => setTrack('ITR-3'));
+  </script>
+</body>
+</html>

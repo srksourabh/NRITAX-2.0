@@ -1,0 +1,37 @@
+/* Responsive helpers. Components use inline styles, so the breakpoint behaviour the brief
+   requires (sm 480 · md 768 · lg 1024 · xl 1280) lives here as classes.
+   Every screen must hold at 360px with no horizontal scroll. */
+
+/* Display sizes — these are the only way the *-mobile tokens are reached */
+.ntx-display-xl{font-family:var(--font-display);font-variation-settings:var(--font-display-settings);font-weight:var(--weight-bold);font-size:var(--display-xl);line-height:var(--display-xl-lh)}
+.ntx-display-lg{font-family:var(--font-display);font-variation-settings:var(--font-display-settings);font-weight:var(--weight-bold);font-size:var(--display-lg);line-height:var(--display-lg-lh)}
+.ntx-display-sm{font-family:var(--font-display);font-variation-settings:var(--font-display-settings);font-weight:var(--weight-semibold);font-size:var(--display-sm);line-height:var(--display-sm-lh)}
+.ntx-figure-xl{font-family:var(--font-figure);font-variant-numeric:tabular-nums lining-nums;font-weight:var(--weight-medium);font-size:var(--figure-xl);line-height:var(--figure-xl-lh)}
+
+/* Layout scaffolds */
+.ntx-page{max-width:var(--content-max-app);margin:0 auto;padding:var(--space-24) var(--gutter-tablet) var(--space-40)}
+.ntx-section{padding:var(--section-gap) var(--gutter)}
+.ntx-shell{max-width:var(--content-max-app);margin:0 auto}
+.ntx-grid-sidebar{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:var(--space-24);align-items:start}
+.ntx-grid-aside{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:var(--space-24);align-items:start}
+.ntx-grid-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,520px);gap:var(--space-48);align-items:center}
+.ntx-grid-band{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,460px);gap:var(--space-48);align-items:center}
+.ntx-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-24)}
+
+/* Visibility swaps — desktop table vs mobile stacked cards, wide nav vs rail */
+.ntx-narrow-only{display:none}
+
+@media (max-width:1024px){
+  .ntx-grid-hero,.ntx-grid-band{grid-template-columns:minmax(0,1fr);gap:var(--space-32)}
+}
+@media (max-width:768px){
+  .ntx-display-xl{font-size:var(--display-xl-mobile)}
+  .ntx-display-lg{font-size:var(--display-lg-mobile)}
+  .ntx-display-sm{font-size:var(--display-sm-mobile)}
+  .ntx-figure-xl{font-size:var(--figure-xl-mobile)}
+  .ntx-page{padding:var(--space-20) var(--gutter-mobile) var(--space-32)}
+  .ntx-section{padding:var(--section-gap-mobile) var(--gutter-mobile)}
+  .ntx-grid-sidebar,.ntx-grid-aside,.ntx-grid-2{grid-template-columns:minmax(0,1fr)}
+  .ntx-wide-only{display:none!important}
+  .ntx-narrow-only{display:block}
+}

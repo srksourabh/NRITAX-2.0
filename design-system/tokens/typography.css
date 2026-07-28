@@ -1,0 +1,38 @@
+:root{
+--font-display:"Archivo","Arial Narrow",sans-serif;
+--font-display-settings:"wdth" 125; /* @kind other */
+--font-ui:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+--font-figure:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+--font-devanagari:"IBM Plex Sans Devanagari","Noto Sans Devanagari",sans-serif;
+
+/* Display — Archivo Expanded, never below 28px, never in tables/labels/buttons */
+--display-xl:56px;--display-xl-mobile:40px;--display-xl-lh:1.05; /* @kind other */
+--display-lg:40px;--display-lg-mobile:30px;--display-lg-lh:1.10; /* @kind other */
+--display-sm:28px;--display-sm-mobile:24px;--display-sm-lh:1.15; /* @kind other */
+
+/* UI — IBM Plex Sans */
+--h1:24px;--h1-lh:1.25; /* @kind other */
+--h2:20px;--h2-lh:1.30; /* @kind other */
+--h3:17px;--h3-lh:1.35; /* @kind other */
+--body:15px;--body-lh:1.55; /* @kind other */
+--body-sm:13px;--body-sm-lh:1.50; /* @kind other */
+--label:13px;--label-lh:1.30; /* @kind other */
+--caption:12px;--caption-lh:1.40; /* @kind other */
+
+/* Figures — IBM Plex Mono */
+--statute:11px;--statute-lh:1.30; /* @kind other */
+--figure-xl:40px;--figure-xl-mobile:32px;--figure-xl-lh:1.05; /* @kind other */
+--figure-lg:24px;--figure-lg-lh:1.10; /* @kind other */
+--figure:15px;--figure-lh:1.45; /* @kind other */
+
+/* Weights */
+--weight-regular:400; /* @kind other */
+--weight-medium:500; /* @kind other */
+--weight-semibold:600; /* @kind other */
+--weight-bold:700; /* @kind other */
+
+/* Devanagari line heights run 0.1 higher than the Latin values */
+--body-lh-deva:1.65; /* @kind other */
+}
+.deva{font-family:var(--font-devanagari);line-height:var(--body-lh-deva)}
+.figure,.tnum{font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1}

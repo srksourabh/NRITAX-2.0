@@ -1,0 +1,29 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Filing" subtitle="Stepper, document intake, deadline tiers, acknowledgement, trust marks" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{padding:20px;background:var(--paper)}.stack{display:flex;flex-direction:column;gap:16px}.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}</style>
+</head><body><div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { FilingProgress, DocumentUpload, DeadlineBanner, Acknowledgement, TrustBar, Button } = window.NRITAX20DesignSystem_c86cd4;
+function Demo(){return (<div className="stack">
+  <FilingProgress current={3}/>
+  <div className="two">
+    <FilingProgress current={3} compact/>
+    <DeadlineBanner days={9} dueDate="31 July 2026" action={<Button size="compact">Continue</Button>}/>
+  </div>
+  <div className="two">
+    <DocumentUpload state="idle"/>
+    <DocumentUpload state="parsed" fileName="Form 16 — FY 2025-26.pdf" fields={[{label:'Gross salary',value:'14,80,000'},{label:'Professional tax',value:'2,400',uncertain:true}]}/>
+  </div>
+  <div className="two">
+    <DocumentUpload state="password" fileName="HDFC statement.pdf"/>
+    <DocumentUpload state="failed" fileName="form16-scan.jpg" error="This file has 0 pages we could read. It may be a scan. Try a clearer photo, or enter the figures yourself."/>
+  </div>
+  <Acknowledgement ackNumber="284917650120726" filedOn="12 July 2026" itrForm="ITR-2" regime="New" figure="Refund due ₹8,557"/>
+  <TrustBar marks={[{name:'e-Return Intermediary',reference:'ERIP00XXXX'},{name:'ISO/IEC 27001:2022',reference:'Cert. XXXXXX'},{name:'AES-256 at rest'}]}/>
+</div>);}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>

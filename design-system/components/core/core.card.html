@@ -1,0 +1,40 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Core" subtitle="Buttons, status pills, statute chips, cards, empty state" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{padding:20px;background:var(--paper)}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}.lbl{font-size:11px;font-family:var(--font-figure);color:var(--neutral-500);width:100%}</style>
+</head><body><div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { Button, StatusPill, StatuteChip, Card, CardHeader, EmptyState } = window.NRITAX20DesignSystem_c86cd4;
+function Demo(){return (<div>
+<div className="row"><span className="lbl">Buttons</span>
+<Button>File my return</Button>
+<Button variant="secondary">Save draft</Button>
+<Button variant="quiet">Edit</Button>
+<Button variant="destructive">Discard draft</Button>
+<Button variant="link">Why this figure?</Button>
+<Button disabled>Continue</Button>
+<Button loading>Filing</Button>
+<Button size="compact" variant="secondary">Compact 36px</Button>
+</div>
+<div className="row"><span className="lbl">Status pills — filing lifecycle</span>
+<StatusPill status="draft"/><StatusPill status="docs_pending"/><StatusPill status="parsing"/>
+<StatusPill status="ready_to_file"/><StatusPill status="filed_unverified"/>
+<StatusPill status="everified" dot/><StatusPill status="refund_issued" dot/><StatusPill status="defective"/>
+</div>
+<div className="row" style={{background:'var(--ink)',padding:'10px',borderRadius:'8px'}}><span className="lbl" style={{color:'rgba(252,253,252,0.6)'}}>Status pills on the ink shell header — onInk</span>
+<StatusPill onInk status="review_user"/><StatusPill onInk status="filed_unverified"/><StatusPill onInk status="refund_issued"/><StatusPill onInk status="notice_received"/>
+</div>
+<div className="row"><span className="lbl">Statute chips</span>
+<StatuteChip>u/s 80C</StatuteChip><StatuteChip>s.288A</StatuteChip>
+<StatuteChip source>Form 16 Part B</StatuteChip><StatuteChip source>26AS</StatuteChip><StatuteChip source>AIS</StatuteChip>
+</div>
+<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+<Card padding="16px"><CardHeader title="Deductions" meta="Chapter VI-A · old regime only"/><span style={{fontSize:'13px',color:'var(--neutral-700)'}}>Flat surface, 1px border, no shadow.</span></Card>
+<EmptyState line="No documents yet. Upload Form 16 to start." action={<Button variant="secondary" size="compact">Take a photo</Button>}/>
+</div>
+</div>);}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>
