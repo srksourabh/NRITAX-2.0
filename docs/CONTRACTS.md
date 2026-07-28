@@ -9,15 +9,18 @@ A PWA that lets a non-resident Indian file an ITR-2 or ITR-3 return for assessme
 year 2026-27 with as few manual steps as possible:
 
 1. Sign in with an email magic link or Google.
-2. Give PAN, name, date of birth. We pick ITR-2 or ITR-3 automatically.
-3. Grant e-consent once. We pull the departmental prefill JSON, Form 26AS credits
-   and AIS figures through an ERI provider.
-4. Optionally upload a CAMS/KFintech consolidated account statement. We parse it
-   and fill Schedule CG and Schedule 112A, including section 112A grandfathering.
-5. A short wizard asks only what prefill could not answer, and shows old regime
-   versus new regime side by side with real numbers.
-6. The CBDT validation rules run, then an AI audit pass reviews the return.
-7. We build the departmental JSON and upload it through the ERI provider.
+2. Choose ITR-2 or ITR-3. The forms are separate tracks — each keeps its own
+   schedules, calculations, validations, mandatory fields, drafts and JSON.
+3. Optionally upload ITD prefill JSON, use Sandbox/DigiLocker helpers, or fill
+   Part A by hand. No helper blocks the wizard.
+4. Optionally upload a Detailed CAMS/KFintech consolidated account statement.
+   The free open-source `casparser` service parses it and fills Schedule CG and
+   Schedule 112A. The PDF password defaults to the PAN already on the return.
+5. Complete remaining schedules on the chosen track; regime comparison uses the
+   return's own numbers when wired.
+6. The CBDT validation rules run for that form.
+7. We build the departmental JSON for download (and later upload through an ERI
+   when registered). Phase 1 is download-only.
 
 ## Layout
 

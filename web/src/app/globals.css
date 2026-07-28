@@ -244,6 +244,34 @@ a {
   background: var(--credit-text);
 }
 
+.ntx-btn:disabled,
+.ntx-btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ntx-choice-card {
+  cursor: pointer;
+  transition: border-color var(--motion-quick), background var(--motion-quick),
+    box-shadow var(--motion-quick);
+}
+
+.ntx-choice-card:hover:not(:disabled) {
+  border-color: var(--primary-200);
+}
+
+.ntx-choice-card-selected {
+  border-color: var(--primary);
+  background: var(--primary-50);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.ntx-choice-card:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .ntx-input,
 .ntx-select {
   width: 100%;

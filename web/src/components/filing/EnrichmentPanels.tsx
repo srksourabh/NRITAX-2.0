@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { applyCasToReturn } from '@/lib/cas/apply-cas';
+import { casFailureMessage, resolveCasPdfPassword } from '@/lib/cas/password';
 import type { CasParseResult } from '@/lib/cas/types';
 import { importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
 import {
@@ -111,6 +112,7 @@ export function EnrichmentPanels({
   setNotice: (message: string | null) => void;
 }) {
   const [casBusy, setCasBusy] = useState(false);
+  const [casPassword, setCasPassword] = useState('');
   const [panBusy, setPanBusy] = useState(false);
   const [ifscBusy, setIfscBusy] = useState(false);
   const [digiBusy, setDigiBusy] = useState(false);
@@ -268,20 +270,21 @@ export function EnrichmentPanels({
     if (!file) return;
     setCasBusy(true);
     try {
+      const { pan } = genIdentity(data);
+      const password = resolveCasPdfPassword(pan, casPassword);
       const body = new FormData();
       body.set('file', file);
       body.set('financial_year', '2025-26');
+      if (password) body.set('password', password);
       const res = await fetch('/api/cas/parse', { method: 'POST', body });
       const json = (await res.json()) as {
         ok: boolean;
+        code?: string;
         message?: string;
         result?: CasParseResult;
       };
       if (!json.ok || !json.result) {
-        setNotice(
-          json.message ??
-            'CAS unavailable. Enter capital gains in Schedule CG by hand.',
-        );
+        setNotice(casFailureMessage(json.code, json.message));
         return;
       }
       const applied = applyCasToReturn(data, json.result);
@@ -295,7 +298,7 @@ export function EnrichmentPanels({
         `CAS applied to Schedule CG · ${applied.fieldsApplied} fields · ${applied.rowsApplied} Schedule 112A rows${warn}. Review and edit by hand if needed.`,
       );
     } catch {
-      setNotice('CAS unavailable. Enter capital gains in Schedule CG by hand.');
+      setNotice(casFailureMessage('SERVICE_UNAVAILABLE'));
     } finally {
       setCasBusy(false);
     }
@@ -560,13 +563,47 @@ export function EnrichmentPanels({
       <div className="ntx-panel p-5">
         <h2 className="text-[var(--h3)] font-semibold">Optional · Mutual fund CAS</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
-          CAMS / KFintech PDF. If parsing is down, enter gains in Schedule CG yourself.
+          Free open-source parse of a Detailed CAMS / KFintech statement for FY
+          2025-26. Password defaults to your PAN in Part A. Summary or NSDL/CDSL
+          holdings statements cannot fill Schedule CG.
         </p>
+        <ol className="mt-3 list-decimal space-y-1 pl-5 text-[var(--body-sm)] text-[var(--text-muted)]">
+          <li>
+            Request a Detailed CAS from{' '}
+            <a
+              className="underline underline-offset-2"
+              href="https://www.camsonline.com/Investors/Statements/Consolidated-Account-Statement"
+              target="_blank"
+              rel="noreferrer"
+            >
+              CAMS
+            </a>{' '}
+            or{' '}
+            <a
+              className="underline underline-offset-2"
+              href="https://mfs.kfintech.com/investor/General/ConsolidatedAccountStatement"
+              target="_blank"
+              rel="noreferrer"
+            >
+              KFintech
+            </a>{' '}
+            (email mailback).
+          </li>
+          <li>Upload the PDF below. Skip anytime and type gains in Schedule CG.</li>
+        </ol>
+        <input
+          className="ntx-input mt-3"
+          type="password"
+          placeholder="PDF password (optional — defaults to PAN)"
+          autoComplete="off"
+          value={casPassword}
+          onChange={(e) => setCasPassword(e.target.value)}
+        />
         <input
           type="file"
           accept="application/pdf,.pdf"
           disabled={casBusy}
-          className="mt-4 block w-full text-[var(--body-sm)]"
+          className="mt-3 block w-full text-[var(--body-sm)]"
           onChange={(e) => void onCasFile(e.target.files?.[0] ?? null)}
         />
       </div>

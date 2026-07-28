@@ -23,7 +23,8 @@ compares it against the `X-CAS-Token` header with `hmac.compare_digest` on every
 ## Endpoints
 
 `POST /parse` — multipart with `file` (the statement PDF), `financial_year`
-(`"2025-26"`), and `password` when the PDF is encrypted, which it normally is.
+(`"2025-26"`), and `password` when the PDF is encrypted, which it normally is
+(CAMS/KFintech use the PAN). The web wizard sends Part A PAN automatically.
 Header `X-CAS-Token`. Returns `CasParseResult` on 200 and `CasParseError` on
 400, 401, 413 and 500.
 

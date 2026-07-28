@@ -10,20 +10,17 @@ Indian PAN, income in two countries, no Indian phone to receive an OTP on, and a
 ## What it does
 
 1. **Sign in** with an email link or Google. No Indian mobile number needed.
-2. **Tell us your PAN, name and date of birth.** We work out whether you file
-   ITR-2 or ITR-3 and say why.
-3. **Grant consent once.** We pull your pre-fill data, Form 26AS tax credits and
-   AIS figures straight from the Income Tax Department through a registered
-   e-Return Intermediary, and fill the return with them.
-4. **Upload a mutual fund statement** if you have one. We read it, work out your
-   capital gains with the 31 January 2018 grandfathering applied, and fill
-   Schedule CG and Schedule 112A.
-5. **Answer what is left.** Only the questions the pre-fill could not answer.
-6. **Choose your regime** from a side-by-side calculation on your own numbers,
-   not a rule of thumb.
-7. **Validate.** Every Category-A rule the department publishes runs before you
-   can upload, plus an AI review that looks for the things a rule cannot see.
-8. **File.** We build the departmental JSON and upload it against your PAN.
+2. **Choose ITR-2 or ITR-3.** Each form is a separate fillable track with its
+   own schedules, calculations, validations and mandatory fields.
+3. **Prefill and helpers are optional.** Upload ITD prefill JSON, use Sandbox /
+   DigiLocker, or enter Part A by hand — nothing blocks the wizard.
+4. **Upload a Detailed mutual fund CAS** if you have one (CAMS / KFintech). The
+   free open-source parser fills Schedule CG and Schedule 112A; the PDF password
+   defaults to your PAN.
+5. **Complete what is left** on the chosen track.
+6. **Validate** with that form's CBDT rules.
+7. **Download the departmental JSON** and upload it on the Income Tax portal
+   yourself (Phase 1). Live ERI filing comes later.
 
 ## What it deliberately does not do
 

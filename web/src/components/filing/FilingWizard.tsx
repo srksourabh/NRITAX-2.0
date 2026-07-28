@@ -196,6 +196,18 @@ export function FilingWizard() {
     }, 500);
   }
 
+  /** One click on a form card opens that track immediately. */
+  async function openForm(next: FormType) {
+    if (draftBusy) return;
+    setPicked(next);
+    setDraftBusy(true);
+    try {
+      await startForm(next);
+    } finally {
+      setDraftBusy(false);
+    }
+  }
+
   // Debounced autosave while filing (~2s after edits, only when PAN present)
   useEffect(() => {
     if (step !== 'file') return;
@@ -264,32 +276,24 @@ export function FilingWizard() {
           </p>
           <h1 className="ntx-display-lg mt-3 text-[var(--ink)]">Which form?</h1>
           <p className="mt-3 max-w-xl text-[var(--text-muted)]">
-            Choose ITR-2 or ITR-3. Prefill, CAS, DigiLocker and Sandbox helpers stay optional after
-            you enter the form — nothing blocks manual entry.
+            Choose ITR-2 or ITR-3. Each opens its own fillable track. Prefill, CAS, DigiLocker and
+            Sandbox helpers stay optional after you enter — nothing blocks manual entry.
           </p>
           <div className="mt-10 grid gap-4 md:grid-cols-2">
             <FormChoiceCard
               title="ITR-2"
               subtitle="Individuals and HUFs without business or profession income. Salary, house property, capital gains, other sources."
               selected={picked === 'ITR2'}
-              onSelect={() => setPicked('ITR2')}
+              busy={draftBusy && picked === 'ITR2'}
+              onSelect={() => void openForm('ITR2')}
             />
             <FormChoiceCard
               title="ITR-3"
               subtitle="Individuals and HUFs with profits and gains of business or profession, including partners."
               selected={picked === 'ITR3'}
-              onSelect={() => setPicked('ITR3')}
+              busy={draftBusy && picked === 'ITR3'}
+              onSelect={() => void openForm('ITR3')}
             />
-          </div>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <button
-              type="button"
-              className="ntx-btn ntx-btn-primary"
-              disabled={!picked}
-              onClick={() => picked && void startForm(picked)}
-            >
-              Continue to the form
-            </button>
           </div>
         </main>
       </AppShell>
@@ -630,7 +634,7 @@ function FieldInput({
         >
           <option value="">Select</option>
           {field.options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <option key={`${fq}-${opt.value}`} value={opt.value}>
               {opt.label}
             </option>
           ))}
@@ -684,7 +688,7 @@ function TableCell({
       >
         <option value="">—</option>
         {field.options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
+          <option key={`${field.key}-${opt.value}`} value={opt.value}>
             {opt.label}
           </option>
         ))}

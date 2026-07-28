@@ -29,26 +29,36 @@ export function FormChoiceCard({
   subtitle,
   selected,
   onSelect,
+  busy,
 }: {
   title: string;
   subtitle: string;
   selected?: boolean;
   onSelect: () => void;
+  busy?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      disabled={busy}
+      aria-pressed={selected}
       className={cn(
-        'ntx-panel w-full p-6 text-left transition-[border-color,background] duration-150',
-        selected
-          ? 'border-[var(--primary)] bg-[var(--primary-50)]'
-          : 'hover:border-[var(--primary-200)]',
+        'ntx-panel ntx-choice-card w-full p-6 text-left',
+        selected && 'ntx-choice-card-selected',
       )}
     >
-      <div className="ntx-display-sm text-[var(--ink)]">{title}</div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="ntx-display-sm text-[var(--ink)]">{title}</div>
+        {selected ? (
+          <span className="ntx-badge ntx-badge-credit shrink-0">Selected</span>
+        ) : null}
+      </div>
       <p className="mt-3 text-[var(--text-muted)]">{subtitle}</p>
       <div className="mt-6 ntx-double-rule w-24" />
+      <p className="mt-4 text-[var(--body-sm)] font-semibold text-[var(--primary)]">
+        {busy ? 'Opening…' : 'Click to open this form'}
+      </p>
     </button>
   );
 }

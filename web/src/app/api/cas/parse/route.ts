@@ -43,6 +43,7 @@ export async function POST(req: Request) {
     if (!parsed.ok) {
       return NextResponse.json({
         ok: false,
+        code: parsed.code,
         message:
           parsed.message ||
           'The statement could not be read. Enter capital gains manually in Schedule CG.',
