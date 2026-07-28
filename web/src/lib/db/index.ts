@@ -126,8 +126,10 @@ CREATE TABLE IF NOT EXISTS "filing" (
   "form" text NOT NULL,
   "regime" text NOT NULL,
   "status" text DEFAULT 'draft' NOT NULL,
+  "caStatus" text DEFAULT 'none' NOT NULL,
   "data" jsonb NOT NULL,
   "acknowledgementNumber" text,
+  "eriConsentId" text,
   "createdAt" timestamp DEFAULT now() NOT NULL,
   "updatedAt" timestamp DEFAULT now() NOT NULL,
   CONSTRAINT "filing_taxpayerId_taxpayer_id_fk" FOREIGN KEY ("taxpayerId")
@@ -136,6 +138,39 @@ CREATE TABLE IF NOT EXISTS "filing" (
 CREATE INDEX IF NOT EXISTS "filing_taxpayer_idx" ON "filing" ("taxpayerId");
 CREATE UNIQUE INDEX IF NOT EXISTS "filing_year_form_idx"
   ON "filing" ("taxpayerId","assessmentYear","form");
+CREATE TABLE IF NOT EXISTS "entitlement" (
+  "id" text PRIMARY KEY NOT NULL,
+  "userId" text NOT NULL,
+  "plan" text NOT NULL,
+  "status" text DEFAULT 'active' NOT NULL,
+  "providerPaymentId" text,
+  "paidAt" timestamp,
+  "createdAt" timestamp DEFAULT now() NOT NULL,
+  CONSTRAINT "entitlement_userId_user_id_fk" FOREIGN KEY ("userId")
+    REFERENCES "user"("id") ON DELETE cascade
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "entitlement_user_idx" ON "entitlement" ("userId");
+CREATE TABLE IF NOT EXISTS "ca_slot" (
+  "id" text PRIMARY KEY NOT NULL,
+  "startsAt" timestamp NOT NULL,
+  "endsAt" timestamp NOT NULL,
+  "capacity" integer DEFAULT 1 NOT NULL,
+  "reserved" integer DEFAULT 0 NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "ca_booking" (
+  "id" text PRIMARY KEY NOT NULL,
+  "userId" text NOT NULL,
+  "filingId" text,
+  "slotId" text NOT NULL,
+  "status" text DEFAULT 'scheduled' NOT NULL,
+  "attendeeEmail" text NOT NULL,
+  "caBrief" text,
+  "createdAt" timestamp DEFAULT now() NOT NULL,
+  CONSTRAINT "ca_booking_userId_user_id_fk" FOREIGN KEY ("userId")
+    REFERENCES "user"("id") ON DELETE cascade,
+  CONSTRAINT "ca_booking_slotId_ca_slot_id_fk" FOREIGN KEY ("slotId")
+    REFERENCES "ca_slot"("id") ON DELETE cascade
+);
 CREATE TABLE IF NOT EXISTS "consent" (
   "id" text PRIMARY KEY NOT NULL,
   "taxpayerId" text NOT NULL,
@@ -157,6 +192,12 @@ CREATE TABLE IF NOT EXISTS "audit_log" (
 );
 `;
 
+/** Additive patches for existing embedded DBs created before phase-2 tables. */
+const EMBEDDED_PATCHES = `
+ALTER TABLE "filing" ADD COLUMN IF NOT EXISTS "caStatus" text DEFAULT 'none' NOT NULL;
+ALTER TABLE "filing" ADD COLUMN IF NOT EXISTS "eriConsentId" text;
+`;
+
 let created = false;
 
 /**
@@ -170,5 +211,6 @@ export async function runMigrations(): Promise<void> {
   getDb();
   if (!embedded || created) return;
   await embedded.exec(EMBEDDED_SCHEMA);
+  await embedded.exec(EMBEDDED_PATCHES);
   created = true;
 }

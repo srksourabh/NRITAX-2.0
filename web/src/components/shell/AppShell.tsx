@@ -30,12 +30,14 @@ export function FormChoiceCard({
   selected,
   onSelect,
   busy,
+  cta = 'Click to open this form',
 }: {
   title: string;
   subtitle: string;
   selected?: boolean;
   onSelect: () => void;
   busy?: boolean;
+  cta?: string;
 }) {
   return (
     <button
@@ -57,7 +59,7 @@ export function FormChoiceCard({
       <p className="mt-3 text-[var(--text-muted)]">{subtitle}</p>
       <div className="mt-6 ntx-double-rule w-24" />
       <p className="mt-4 text-[var(--body-sm)] font-semibold text-[var(--primary)]">
-        {busy ? 'Opening…' : 'Click to open this form'}
+        {busy ? 'Opening…' : cta}
       </p>
     </button>
   );

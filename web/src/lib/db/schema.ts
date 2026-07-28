@@ -33,6 +33,18 @@ import type { FormType, Regime, ResidentialStatus, ReturnData } from '@/lib/itr/
  */
 export type FilingStatus = 'draft' | 'validated' | 'uploaded' | 'verified' | 'processed';
 
+/** CA review lifecycle on a filing (optional path). */
+export type CaFilingStatus =
+  | 'none'
+  | 'requested'
+  | 'scheduled'
+  | 'ca_changes_needed'
+  | 'approved'
+  | 'cancelled';
+
+export type EntitlementPlan = 'self_serve' | 'ca_assisted';
+export type EntitlementStatus = 'active' | 'expired' | 'refunded';
+
 /** A primary key we generate ourselves, so an insert needs no round trip. */
 const primaryId = () =>
   text('id')
@@ -119,8 +131,10 @@ export const filings = pgTable(
     form: text('form').$type<FormType>().notNull(),
     regime: text('regime').$type<Regime>().notNull(),
     status: text('status').$type<FilingStatus>().notNull().default('draft'),
+    caStatus: text('caStatus').$type<CaFilingStatus>().notNull().default('none'),
     data: jsonb('data').$type<ReturnData>().notNull(),
     acknowledgementNumber: text('acknowledgementNumber'),
+    eriConsentId: text('eriConsentId'),
     createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updatedAt', { mode: 'date' }).notNull().defaultNow(),
   },
@@ -129,6 +143,45 @@ export const filings = pgTable(
     uniqueIndex('filing_year_form_idx').on(t.taxpayerId, t.assessmentYear, t.form),
   ],
 );
+
+export const entitlements = pgTable(
+  'entitlement',
+  {
+    id: primaryId(),
+    userId: text('userId')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    plan: text('plan').$type<EntitlementPlan>().notNull(),
+    status: text('status').$type<EntitlementStatus>().notNull().default('active'),
+    providerPaymentId: text('providerPaymentId'),
+    paidAt: timestamp('paidAt', { mode: 'date' }),
+    createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('entitlement_user_idx').on(t.userId)],
+);
+
+export const caSlots = pgTable('ca_slot', {
+  id: primaryId(),
+  startsAt: timestamp('startsAt', { mode: 'date' }).notNull(),
+  endsAt: timestamp('endsAt', { mode: 'date' }).notNull(),
+  capacity: integer('capacity').notNull().default(1),
+  reserved: integer('reserved').notNull().default(0),
+});
+
+export const caBookings = pgTable('ca_booking', {
+  id: primaryId(),
+  userId: text('userId')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  filingId: text('filingId').references(() => filings.id, { onDelete: 'set null' }),
+  slotId: text('slotId')
+    .notNull()
+    .references(() => caSlots.id, { onDelete: 'cascade' }),
+  status: text('status').$type<CaFilingStatus>().notNull().default('scheduled'),
+  attendeeEmail: text('attendeeEmail').notNull(),
+  caBrief: text('caBrief'),
+  createdAt: timestamp('createdAt', { mode: 'date' }).notNull().defaultNow(),
+});
 
 export const consents = pgTable('consent', {
   id: primaryId(),

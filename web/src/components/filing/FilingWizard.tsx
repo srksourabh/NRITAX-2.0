@@ -3,17 +3,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { EnrichmentPanels } from '@/components/filing/EnrichmentPanels';
-import { AppShell, FormChoiceCard } from '@/components/shell/AppShell';
+import { FormSelectionStep } from '@/components/filing/FormSelectionStep';
+import { PostValidatePanel } from '@/components/filing/PostValidatePanel';
+import { RegimeComparePanel } from '@/components/filing/RegimeComparePanel';
+import { AppShell } from '@/components/shell/AppShell';
 import { cn } from '@/lib/cn';
 import { buildReturnJson } from '@/lib/itr/build-json';
 import { ITR2_SCHEDULES } from '@/lib/itr/itr2';
 import { ITR3_SCHEDULES } from '@/lib/itr/itr3';
+import { sampleNriPriyaItr2 } from '@/lib/itr/samples/nri-priya-itr2';
 import {
   ASSESSMENT_YEAR,
   emptyReturn,
   type FieldDef,
   type FieldValue,
   type FormType,
+  type Regime,
   type ReturnData,
   type ScheduleDef,
   type TableRow,
@@ -259,6 +264,20 @@ export function FilingWizard() {
     );
   }
 
+  function loadPriyaSample() {
+    if (form !== 'ITR2') return;
+    skipAutosaveRef.current = true;
+    setData(sampleNriPriyaItr2());
+    setReport(null);
+    setActiveId('GEN');
+    setNotice(
+      'Loaded sample · Priya Sharma (UAE NRI, ITR-2, salary + 112A LTCG). Run Validate to confirm Category A.',
+    );
+    window.setTimeout(() => {
+      skipAutosaveRef.current = false;
+    }, 500);
+  }
+
   function downloadJson() {
     const built = buildReturnJson(data);
     downloadText(JSON.stringify(built.json, null, 2), built.fileName);
@@ -270,32 +289,7 @@ export function FilingWizard() {
   if (step === 'choose') {
     return (
       <AppShell right={<span className="ntx-badge ntx-badge-draft">AY {ASSESSMENT_YEAR}</span>}>
-        <main className="ntx-page">
-          <p className="text-[var(--caption)] font-semibold tracking-[0.18em] text-[var(--text-muted)] uppercase">
-            Start a return
-          </p>
-          <h1 className="ntx-display-lg mt-3 text-[var(--ink)]">Which form?</h1>
-          <p className="mt-3 max-w-xl text-[var(--text-muted)]">
-            Choose ITR-2 or ITR-3. Each opens its own fillable track. Prefill, CAS, DigiLocker and
-            Sandbox helpers stay optional after you enter — nothing blocks manual entry.
-          </p>
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            <FormChoiceCard
-              title="ITR-2"
-              subtitle="Individuals and HUFs without business or profession income. Salary, house property, capital gains, other sources."
-              selected={picked === 'ITR2'}
-              busy={draftBusy && picked === 'ITR2'}
-              onSelect={() => void openForm('ITR2')}
-            />
-            <FormChoiceCard
-              title="ITR-3"
-              subtitle="Individuals and HUFs with profits and gains of business or profession, including partners."
-              selected={picked === 'ITR3'}
-              busy={draftBusy && picked === 'ITR3'}
-              onSelect={() => void openForm('ITR3')}
-            />
-          </div>
-        </main>
+        <FormSelectionStep busy={draftBusy} onOpenForm={(next) => void openForm(next)} />
       </AppShell>
     );
   }
@@ -312,46 +306,22 @@ export function FilingWizard() {
           </>
         }
       >
-        <main className="ntx-page">
-          <p className="text-[var(--caption)] font-semibold tracking-[0.18em] text-[var(--text-muted)] uppercase">
-            Later · Regime comparison
-          </p>
-          <h1 className="ntx-display-lg mt-3">Old regime vs new regime</h1>
-          <p className="mt-3 max-w-2xl text-[var(--text-muted)]">
-            Side-by-side tax on your own numbers lands here next. For now, set the regime choice in
-            Part A — General, then finish validation and download JSON.
-          </p>
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            <div className="ntx-panel p-6">
-              <div className="text-[var(--caption)] font-semibold tracking-wide text-[var(--text-muted)] uppercase">
-                Old regime
-              </div>
-              <div className="ntx-figure-xl mt-4">—</div>
-              <hr className="ntx-double-rule mt-6" />
-              <p className="mt-4 text-[var(--body-sm)] text-[var(--text-muted)]">
-                Chapter VI-A deductions and older slabs. Computation wires in after the form path
-                is solid.
-              </p>
-            </div>
-            <div className="ntx-panel p-6">
-              <div className="text-[var(--caption)] font-semibold tracking-wide text-[var(--text-muted)] uppercase">
-                New regime · 115BAC
-              </div>
-              <div className="ntx-figure-xl mt-4">—</div>
-              <hr className="ntx-double-rule mt-6" />
-              <p className="mt-4 text-[var(--body-sm)] text-[var(--text-muted)]">
-                Default for AY {ASSESSMENT_YEAR}. Higher exemption, limited deductions.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="ntx-btn ntx-btn-primary mt-8"
-            onClick={() => setStep('file')}
-          >
-            Return to filing
-          </button>
-        </main>
+        <RegimeComparePanel
+          data={data}
+          onBack={() => setStep('file')}
+          onChooseRegime={(regime: Regime) => {
+            setData((prev) => ({
+              ...prev,
+              meta: { ...prev.meta, regime },
+              fields: { ...prev.fields, 'GEN.regime': regime === 'new' ? 'N' : 'O' },
+            }));
+            setNotice(
+              regime === 'new'
+                ? 'Filing under the new regime (115BAC).'
+                : 'Filing under the old regime.',
+            );
+          }}
+        />
       </AppShell>
     );
   }
@@ -381,6 +351,11 @@ export function FilingWizard() {
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
             <div className="flex flex-wrap gap-2 justify-end">
+              {form === 'ITR2' ? (
+                <button type="button" className="ntx-btn ntx-btn-secondary" onClick={loadPriyaSample}>
+                  Load sample
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="ntx-btn ntx-btn-secondary"
@@ -487,6 +462,8 @@ export function FilingWizard() {
                 </ul>
               </div>
             ) : null}
+
+            <PostValidatePanel data={data} onNotice={setNotice} />
           </div>
         </div>
       </main>
