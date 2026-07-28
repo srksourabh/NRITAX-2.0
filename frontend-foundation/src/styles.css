@@ -24,8 +24,18 @@ body {
   background: #ffffff;
 }
 
+#root {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
 * {
   box-sizing: border-box;
+}
+
+img,
+svg {
+  max-width: 100%;
 }
 
 button,
