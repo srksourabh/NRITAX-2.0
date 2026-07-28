@@ -16,13 +16,14 @@ export function App() {
         <Features />
         <HowItWorks />
         <Trust />
-        <section id="onboarding" className="bg-slate-50 px-4 py-16 sm:px-6 lg:py-20">
-          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+        <section id="onboarding" className="relative overflow-hidden bg-slate-50 px-4 py-16 sm:px-6 lg:py-24">
+          <div className="absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.12),transparent_32%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.12),transparent_30%)]" />
+          <div className="relative mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
             <div className="animate-rise">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-blue">
+              <p className="text-sm font-semibold uppercase text-brand-blue">
                 Start securely
               </p>
-              <h2 className="mt-3 max-w-xl text-3xl font-bold tracking-tight text-brand-ink sm:text-4xl">
+              <h2 className="mt-3 max-w-xl text-3xl font-bold text-brand-ink sm:text-4xl">
                 Begin your NRI filing profile without sharing passwords.
               </h2>
               <p className="mt-4 max-w-xl text-base leading-8 text-slate-600">

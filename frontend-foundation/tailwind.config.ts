@@ -6,6 +6,7 @@ export default {
     extend: {
       boxShadow: {
         fintech: "0 24px 80px rgba(15, 23, 42, 0.12)",
+        premium: "0 28px 90px rgba(15, 23, 42, 0.16)",
         soft: "0 14px 40px rgba(37, 99, 235, 0.10)"
       },
       colors: {
@@ -13,7 +14,8 @@ export default {
           navy: "#10243E",
           blue: "#2563EB",
           cyan: "#0EA5E9",
-          ink: "#0F172A"
+          ink: "#0F172A",
+          mist: "#F8FBFF"
         }
       },
       keyframes: {

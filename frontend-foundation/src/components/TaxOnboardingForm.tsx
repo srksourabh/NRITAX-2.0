@@ -121,9 +121,10 @@ export function TaxOnboardingForm() {
 
   return (
     <section
-      className="animate-rise rounded-[2rem] border border-slate-200 bg-white p-5 shadow-fintech sm:p-6"
+      className="animate-rise overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-fintech"
       aria-labelledby="onboarding-form-title"
     >
+      <div className="border-b border-slate-100 bg-[linear-gradient(135deg,#FFFFFF_0%,#EFF6FF_100%)] p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-brand-blue">Basic onboarding</p>
@@ -137,10 +138,11 @@ export function TaxOnboardingForm() {
       </div>
 
       <StepProgress steps={steps} currentStep={currentStep} />
+      </div>
 
       {submitted ? (
-        <div className="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-6" role="status">
-          <p className="text-sm font-bold uppercase tracking-[0.14em] text-emerald-700">
+        <div className="m-5 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 sm:m-6" role="status">
+          <p className="text-sm font-bold uppercase text-emerald-700">
             Onboarding draft captured
           </p>
           <h4 className="mt-3 text-2xl font-bold text-brand-ink">Ready for the next workflow</h4>
@@ -166,14 +168,14 @@ export function TaxOnboardingForm() {
           <button
             type="button"
             onClick={handleReset}
-            className="mt-6 min-h-11 rounded-full border border-emerald-300 bg-white px-5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+            className="mt-6 min-h-11 rounded-full border border-emerald-300 bg-white px-5 text-sm font-semibold text-emerald-800 transition hover:-translate-y-0.5 hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600"
           >
             Start again
           </button>
         </div>
       ) : (
         <form
-          className="mt-8"
+          className="p-5 sm:p-6"
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
@@ -273,14 +275,14 @@ export function TaxOnboardingForm() {
               type="button"
               onClick={handleBack}
               disabled={currentStep === 0 || isSubmitting}
-              className="min-h-11 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-brand-blue hover:text-brand-blue disabled:cursor-not-allowed disabled:opacity-40"
+              className="min-h-12 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-brand-blue hover:text-brand-blue focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="min-h-11 rounded-full bg-brand-blue px-6 text-sm font-semibold text-white shadow-soft transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+              className="min-h-12 rounded-full bg-brand-blue px-6 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70"
             >
               {isSubmitting
                 ? "Preparing draft..."
@@ -298,7 +300,7 @@ export function TaxOnboardingForm() {
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-white p-4">
-      <dt className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">{label}</dt>
+      <dt className="text-xs font-bold uppercase text-slate-500">{label}</dt>
       <dd className="mt-1 font-semibold text-brand-ink">{value || "-"}</dd>
     </div>
   );

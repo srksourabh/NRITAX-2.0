@@ -35,10 +35,10 @@ export function RadioCardGroup<T extends string>({
         {options.map((option) => (
           <label
             key={option.value}
-            className={`cursor-pointer rounded-2xl border p-4 transition focus-within:ring-4 ${
+            className={`cursor-pointer rounded-2xl border p-4 shadow-[0_1px_0_rgba(15,23,42,0.04)] transition focus-within:ring-4 ${
               value === option.value
-                ? "border-brand-blue bg-blue-50 text-brand-blue focus-within:ring-blue-100"
-                : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 focus-within:ring-slate-100"
+                ? "border-brand-blue bg-blue-50 text-brand-blue shadow-soft focus-within:ring-blue-100"
+                : "border-slate-200 bg-white text-slate-700 hover:-translate-y-0.5 hover:border-blue-200 focus-within:ring-slate-100"
             }`}
           >
             <input

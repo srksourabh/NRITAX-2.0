@@ -49,10 +49,10 @@ export function FormField({
         aria-describedby={describedBy || undefined}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className={`mt-2 h-12 w-full rounded-2xl border bg-white px-4 text-base font-medium text-brand-ink outline-none transition placeholder:text-slate-400 focus:ring-4 ${
+        className={`mt-2 min-h-12 w-full rounded-2xl border bg-white px-4 text-base font-medium text-brand-ink shadow-[0_1px_0_rgba(15,23,42,0.04)] outline-none transition placeholder:text-slate-400 focus:ring-4 ${
           error
             ? "border-red-300 focus:border-red-500 focus:ring-red-100"
-            : "border-slate-300 focus:border-brand-blue focus:ring-blue-100"
+            : "border-slate-200 hover:border-slate-300 focus:border-brand-blue focus:ring-blue-100"
         }`}
       />
       {helperText ? (
