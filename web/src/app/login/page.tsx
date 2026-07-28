@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { AuthError } from 'next-auth';
+import { redirect } from 'next/navigation';
 
 import { AppShell } from '@/components/shell/AppShell';
 import { readDemoAuth, signIn } from '@/lib/auth';
@@ -13,20 +14,31 @@ async function emailSignIn(formData: FormData) {
   try {
     await signIn('nodemailer', { email, redirectTo: '/filing' });
   } catch (error) {
-    if (error instanceof AuthError) return;
+    if (error instanceof AuthError) {
+      redirect('/login?error=email');
+    }
     throw error;
   }
 }
 
 async function googleSignIn() {
   'use server';
-  await signIn('google', { redirectTo: '/filing' });
+  try {
+    await signIn('google', { redirectTo: '/filing' });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      redirect('/login?error=google');
+    }
+    throw error;
+  }
 }
 
 async function demoSignIn() {
   'use server';
   const demo = readDemoAuth();
-  if (!demo.enabled || !demo.password) return;
+  if (!demo.enabled || !demo.password) {
+    redirect('/login?error=demo-disabled');
+  }
   try {
     await signIn('demo', {
       email: demo.email,
@@ -34,7 +46,9 @@ async function demoSignIn() {
       redirectTo: '/filing',
     });
   } catch (error) {
-    if (error instanceof AuthError) return;
+    if (error instanceof AuthError) {
+      redirect('/login?error=demo');
+    }
     throw error;
   }
 }
@@ -42,7 +56,9 @@ async function demoSignIn() {
 async function demoPasswordSignIn(formData: FormData) {
   'use server';
   const demo = readDemoAuth();
-  if (!demo.enabled) return;
+  if (!demo.enabled) {
+    redirect('/login?error=demo-disabled');
+  }
   const email = String(formData.get('email') ?? '')
     .trim()
     .toLowerCase();
@@ -50,16 +66,41 @@ async function demoPasswordSignIn(formData: FormData) {
   try {
     await signIn('demo', { email, password, redirectTo: '/filing' });
   } catch (error) {
-    if (error instanceof AuthError) return;
+    if (error instanceof AuthError) {
+      redirect('/login?error=demo');
+    }
     throw error;
   }
 }
 
-export default function LoginPage() {
+function errorMessage(code: string | undefined): string | null {
+  switch (code) {
+    case 'demo':
+      return 'Demo sign-in failed. Check AUTH_DEMO_PASSWORD on the server, or try again.';
+    case 'demo-disabled':
+      return 'Demo login is not configured (AUTH_DEMO_PASSWORD missing).';
+    case 'email':
+      return 'Could not send a sign-in link. Try again or use demo login.';
+    case 'google':
+      return 'Google sign-in failed. Try demo login instead.';
+    default:
+      return null;
+  }
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const googleEnabled = Boolean(
     process.env.AUTH_GOOGLE_ID?.trim() && process.env.AUTH_GOOGLE_SECRET?.trim(),
   );
   const demo = readDemoAuth();
+  const params = searchParams ? await searchParams : {};
+  const rawError = params.error;
+  const errorCode = Array.isArray(rawError) ? rawError[0] : rawError;
+  const notice = errorMessage(errorCode);
 
   return (
     <AppShell>
@@ -73,6 +114,12 @@ export default function LoginPage() {
           the terminal when SMTP is not configured.
         </p>
         <hr className="ntx-double-rule mt-6 max-w-xs" />
+
+        {notice ? (
+          <p className="ntx-panel mt-6 border-[var(--notice)] px-4 py-3 text-[var(--body-sm)] text-[var(--notice-text)]">
+            {notice}
+          </p>
+        ) : null}
 
         {demo.enabled ? (
           <div className="ntx-panel mt-8 space-y-3 p-5">

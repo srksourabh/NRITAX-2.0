@@ -31,6 +31,14 @@ function connect(): Database {
   const url = process.env.DATABASE_URL?.trim();
   if (url) return drizzlePostgres(url, { schema });
 
+  // Vercel (and similar) have no durable disk for PGlite. Use an in-memory
+  // database so auth and drafts still work within a single serverless invoke.
+  // Set DATABASE_URL to a real Postgres for persistence across deploys.
+  if (process.env.VERCEL) {
+    embedded = new PGlite();
+    return drizzlePglite({ client: embedded, schema });
+  }
+
   // Absolute path — relative dirs + Next Turbopack have produced
   // `path` TypeErrors (`Received an instance of URL`) on Windows.
   const dataDir = path.resolve(process.cwd(), EMBEDDED_DATA_DIR);

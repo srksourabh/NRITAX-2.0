@@ -70,30 +70,42 @@ const demoProvider = Credentials({
     const password = String(credentials?.password ?? '');
     if (email !== demo.email || password !== demo.password) return null;
 
-    await runMigrations();
-    const db = getDb();
-    const existing = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, demo.email))
-      .limit(1);
-
-    if (existing[0]) {
-      return {
-        id: existing[0].id,
-        email: existing[0].email,
-        name: existing[0].name ?? 'Demo Taxpayer',
-      };
-    }
-
-    const id = crypto.randomUUID();
-    await db.insert(users).values({
-      id,
+    // Stable id so JWT sessions stay consistent when the DB is in-memory
+    // (Vercel without DATABASE_URL) and recreated per invoke.
+    const fallbackUser = {
+      id: '00000000-0000-4000-8000-000000000001',
       email: demo.email,
       name: 'Demo Taxpayer',
-      emailVerified: new Date(),
-    });
-    return { id, email: demo.email, name: 'Demo Taxpayer' };
+    };
+
+    try {
+      await runMigrations();
+      const db = getDb();
+      const existing = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, demo.email))
+        .limit(1);
+
+      if (existing[0]) {
+        return {
+          id: existing[0].id,
+          email: existing[0].email,
+          name: existing[0].name ?? 'Demo Taxpayer',
+        };
+      }
+
+      await db.insert(users).values({
+        id: fallbackUser.id,
+        email: demo.email,
+        name: 'Demo Taxpayer',
+        emailVerified: new Date(),
+      });
+      return fallbackUser;
+    } catch {
+      // Auth must not depend on durable storage — JWT carries the user.
+      return fallbackUser;
+    }
   },
 });
 
