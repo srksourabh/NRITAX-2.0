@@ -9,16 +9,15 @@ import { Trust } from "./components/Trust";
 
 export function App() {
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <div className="min-h-screen bg-brand-mist text-brand-ink">
       <Navbar />
       <main>
         <Hero />
         <Features />
         <HowItWorks />
         <Trust />
-        <section id="onboarding" className="relative overflow-hidden bg-slate-50 px-4 py-16 sm:px-6 lg:py-24">
-          <div className="absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,0.12),transparent_32%),radial-gradient(circle_at_80%_0%,rgba(14,165,233,0.12),transparent_30%)]" />
-          <div className="relative mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+        <section id="onboarding" className="bg-brand-mist px-4 py-16 sm:px-6 lg:py-20">
+          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
             <div className="animate-rise">
               <p className="text-sm font-semibold uppercase text-brand-blue">
                 Start securely
@@ -30,7 +29,7 @@ export function App() {
                 This first onboarding flow captures only the minimum information needed
                 to understand the user profile and route the future filing workflow.
               </p>
-              <div className="mt-6 rounded-2xl border border-blue-100 bg-white p-5 shadow-soft">
+              <div className="mt-6 rounded-xl border border-brand-rule bg-brand-surface p-5">
                 <p className="text-sm font-semibold text-brand-ink">Security note</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   NRITAX.AI never asks for or stores your Income Tax Department

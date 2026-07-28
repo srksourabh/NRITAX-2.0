@@ -34,7 +34,7 @@ export function FormField({
 
   return (
     <div className="block">
-      <label htmlFor={fieldId} className="text-sm font-semibold text-brand-ink">
+      <label htmlFor={fieldId} className="text-sm font-medium text-slate-700">
         {label}
       </label>
       <input
@@ -49,10 +49,10 @@ export function FormField({
         aria-describedby={describedBy || undefined}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className={`mt-2 min-h-12 w-full rounded-2xl border bg-white px-4 text-base font-medium text-brand-ink shadow-[0_1px_0_rgba(15,23,42,0.04)] outline-none transition placeholder:text-slate-400 focus:ring-4 ${
+        className={`mt-2 min-h-11 w-full rounded-md border bg-brand-surface px-3 text-base font-medium text-brand-ink outline-none transition placeholder:text-slate-500 focus:ring-4 ${
           error
-            ? "border-red-300 focus:border-red-500 focus:ring-red-100"
-            : "border-slate-200 hover:border-slate-300 focus:border-brand-blue focus:ring-blue-100"
+            ? "border-brand-notice focus:border-brand-notice focus:ring-[rgba(179,38,30,0.38)]"
+            : "border-slate-300 hover:border-brand-cyan focus:border-brand-blue focus:ring-[rgba(11,74,117,0.38)]"
         }`}
       />
       {helperText ? (

@@ -16,15 +16,15 @@ const iconPaths = {
 };
 
 const toneClasses = {
-  blue: "bg-blue-50 text-brand-blue ring-blue-100",
-  dark: "bg-slate-900 text-white ring-slate-700",
-  cyan: "bg-cyan-50 text-brand-cyan ring-cyan-100",
-  emerald: "bg-emerald-50 text-emerald-700 ring-emerald-100"
+  blue: "bg-[#E8F1F7] text-brand-blue ring-[#C9E0EF]",
+  dark: "bg-white/10 text-brand-surface ring-white/15",
+  cyan: "bg-[#E8F1F7] text-brand-cyan ring-[#C9E0EF]",
+  emerald: "bg-[rgba(20,112,74,0.10)] text-brand-credit ring-[rgba(20,112,74,0.24)]"
 };
 
 export function IconBadge({ icon, tone = "blue", className = "" }: IconBadgeProps) {
   return (
-    <span className={`inline-flex size-11 shrink-0 items-center justify-center rounded-2xl ring-1 ${toneClasses[tone]} ${className}`}>
+    <span className={`inline-flex size-11 shrink-0 items-center justify-center rounded-lg ring-1 ${toneClasses[tone]} ${className}`}>
       <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none">
         <path
           d={iconPaths[icon]}

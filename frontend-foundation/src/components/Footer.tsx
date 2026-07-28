@@ -1,10 +1,10 @@
 export function Footer() {
   return (
-    <footer className="bg-slate-950 px-4 py-10 text-white sm:px-6">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 border-t border-white/10 pt-8 sm:flex-row sm:items-center sm:justify-between">
+    <footer className="bg-brand-navy px-4 py-10 text-brand-surface sm:px-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 border-t border-white/15 pt-8 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-2xl bg-white text-sm font-bold text-brand-blue">
+            <span className="flex size-10 items-center justify-center rounded-lg bg-brand-surface font-mono text-sm font-bold text-brand-blue">
               N2
             </span>
             <p className="text-lg font-bold">NRITAX.AI 2.0</p>

@@ -121,10 +121,10 @@ export function TaxOnboardingForm() {
 
   return (
     <section
-      className="animate-rise overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-fintech"
+      className="animate-rise overflow-hidden rounded-xl border border-brand-rule bg-brand-surface"
       aria-labelledby="onboarding-form-title"
     >
-      <div className="border-b border-slate-100 bg-[linear-gradient(135deg,#FFFFFF_0%,#EFF6FF_100%)] p-5 sm:p-6">
+      <div className="border-b border-brand-rule bg-brand-surface p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-brand-blue">Basic onboarding</p>
@@ -132,7 +132,7 @@ export function TaxOnboardingForm() {
             Start your filing journey
           </h3>
         </div>
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand-blue">
+        <span className="rounded-full border border-brand-rule bg-brand-mist px-3 py-1 font-mono text-xs font-bold text-brand-blue">
           Step {currentStep + 1}/4
         </span>
       </div>
@@ -141,7 +141,7 @@ export function TaxOnboardingForm() {
       </div>
 
       {submitted ? (
-        <div className="m-5 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 sm:m-6" role="status">
+        <div className="m-5 rounded-xl border border-[rgba(20,112,74,0.24)] bg-[rgba(20,112,74,0.10)] p-6 sm:m-6" role="status">
           <p className="text-sm font-bold uppercase text-emerald-700">
             Onboarding draft captured
           </p>
@@ -161,14 +161,14 @@ export function TaxOnboardingForm() {
             <SummaryItem label="JSON draft ref" value={jsonResult?.jsonReferenceId ?? "-"} />
           </dl>
           {validationResult?.warnings.length ? (
-            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+            <div className="mt-5 rounded-lg border border-[rgba(161,92,7,0.26)] bg-[rgba(161,92,7,0.12)] p-4 text-sm leading-6 text-[#7C4705]">
               {validationResult.warnings.join(" ")}
             </div>
           ) : null}
           <button
             type="button"
             onClick={handleReset}
-            className="mt-6 min-h-11 rounded-full border border-emerald-300 bg-white px-5 text-sm font-semibold text-emerald-800 transition hover:-translate-y-0.5 hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600"
+            className="mt-6 min-h-11 rounded-lg border border-[rgba(20,112,74,0.24)] bg-brand-surface px-5 text-sm font-semibold text-brand-credit transition hover:bg-slate-50 focus-visible:outline-brand-blue"
           >
             Start again
           </button>
@@ -222,7 +222,7 @@ export function TaxOnboardingForm() {
                 error={errors.pan}
                 onChange={(value) => updateField("pan", normalizePan(value))}
               />
-              <p className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
+              <p className="rounded-lg border border-[#C9E0EF] bg-[#E8F1F7] p-4 text-sm leading-6 text-slate-700">
                 PAN is captured here only as frontend state. Do not persist taxpayer
                 data until secure backend storage, consent, and privacy controls are approved.
               </p>
@@ -254,7 +254,7 @@ export function TaxOnboardingForm() {
               <SecurityNotice>
                 NRITAX.AI never asks for or stores your Income Tax Department password.
               </SecurityNotice>
-              <p className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+              <p className="rounded-lg border border-brand-rule bg-brand-mist p-4 text-sm leading-6 text-slate-700">
                 On submit, this UI calls mock validation and JSON draft services only.
                 Connect the real backend engines inside the files under src/services.
               </p>
@@ -263,7 +263,7 @@ export function TaxOnboardingForm() {
 
           {serviceError ? (
             <div
-              className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700"
+              className="mt-5 rounded-lg border border-[rgba(179,38,30,0.24)] bg-[rgba(179,38,30,0.10)] p-4 text-sm font-medium text-[#8C1D17]"
               role="alert"
             >
               {serviceError}
@@ -275,14 +275,14 @@ export function TaxOnboardingForm() {
               type="button"
               onClick={handleBack}
               disabled={currentStep === 0 || isSubmitting}
-              className="min-h-12 rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-brand-blue hover:text-brand-blue focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40"
+              className="min-h-12 rounded-lg border border-slate-300 bg-brand-surface px-5 text-sm font-semibold text-slate-700 transition hover:border-brand-cyan hover:bg-slate-50 hover:text-brand-blue focus-visible:outline-brand-blue disabled:cursor-not-allowed disabled:opacity-40"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="min-h-12 rounded-full bg-brand-blue px-6 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-70"
+              className="min-h-12 rounded-lg border border-brand-blue bg-brand-blue px-6 text-sm font-semibold text-brand-surface transition hover:bg-[#093C60] focus-visible:outline-brand-blue disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting
                 ? "Preparing draft..."
@@ -299,7 +299,7 @@ export function TaxOnboardingForm() {
 
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-white p-4">
+    <div className="rounded-lg border border-brand-rule bg-brand-surface p-4">
       <dt className="text-xs font-bold uppercase text-slate-500">{label}</dt>
       <dd className="mt-1 font-semibold text-brand-ink">{value || "-"}</dd>
     </div>
