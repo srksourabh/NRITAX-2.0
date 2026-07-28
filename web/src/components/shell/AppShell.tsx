@@ -15,7 +15,7 @@ export function AppShell({
         <Link href="/" className="ntx-brand">
           NRITAX
         </Link>
-        <div className="flex items-center gap-3 text-[var(--body-sm)] text-[var(--neutral-300)]">
+        <div className="flex max-w-[65%] flex-wrap items-center justify-end gap-2 text-[var(--body-sm)] text-[var(--neutral-300)] sm:max-w-none sm:gap-3">
           {right}
         </div>
       </header>

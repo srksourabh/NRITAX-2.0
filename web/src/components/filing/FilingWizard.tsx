@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { EnrichmentPanels } from '@/components/filing/EnrichmentPanels';
+import { FieldHelp } from '@/components/filing/FieldHelp';
 import { FormSelectionStep } from '@/components/filing/FormSelectionStep';
 import { PostValidatePanel } from '@/components/filing/PostValidatePanel';
 import { RegimeComparePanel } from '@/components/filing/RegimeComparePanel';
 import { AppShell } from '@/components/shell/AppShell';
 import { cn } from '@/lib/cn';
 import { buildReturnJson } from '@/lib/itr/build-json';
+import { fieldHelpText, isImportantField } from '@/lib/itr/field-help';
 import { ITR2_SCHEDULES } from '@/lib/itr/itr2';
 import { ITR3_SCHEDULES } from '@/lib/itr/itr3';
 import { sampleNriPriyaItr2 } from '@/lib/itr/samples/nri-priya-itr2';
@@ -338,19 +340,20 @@ export function FilingWizard() {
       }
     >
       <main className="ntx-page">
-        <div className="flex flex-col gap-4 border-b border-[var(--rule)] pb-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
+        <div className="flex flex-col gap-3 border-b border-[var(--rule)] pb-4 sm:gap-4 sm:pb-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
             <p className="text-[var(--caption)] font-semibold tracking-[0.18em] text-[var(--text-muted)] uppercase">
               Filing workspace
             </p>
-            <h1 className="ntx-display-sm mt-2 text-[var(--ink)]">{form} for AY {ASSESSMENT_YEAR}</h1>
-            <p className="mt-2 max-w-2xl text-[var(--text-muted)]">
-              Prefill, DigiLocker, Sandbox and CAS are optional. Skip any helper — the schedules
-              stay open for manual entry.
+            <h1 className="ntx-display-sm mt-1 text-[var(--ink)] sm:mt-2">
+              {form} for AY {ASSESSMENT_YEAR}
+            </h1>
+            <p className="mt-1 max-w-2xl text-[var(--body-sm)] text-[var(--text-muted)] sm:mt-2 sm:text-[length:var(--body)]">
+              Helpers are optional. Tap ? on a field for what to enter.
             </p>
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
-            <div className="flex flex-wrap gap-2 justify-end">
+            <div className="flex flex-wrap gap-2 sm:justify-end">
               {form === 'ITR2' ? (
                 <button type="button" className="ntx-btn ntx-btn-secondary" onClick={loadPriyaSample}>
                   Load sample
@@ -365,7 +368,7 @@ export function FilingWizard() {
                 {draftBusy ? 'Saving…' : 'Save draft'}
               </button>
               <button type="button" className="ntx-btn ntx-btn-secondary" onClick={() => setStep('regime')}>
-                Regime compare
+                Regime
               </button>
               <button type="button" className="ntx-btn ntx-btn-secondary" onClick={runValidation}>
                 Validate
@@ -377,7 +380,7 @@ export function FilingWizard() {
             {draftMessage ? (
               <p
                 className={cn(
-                  'text-[var(--caption)] text-right',
+                  'text-[var(--caption)] sm:text-right',
                   draftStatus === 'error'
                     ? 'text-[var(--notice)]'
                     : 'text-[var(--text-muted)]',
@@ -398,30 +401,32 @@ export function FilingWizard() {
         />
 
         {notice ? (
-          <p className="ntx-panel mt-4 px-4 py-3 text-[var(--body-sm)] text-[var(--info-text)]">
+          <p className="ntx-panel mt-4 px-3 py-2.5 text-[var(--body-sm)] text-[var(--info-text)] sm:px-4 sm:py-3">
             {notice}
           </p>
         ) : null}
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
-          <nav className="ntx-panel max-h-[70vh] overflow-auto p-2 lg:sticky lg:top-4">
-            {visibleSchedules.map((schedule) => (
-              <button
-                key={schedule.id}
-                type="button"
-                className="ntx-nav-item"
-                aria-current={active?.id === schedule.id ? 'page' : undefined}
-                onClick={() => setActiveId(schedule.id)}
-              >
-                <span className="block text-[10px] tracking-wide text-[var(--text-muted)]">
-                  {schedule.no}
-                </span>
-                {schedule.name}
-              </button>
-            ))}
+        <div className="mt-6 grid gap-4 lg:mt-8 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
+          <nav className="ntx-panel p-2 lg:sticky lg:top-4 lg:max-h-[70vh] lg:overflow-auto">
+            <div className="ntx-schedule-nav-scroll">
+              {visibleSchedules.map((schedule) => (
+                <button
+                  key={schedule.id}
+                  type="button"
+                  className="ntx-nav-item"
+                  aria-current={active?.id === schedule.id ? 'page' : undefined}
+                  onClick={() => setActiveId(schedule.id)}
+                >
+                  <span className="block text-[10px] tracking-wide text-[var(--text-muted)]">
+                    {schedule.no}
+                  </span>
+                  <span className="line-clamp-1">{schedule.name}</span>
+                </button>
+              ))}
+            </div>
           </nav>
 
-          <div className="min-w-0 space-y-8">
+          <div className="min-w-0 space-y-6 lg:space-y-8">
             {active ? (
               <SchedulePanel
                 schedule={active}
@@ -432,7 +437,7 @@ export function FilingWizard() {
             ) : null}
 
             {report ? (
-              <div className="ntx-panel space-y-3 p-5">
+              <div className="ntx-panel space-y-3 p-4 sm:p-5">
                 <h3 className="text-[var(--h3)] font-semibold">Validation report</h3>
                 <p className="text-[var(--body-sm)] text-[var(--text-muted)]">
                   <span className="ntx-badge ntx-badge-notice mr-2">
@@ -483,23 +488,29 @@ function SchedulePanel({
   onTable: (key: string, rows: TableRow[]) => void;
 }) {
   return (
-    <section className="ntx-panel space-y-8 p-6">
+    <section className="ntx-panel space-y-5 p-4 sm:space-y-6 sm:p-5 lg:space-y-8 lg:p-6">
       <div>
-        <h2 className="ntx-display-sm text-[var(--ink)]">{schedule.name}</h2>
+        <h2 className="text-[1.25rem] font-semibold leading-tight text-[var(--ink)] sm:text-[length:var(--h2)]">
+          {schedule.name}
+        </h2>
         {schedule.sub ? (
-          <p className="mt-2 text-[var(--text-muted)]">{schedule.sub}</p>
+          <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)] sm:mt-2">{schedule.sub}</p>
         ) : null}
-        <hr className="ntx-double-rule mt-5 max-w-xs" />
+        <hr className="ntx-double-rule mt-3 max-w-[8rem] sm:mt-5 sm:max-w-xs" />
       </div>
       {schedule.sections.map((section) => {
         if (!isVisible(section.showIf, data)) return null;
         return (
-          <div key={section.key} className="space-y-4">
-            <h3 className="text-[var(--h3)] font-semibold text-[var(--ink)]">{section.title}</h3>
+          <div key={section.key} className="space-y-3 sm:space-y-4">
+            <h3 className="text-[var(--body)] font-semibold text-[var(--ink)] sm:text-[length:var(--h3)]">
+              {section.title}
+            </h3>
             {section.note ? (
-              <p className="text-[var(--body-sm)] text-[var(--text-muted)]">{section.note}</p>
+              <p className="text-[var(--caption)] text-[var(--text-muted)] sm:text-[length:var(--body-sm)]">
+                {section.note}
+              </p>
             ) : null}
-            <div className="grid grid-cols-12 gap-4">
+            <div className="ntx-field-grid">
               {(section.fields ?? []).map((field) => {
                 if (!isVisible(field.showIf, data)) return null;
                 const fq = `${schedule.id}.${field.key}`;
@@ -518,12 +529,12 @@ function SchedulePanel({
               if (!isVisible(table.showIf, data)) return null;
               const rows = data.tables[table.key] ?? [{}];
               return (
-                <div key={table.key} className="space-y-2 overflow-x-auto">
+                <div key={table.key} className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <h4 className="text-[var(--body-sm)] font-semibold">{table.title}</h4>
                     <button
                       type="button"
-                      className="text-[var(--body-sm)] font-semibold text-[var(--primary)]"
+                      className="shrink-0 text-[var(--body-sm)] font-semibold text-[var(--primary)]"
                       onClick={() => {
                         const max = table.maxRows ?? 99;
                         if (rows.length >= max) return;
@@ -533,46 +544,53 @@ function SchedulePanel({
                       Add row
                     </button>
                   </div>
-                  <table className="min-w-full border-collapse text-[var(--body-sm)]">
-                    <thead>
-                      <tr className="border-b border-[var(--rule)] text-left">
-                        {table.columns.map((col) => (
-                          <th
-                            key={col.key}
-                            className="px-2 py-2 font-medium text-[var(--text-muted)]"
-                          >
-                            {col.label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row, rowIndex) => (
-                        <tr
-                          key={rowIndex}
-                          className={cn(
-                            'border-b border-[var(--rule)]',
-                            rowIndex % 2 === 1 && 'bg-[var(--neutral-50)]',
-                          )}
-                        >
+                  <div className="ntx-table-scroll">
+                    <table className="w-full border-collapse text-[var(--body-sm)]">
+                      <thead>
+                        <tr className="border-b border-[var(--rule)] text-left">
                           {table.columns.map((col) => (
-                            <td key={col.key} className="px-2 py-1.5 align-top">
-                              <TableCell
-                                field={col}
-                                value={row[col.key] ?? ''}
-                                onChange={(v) => {
-                                  const next = rows.map((r, i) =>
-                                    i === rowIndex ? { ...r, [col.key]: v } : r,
-                                  );
-                                  onTable(table.key, next);
-                                }}
-                              />
-                            </td>
+                            <th
+                              key={col.key}
+                              className="whitespace-nowrap px-1.5 py-2 font-medium text-[var(--text-muted)] sm:px-2"
+                            >
+                              <span className="inline-flex items-center gap-1">
+                                {col.label}
+                                {isImportantField(col) ? (
+                                  <FieldHelp label={col.label} text={fieldHelpText(col)} />
+                                ) : null}
+                              </span>
+                            </th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {rows.map((row, rowIndex) => (
+                          <tr
+                            key={rowIndex}
+                            className={cn(
+                              'border-b border-[var(--rule)]',
+                              rowIndex % 2 === 1 && 'bg-[var(--neutral-50)]',
+                            )}
+                          >
+                            {table.columns.map((col) => (
+                              <td key={col.key} className="px-1.5 py-1 align-top sm:px-2 sm:py-1.5">
+                                <TableCell
+                                  field={col}
+                                  value={row[col.key] ?? ''}
+                                  onChange={(v) => {
+                                    const next = rows.map((r, i) =>
+                                      i === rowIndex ? { ...r, [col.key]: v } : r,
+                                    );
+                                    onTable(table.key, next);
+                                  }}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               );
             })}
@@ -594,13 +612,22 @@ function FieldInput({
   value: FieldValue;
   onChange: (value: FieldValue) => void;
 }) {
-  const span = field.span ?? 4;
+  const span = Math.min(12, Math.max(1, field.span ?? 4));
+  const showHelp = isImportantField(field);
+  const help = showHelp ? fieldHelpText(field) : '';
+
   return (
-    <label className="block" style={{ gridColumn: `span ${span} / span ${span}` }}>
-      <span className="ntx-label">
-        {field.label}
-        {field.required ? <span className="text-[var(--notice)]"> *</span> : null}
-      </span>
+    <div
+      className="ntx-field"
+      style={{ gridColumn: `span ${span} / span ${span}` }}
+    >
+      <div className="ntx-field-label-row">
+        <label className="ntx-label" htmlFor={fq}>
+          {field.label}
+          {field.required ? <span className="text-[var(--notice)]"> *</span> : null}
+        </label>
+        {showHelp ? <FieldHelp label={field.label} text={help} /> : null}
+      </div>
       {field.options ? (
         <select
           id={fq}
@@ -622,6 +649,7 @@ function FieldInput({
           disabled={field.readOnly}
           className={cn('ntx-input', (field.type === 'num' || field.type === 'dec') && 'ntx-figure')}
           type={inputType(field)}
+          inputMode={field.type === 'num' || field.type === 'dec' ? 'decimal' : undefined}
           maxLength={field.maxLen}
           value={value === null || value === undefined ? '' : String(value)}
           onChange={(e) => {
@@ -638,12 +666,7 @@ function FieldInput({
           }}
         />
       )}
-      {field.hint ? (
-        <span className="mt-1 block text-[var(--caption)] text-[var(--text-muted)]">
-          {field.hint}
-        </span>
-      ) : null}
-    </label>
+    </div>
   );
 }
 
@@ -659,7 +682,7 @@ function TableCell({
   if (field.options) {
     return (
       <select
-        className="ntx-select min-w-[7rem]"
+        className="ntx-select min-w-[6.5rem]"
         value={value === null || value === undefined ? '' : String(value)}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -674,8 +697,12 @@ function TableCell({
   }
   return (
     <input
-      className={cn('ntx-input min-w-[6rem]', (field.type === 'num' || field.type === 'dec') && 'ntx-figure')}
+      className={cn(
+        'ntx-input min-w-[5.5rem]',
+        (field.type === 'num' || field.type === 'dec') && 'ntx-figure',
+      )}
       type={inputType(field)}
+      inputMode={field.type === 'num' || field.type === 'dec' ? 'decimal' : undefined}
       value={value === null || value === undefined ? '' : String(value)}
       onChange={(e) => {
         const raw = e.target.value;
