@@ -1,5 +1,8 @@
 import type { OnboardingData } from "../types/onboarding";
 import type { ValidationServiceResult } from "./validationService";
+import { mockDelay } from "./mockDelay";
+
+export const JSON_PREPARATION_ENGINE_ENDPOINT = "/api/v1/filing-json/drafts";
 
 export type JsonGenerationResult = {
   jsonReferenceId: string;
@@ -21,7 +24,7 @@ export async function generateFilingJsonDraft(
   // Backend connection point:
   // Replace this mock with Sourabh Sir's JSON Preparation Engine API call.
   // Suggested future endpoint: POST /api/v1/filing-json/drafts
-  await delay(500);
+  await mockDelay();
 
   return {
     jsonReferenceId: `JSON-MOCK-${validation.referenceId}`,
@@ -35,10 +38,4 @@ export async function generateFilingJsonDraft(
       hasIncomeTaxLoginCredentials: data.credentialStatus
     }
   };
-}
-
-function delay(milliseconds: number) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, milliseconds);
-  });
 }

@@ -1,4 +1,8 @@
 import type { OnboardingData } from "../types/onboarding";
+import { hasValidationErrors, validateOnboardingStep } from "../validation/onboardingValidation";
+import { mockDelay } from "./mockDelay";
+
+export const VALIDATION_ENGINE_ENDPOINT = "/api/v1/validation/onboarding";
 
 export type ValidationServiceResult = {
   isValid: boolean;
@@ -10,20 +14,18 @@ export async function validateOnboardingData(data: OnboardingData): Promise<Vali
   // Backend connection point:
   // Replace this mock with Sourabh Sir's Data Validation Engine API call.
   // Suggested future endpoint: POST /api/v1/validation/onboarding
-  await delay(500);
+  await mockDelay();
+
+  const hasInvalidStep = [0, 1, 2, 3].some((stepIndex) =>
+    hasValidationErrors(validateOnboardingStep(stepIndex, data))
+  );
 
   return {
-    isValid: Boolean(data.fullName && data.country && data.pan && data.taxRegime && data.credentialStatus),
+    isValid: !hasInvalidStep,
     referenceId: "VAL-MOCK-2026-0001",
     warnings: [
       "Mock validation only. Connect backend validation engine before production.",
       "PAN is not persisted by this frontend mock."
     ]
   };
-}
-
-function delay(milliseconds: number) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, milliseconds);
-  });
 }

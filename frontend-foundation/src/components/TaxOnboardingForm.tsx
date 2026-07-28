@@ -39,11 +39,6 @@ const regimeOptions: Array<RadioCardOption<TaxRegime>> = [
     value: "new",
     label: "New Tax Regime",
     description: "Use newer slab-based calculation assumptions."
-  },
-  {
-    value: "guidance",
-    label: "Need Help Choosing",
-    description: "Route user into future guidance or CA-assisted review."
   }
 ];
 
@@ -65,6 +60,7 @@ export function TaxOnboardingForm() {
 
   const updateField = <K extends keyof OnboardingData>(field: K, value: OnboardingData[K]) => {
     setData((previous) => ({ ...previous, [field]: value }));
+    setServiceError("");
     setErrors((previous) => {
       const nextErrors = { ...previous };
       delete nextErrors[field];
@@ -79,6 +75,7 @@ export function TaxOnboardingForm() {
   };
 
   const handleNext = async () => {
+    if (isSubmitting) return;
     if (!validateCurrentStep()) return;
     if (currentStep === steps.length - 1) {
       setIsSubmitting(true);
@@ -123,11 +120,16 @@ export function TaxOnboardingForm() {
   };
 
   return (
-    <div className="animate-rise rounded-[2rem] border border-slate-200 bg-white p-5 shadow-fintech sm:p-6">
+    <section
+      className="animate-rise rounded-[2rem] border border-slate-200 bg-white p-5 shadow-fintech sm:p-6"
+      aria-labelledby="onboarding-form-title"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-brand-blue">Basic onboarding</p>
-          <h3 className="mt-1 text-2xl font-bold text-brand-ink">Start your filing journey</h3>
+          <h3 id="onboarding-form-title" className="mt-1 text-2xl font-bold text-brand-ink">
+            Start your filing journey
+          </h3>
         </div>
         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand-blue">
           Step {currentStep + 1}/4
@@ -137,7 +139,7 @@ export function TaxOnboardingForm() {
       <StepProgress steps={steps} currentStep={currentStep} />
 
       {submitted ? (
-        <div className="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-6">
+        <div className="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-6" role="status">
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-emerald-700">
             Onboarding draft captured
           </p>
@@ -170,11 +172,22 @@ export function TaxOnboardingForm() {
           </button>
         </div>
       ) : (
-        <form className="mt-8" onSubmit={(event) => event.preventDefault()}>
+        <form
+          className="mt-8"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleNext();
+          }}
+        >
+          <p className="sr-only" aria-live="polite">
+            Step {currentStep + 1} of {steps.length}: {steps[currentStep].label}
+          </p>
           {currentStep === 0 && (
             <div className="grid gap-5">
               <FormField
                 label="Full Name"
+                name="fullName"
                 value={data.fullName}
                 placeholder="Enter your full name"
                 autoComplete="name"
@@ -183,6 +196,7 @@ export function TaxOnboardingForm() {
               />
               <FormField
                 label="Country"
+                name="country"
                 value={data.country}
                 placeholder="Example: United Arab Emirates"
                 autoComplete="country-name"
@@ -196,9 +210,13 @@ export function TaxOnboardingForm() {
             <div className="grid gap-5">
               <FormField
                 label="PAN Number"
+                name="pan"
                 value={data.pan}
                 placeholder="ABCDE1234F"
                 maxLength={10}
+                autoComplete="off"
+                inputMode="text"
+                helperText="Use the standard ten-character PAN format, for example ABCDE1234F."
                 error={errors.pan}
                 onChange={(value) => updateField("pan", normalizePan(value))}
               />
@@ -242,7 +260,10 @@ export function TaxOnboardingForm() {
           )}
 
           {serviceError ? (
-            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+            <div
+              className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700"
+              role="alert"
+            >
               {serviceError}
             </div>
           ) : null}
@@ -257,8 +278,7 @@ export function TaxOnboardingForm() {
               Back
             </button>
             <button
-              type="button"
-              onClick={handleNext}
+              type="submit"
               disabled={isSubmitting}
               className="min-h-11 rounded-full bg-brand-blue px-6 text-sm font-semibold text-white shadow-soft transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
@@ -271,7 +291,7 @@ export function TaxOnboardingForm() {
           </div>
         </form>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -287,7 +307,6 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
 function formatRegime(value: OnboardingData["taxRegime"]) {
   if (value === "old") return "Old Tax Regime";
   if (value === "new") return "New Tax Regime";
-  if (value === "guidance") return "Need Help Choosing";
   return "-";
 }
 

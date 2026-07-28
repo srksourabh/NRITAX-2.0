@@ -1,4 +1,4 @@
-export type TaxRegime = "old" | "new" | "guidance";
+export type TaxRegime = "old" | "new";
 
 export type CredentialStatus = "yes" | "no" | "not-sure";
 
