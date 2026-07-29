@@ -1,0 +1,39 @@
+:root{
+--space-0:0px;--space-2:2px;--space-4:4px;--space-8:8px;--space-12:12px;
+--space-16:16px;--space-20:20px;--space-24:24px;--space-32:32px;--space-40:40px;
+--space-48:48px;--space-64:64px;--space-80:80px;--space-96:96px;--space-128:128px;
+
+/* Applied rhythm */
+--btn-pad-y:10px;--btn-pad-x:18px;
+--btn-pad-y-compact:8px;--btn-pad-x-compact:14px;
+--input-pad-y:11px;--input-pad-x:12px;
+--card-pad-mobile:20px;--card-pad:24px;
+--ledger-row-pad-y:8px;
+--field-gap:20px;--fieldset-gap:32px;
+--section-gap-mobile:32px;--section-gap-tablet:48px;--section-gap:64px;
+--gutter-mobile:16px;--gutter-tablet:24px;--gutter:40px;
+
+/* Control sizing */
+--control-height:44px;
+--control-height-mobile-primary:52px;
+--control-height-compact:36px;
+
+/* Ledger geometry */
+--ledger-rule-width:1px;
+--ledger-double-rule-gap:3px;
+--ledger-amount-col:140px;
+--ledger-max-width:720px;
+
+/* Character box geometry */
+--charbox-width:40px;--charbox-height:44px;
+--charbox-gap:6px;--charbox-group-gap:14px;
+
+/* Layout */
+--shell-header-height-mobile:56px;
+--shell-header-height:60px;
+--content-max-app:1120px;
+--content-max-reading:680px;
+
+/* Breakpoints (reference values) */
+--bp-sm:480px;--bp-md:768px;--bp-lg:1024px;--bp-xl:1280px; /* @kind other */
+}

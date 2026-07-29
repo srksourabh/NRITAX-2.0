@@ -1,0 +1,6 @@
+/* NRITAX 2.0 — webfonts.
+   No font binaries were supplied with the brand materials, so the four families
+   are loaded from Google Fonts. Archivo Expanded is the real Archivo variable
+   font pinned to the wdth 125 axis (see --font-display-settings in typography.css).
+   Production must self-host and subset these (see readme.md → Fonts). */
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Devanagari:wght@400;500;600&display=swap");
