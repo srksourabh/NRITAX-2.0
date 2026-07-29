@@ -69,15 +69,20 @@ Three things have to be real before a single return is filed:
 ## Layout
 
 ```
+design-system/          Canonical UI kit: tokens, components, guidelines, marketing + filing kits.
 web/                    The app. Next.js, TypeScript, installable as a PWA.
+  src/components/landing/  Marketing landing page (regime preview + onboarding → sign-in).
   src/lib/itr/          Form schema, CBDT validation rules, tax computation, JSON builder.
   src/lib/eri/          Portal integration behind one swappable interface.
   src/lib/cas/          Client for the statement parser.
   src/lib/ai/           The AI review pass.
 services/cas/           Python service that reads CAMS and KFintech statements.
 docs/CONTRACTS.md       The rules every contributor and agent follows.
-docs/reference/         The two HTML prototypes this was ported from.
+docs/reference/         HTML prototypes and the Mirudula frontend snapshot.
 ```
+
+UI work starts from `design-system/readme.md`. The Next app imports its tokens
+into `web/src/app/globals.css` and composes them with `.ntx-*` utilities.
 
 ## Checks
 

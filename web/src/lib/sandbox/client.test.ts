@@ -64,6 +64,7 @@ describe('SandboxClient', () => {
       expect(headers.Authorization).not.toMatch(/^Bearer/i);
       expect(headers['x-api-key']).toBe('key_test');
       expect(headers['x-api-version']).toBe('1.0');
+      expect(headers['x-accept-cache']).toBe('true');
 
       return json({
         BANK: 'HDFC Bank',
@@ -76,7 +77,9 @@ describe('SandboxClient', () => {
       });
     });
 
-    const response = await client(fetchImpl as unknown as typeof globalThis.fetch).lookupIfsc(
+    const response = await client(fetchImpl as unknown as typeof globalThis.fetch, {
+      acceptCache: true,
+    }).lookupIfsc(
       'hdfc0001234',
     );
 

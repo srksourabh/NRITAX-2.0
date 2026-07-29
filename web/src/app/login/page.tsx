@@ -7,12 +7,19 @@ import { readDemoAuth, signIn } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+function safeCallbackUrl(raw: FormDataEntryValue | null): string {
+  const value = String(raw ?? '').trim();
+  if (value.startsWith('/') && !value.startsWith('//')) return value;
+  return '/filing';
+}
+
 async function emailSignIn(formData: FormData) {
   'use server';
   const email = String(formData.get('email') ?? '').trim();
   if (!email) return;
+  const redirectTo = safeCallbackUrl(formData.get('callbackUrl'));
   try {
-    await signIn('nodemailer', { email, redirectTo: '/filing' });
+    await signIn('nodemailer', { email, redirectTo });
   } catch (error) {
     if (error instanceof AuthError) {
       redirect('/login?error=email');
@@ -21,10 +28,11 @@ async function emailSignIn(formData: FormData) {
   }
 }
 
-async function googleSignIn() {
+async function googleSignIn(formData: FormData) {
   'use server';
+  const redirectTo = safeCallbackUrl(formData.get('callbackUrl'));
   try {
-    await signIn('google', { redirectTo: '/filing' });
+    await signIn('google', { redirectTo });
   } catch (error) {
     if (error instanceof AuthError) {
       redirect('/login?error=google');
@@ -33,17 +41,18 @@ async function googleSignIn() {
   }
 }
 
-async function demoSignIn() {
+async function demoSignIn(formData: FormData) {
   'use server';
   const demo = readDemoAuth();
   if (!demo.enabled || !demo.password) {
     redirect('/login?error=demo-disabled');
   }
+  const redirectTo = safeCallbackUrl(formData.get('callbackUrl'));
   try {
     await signIn('demo', {
       email: demo.email,
       password: demo.password,
-      redirectTo: '/filing',
+      redirectTo,
     });
   } catch (error) {
     if (error instanceof AuthError) {
@@ -63,8 +72,9 @@ async function demoPasswordSignIn(formData: FormData) {
     .trim()
     .toLowerCase();
   const password = String(formData.get('password') ?? '');
+  const redirectTo = safeCallbackUrl(formData.get('callbackUrl'));
   try {
-    await signIn('demo', { email, password, redirectTo: '/filing' });
+    await signIn('demo', { email, password, redirectTo });
   } catch (error) {
     if (error instanceof AuthError) {
       redirect('/login?error=demo');
@@ -101,6 +111,14 @@ export default async function LoginPage({
   const rawError = params.error;
   const errorCode = Array.isArray(rawError) ? rawError[0] : rawError;
   const notice = errorMessage(errorCode);
+  const rawCallback = params.callbackUrl;
+  const callbackCandidate = Array.isArray(rawCallback) ? rawCallback[0] : rawCallback;
+  const callbackUrl =
+    typeof callbackCandidate === 'string' &&
+    callbackCandidate.startsWith('/') &&
+    !callbackCandidate.startsWith('//')
+      ? callbackCandidate
+      : '/filing';
 
   return (
     <AppShell>
@@ -131,11 +149,13 @@ export default async function LoginPage({
               {demo.email}
             </p>
             <form action={demoSignIn}>
+              <input type="hidden" name="callbackUrl" value={callbackUrl} />
               <button type="submit" className="ntx-btn ntx-btn-credit w-full">
                 Sign in as demo
               </button>
             </form>
             <form action={demoPasswordSignIn} className="space-y-2 border-t border-[var(--rule)] pt-3">
+              <input type="hidden" name="callbackUrl" value={callbackUrl} />
               <label className="ntx-label" htmlFor="demo-email">
                 Or enter demo credentials
               </label>
@@ -164,6 +184,7 @@ export default async function LoginPage({
         ) : null}
 
         <form action={emailSignIn} className="mt-8 flex flex-col gap-3">
+          <input type="hidden" name="callbackUrl" value={callbackUrl} />
           <label className="ntx-label" htmlFor="email">
             Email
           </label>
@@ -183,6 +204,7 @@ export default async function LoginPage({
 
         {googleEnabled ? (
           <form action={googleSignIn} className="mt-3">
+            <input type="hidden" name="callbackUrl" value={callbackUrl} />
             <button type="submit" className="ntx-btn ntx-btn-secondary w-full">
               Continue with Google
             </button>

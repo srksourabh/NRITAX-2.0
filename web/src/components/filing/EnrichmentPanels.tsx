@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { AutoFillPanel } from '@/components/filing/AutoFillPanel';
 import { applyCasToReturn } from '@/lib/cas/apply-cas';
 import { casFailureMessage, resolveCasPdfPassword } from '@/lib/cas/password';
 import type { CasParseResult } from '@/lib/cas/types';
@@ -113,7 +114,7 @@ export function EnrichmentPanels({
 }) {
   const [casBusy, setCasBusy] = useState(false);
   const [casPassword, setCasPassword] = useState('');
-  const [panBusy, setPanBusy] = useState(false);
+  const [enrichBusy, setEnrichBusy] = useState(false);
   const [ifscBusy, setIfscBusy] = useState(false);
   const [digiBusy, setDigiBusy] = useState(false);
   const [ocr16Busy, setOcr16Busy] = useState(false);
@@ -124,9 +125,32 @@ export function EnrichmentPanels({
   const [digiStatus, setDigiStatus] = useState<string | null>(null);
   const [digiMockPrompt, setDigiMockPrompt] = useState(false);
   const [digiPolling, setDigiPolling] = useState(false);
+  const [enrichPan, setEnrichPan] = useState('');
+  const [enrichName, setEnrichName] = useState('');
+  const [enrichDob, setEnrichDob] = useState('');
+  const [enrichAadhaar, setEnrichAadhaar] = useState('');
+  const [enrichIfsc, setEnrichIfsc] = useState('');
+  const [enrichConsent, setEnrichConsent] = useState(false);
+  const [casFetchBusy, setCasFetchBusy] = useState(false);
+  const [casFetchPan, setCasFetchPan] = useState('');
+  const [casFetchDob, setCasFetchDob] = useState('');
   const dataRef = useRef(data);
   dataRef.current = data;
   const appliedSessionRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const id = genIdentity(data);
+    if (!enrichPan && id.pan) setEnrichPan(id.pan);
+    if (!enrichName && id.name) setEnrichName(id.name);
+    if (!enrichDob && id.dob) setEnrichDob(id.dob);
+    if (!casFetchPan && id.pan) setCasFetchPan(id.pan);
+    if (!casFetchDob && id.dob) setCasFetchDob(id.dob);
+    const bankIfsc = firstBankIfsc(data);
+    if (!enrichIfsc && bankIfsc) setEnrichIfsc(bankIfsc);
+    if (!ifscInput && bankIfsc) setIfscInput(bankIfsc);
+    // Only hydrate empty prompt fields from the return.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -304,67 +328,109 @@ export function EnrichmentPanels({
     }
   }
 
-  async function verifyPan() {
-    setPanBusy(true);
+  async function fetchCasDemo() {
+    setCasFetchBusy(true);
     try {
-      const { pan, name, dob } = genIdentity(data);
-      if (!pan || !name || !dob) {
-        setNotice(
-          'Enter PAN, name, and date of birth in Part A — General first, or fill them by hand.',
-        );
+      const pan = (casFetchPan || genIdentity(data).pan).trim().toUpperCase();
+      const dateOfBirth = (casFetchDob || genIdentity(data).dob).trim();
+      if (!pan || !dateOfBirth) {
+        setNotice('Enter PAN and date of birth to fetch the demo CAS, or upload a PDF.');
         return;
       }
-      const res = await fetch('/api/sandbox/pan/verify', {
+      const res = await fetch('/api/cas/fetch-demo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pan, name, dateOfBirth: dob }),
+        body: JSON.stringify({
+          pan,
+          dateOfBirth,
+          fullName: enrichName || genIdentity(data).name,
+        }),
       });
-      const json = await readSoftJson(res);
-      if (!json.ok) {
+      const json = (await res.json()) as {
+        ok: boolean;
+        message?: string;
+        result?: CasParseResult;
+      };
+      if (!json.ok || !json.result) {
+        setNotice(json.message ?? 'Demo CAS fetch unavailable. Upload a PDF or enter gains by hand.');
+        return;
+      }
+      const applied = applyCasToReturn(dataRef.current, json.result);
+      setData(applied.data);
+      setActiveId('CG');
+      setNotice(
+        `${json.message ?? 'Demo CAS fetched.'} · ${applied.fieldsApplied} fields · ${applied.rowsApplied} Schedule 112A rows written.`,
+      );
+    } catch {
+      setNotice('Demo CAS fetch unavailable. Upload a PDF or enter gains by hand.');
+    } finally {
+      setCasFetchBusy(false);
+    }
+  }
+
+  async function enrichFromSandbox() {
+    setEnrichBusy(true);
+    try {
+      const pan = enrichPan.trim().toUpperCase();
+      const fullName = enrichName.trim();
+      const dateOfBirth = enrichDob.trim();
+      if (!pan || !fullName || !dateOfBirth) {
         setNotice(
-          json.message ??
-            'PAN verification unavailable. Enter identity details by hand.',
+          'Enter PAN, full name as on the PAN card, and date of birth. DigiLocker can fill these if you prefer not to type.',
         );
         return;
       }
-      const result = json.result as
-        | { status?: string; nameMatch?: boolean; dobMatch?: boolean }
-        | undefined;
-      const bits = [
-        json.message ?? 'PAN checked.',
-        result?.status ? `Status: ${result.status}` : null,
-        result?.nameMatch === false ? 'Name did not match' : null,
-        result?.dobMatch === false ? 'DOB did not match' : null,
-      ].filter(Boolean);
-
-      try {
-        const linkRes = await fetch('/api/sandbox/pan/aadhaar-link', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pan }),
-        });
-        const linkJson = await readSoftJson(linkRes);
-        if (linkJson.ok) {
-          bits.push(linkJson.message ?? 'Aadhaar link checked.');
-        } else if (linkJson.message) {
-          bits.push(linkJson.message);
-        }
-      } catch {
-        /* optional follow-up */
+      if (!enrichConsent) {
+        setNotice(
+          'Tick consent to verify identity with Sandbox, or enter Part A by hand.',
+        );
+        return;
       }
 
-      setNotice(`${bits.join(' · ')}. You can still edit by hand.`);
+      const res = await fetch('/api/sandbox/enrich', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: dataRef.current,
+          pan,
+          fullName,
+          dateOfBirth,
+          aadhaar: enrichAadhaar.trim() || undefined,
+          ifsc: (enrichIfsc || ifscInput).trim() || undefined,
+          consent: true,
+        }),
+      });
+      const json = await readSoftJson(res);
+      if (!json.ok || !json.data) {
+        if (json.data) setData(json.data as ReturnData);
+        setNotice(
+          json.message ??
+            'Sandbox enrichment unavailable. Enter identity and bank details by hand.',
+        );
+        return;
+      }
+      setData(json.data as ReturnData);
+      setActiveId('GEN');
+      const applied = Array.isArray(json.fieldsApplied)
+        ? json.fieldsApplied.length
+        : 0;
+      setNotice(
+        json.message ??
+          `Sandbox · ${applied} fields written. Review Part A by hand.`,
+      );
     } catch {
-      setNotice('PAN verification unavailable. Enter identity details by hand.');
+      setNotice(
+        'Sandbox enrichment unavailable. Enter identity and bank details by hand.',
+      );
     } finally {
-      setPanBusy(false);
+      setEnrichBusy(false);
     }
   }
 
   async function checkIfsc() {
     setIfscBusy(true);
     try {
-      const ifsc = (ifscInput || firstBankIfsc(data)).trim().toUpperCase();
+      const ifsc = (ifscInput || enrichIfsc || firstBankIfsc(data)).trim().toUpperCase();
       if (!ifsc) {
         setNotice(
           'Enter an IFSC here or in bank details, or fill the bank row by hand.',
@@ -374,7 +440,7 @@ export function EnrichmentPanels({
       const res = await fetch('/api/sandbox/bank/ifsc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ifsc }),
+        body: JSON.stringify({ ifsc, data: dataRef.current, apply: true }),
       });
       const json = await readSoftJson(res);
       if (!json.ok) {
@@ -383,6 +449,9 @@ export function EnrichmentPanels({
             'IFSC lookup unavailable. Enter bank details by hand.',
         );
         return;
+      }
+      if (json.data) {
+        setData(json.data as ReturnData);
       }
       setNotice(
         `${json.message ?? 'IFSC looked up.'}. Confirm on the bank schedule by hand if needed.`,
@@ -547,6 +616,128 @@ export function EnrichmentPanels({
 
   return (
     <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <AutoFillPanel
+        data={data}
+        setData={setData}
+        setActiveId={setActiveId}
+        setNotice={setNotice}
+      />
+
+      <div className="ntx-panel p-5 md:col-span-2 xl:col-span-3">
+        <h2 className="text-[var(--h3)] font-semibold">
+          Fetch identity into the return (Sandbox)
+        </h2>
+        <p className="mt-1 max-w-3xl text-[var(--body-sm)] text-[var(--text-muted)]">
+          Enter the minimum we need when Part A is empty: PAN, name as on the PAN
+          card, and date of birth. Optional Aadhaar and IFSC fill link status and
+          the first bank row. Uses your Sandbox test key with response cache.
+          Never asks for the Income Tax portal password.
+        </p>
+        <div className="ntx-field-grid mt-4">
+          <div className="ntx-field" style={{ gridColumn: 'span 4' }}>
+            <label className="ntx-label" htmlFor="enrich-pan">
+              PAN{!genIdentity(data).pan ? ' (required)' : ''}
+            </label>
+            <input
+              id="enrich-pan"
+              className="ntx-input ntx-figure"
+              maxLength={10}
+              autoComplete="off"
+              spellCheck={false}
+              value={enrichPan}
+              onChange={(e) =>
+                setEnrichPan(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10))
+              }
+              placeholder="ABCDE1234F"
+            />
+          </div>
+          <div className="ntx-field" style={{ gridColumn: 'span 5' }}>
+            <label className="ntx-label" htmlFor="enrich-name">
+              Full name as on PAN
+            </label>
+            <input
+              id="enrich-name"
+              className="ntx-input"
+              autoComplete="name"
+              value={enrichName}
+              onChange={(e) => setEnrichName(e.target.value)}
+            />
+          </div>
+          <div className="ntx-field" style={{ gridColumn: 'span 3' }}>
+            <label className="ntx-label" htmlFor="enrich-dob">
+              Date of birth
+            </label>
+            <input
+              id="enrich-dob"
+              className="ntx-input"
+              type="date"
+              value={enrichDob}
+              onChange={(e) => setEnrichDob(e.target.value)}
+            />
+          </div>
+          <div className="ntx-field" style={{ gridColumn: 'span 4' }}>
+            <label className="ntx-label" htmlFor="enrich-aadhaar">
+              Aadhaar (optional)
+            </label>
+            <input
+              id="enrich-aadhaar"
+              className="ntx-input ntx-figure"
+              inputMode="numeric"
+              maxLength={12}
+              autoComplete="off"
+              value={enrichAadhaar}
+              onChange={(e) =>
+                setEnrichAadhaar(e.target.value.replace(/\D/g, '').slice(0, 12))
+              }
+            />
+          </div>
+          <div className="ntx-field" style={{ gridColumn: 'span 4' }}>
+            <label className="ntx-label" htmlFor="enrich-ifsc">
+              Refund IFSC (optional)
+            </label>
+            <input
+              id="enrich-ifsc"
+              className="ntx-input ntx-figure"
+              maxLength={11}
+              value={enrichIfsc}
+              onChange={(e) => setEnrichIfsc(e.target.value.toUpperCase())}
+              placeholder="HDFC0001234"
+            />
+          </div>
+        </div>
+        <label className="mt-4 flex items-start gap-3 text-[var(--body-sm)] text-[var(--text-secondary)]">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={enrichConsent}
+            onChange={(e) => setEnrichConsent(e.target.checked)}
+          />
+          <span>
+            I consent to verifying these details with Sandbox KYC for filing this
+            return. Results are written into blank Part A / bank fields; you can
+            edit everything afterwards.
+          </span>
+        </label>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="ntx-btn ntx-btn-primary"
+            disabled={enrichBusy}
+            onClick={() => void enrichFromSandbox()}
+          >
+            {enrichBusy ? 'Fetching…' : 'Verify and fill Part A'}
+          </button>
+          <button
+            type="button"
+            className="ntx-btn ntx-btn-secondary"
+            disabled={digiBusy}
+            onClick={() => void connectDigilocker()}
+          >
+            Or connect DigiLocker
+          </button>
+        </div>
+      </div>
+
       <div className="ntx-panel p-5">
         <h2 className="text-[var(--h3)] font-semibold">Optional · ITD prefill JSON</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
@@ -560,8 +751,62 @@ export function EnrichmentPanels({
         />
       </div>
 
+      <div className="ntx-panel p-5 md:col-span-2">
+        <h2 className="text-[var(--h3)] font-semibold">Demo · Fetch CAS by PAN &amp; DOB</h2>
+        <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
+          Enter PAN and date of birth. We return a specimen consolidated statement and write
+          Schedule CG / 112A. Live CDSL OTP fetch needs a BO ID and SMS OTP. Or upload a real
+          Detailed CAMS / KFintech PDF below.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <div className="min-w-[10rem] flex-1">
+            <label className="ntx-label" htmlFor="cas-fetch-pan">
+              PAN
+            </label>
+            <input
+              id="cas-fetch-pan"
+              className="ntx-input ntx-figure"
+              maxLength={10}
+              value={casFetchPan}
+              onChange={(e) =>
+                setCasFetchPan(
+                  e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10),
+                )
+              }
+              placeholder="ABCDE1234F"
+            />
+          </div>
+          <div className="min-w-[10rem] flex-1">
+            <label className="ntx-label" htmlFor="cas-fetch-dob">
+              Date of birth
+            </label>
+            <input
+              id="cas-fetch-dob"
+              className="ntx-input"
+              type="date"
+              value={casFetchDob}
+              onChange={(e) => setCasFetchDob(e.target.value)}
+            />
+          </div>
+        </div>
+        <button
+          type="button"
+          className="ntx-btn ntx-btn-primary mt-4"
+          disabled={casFetchBusy}
+          onClick={() => void fetchCasDemo()}
+        >
+          {casFetchBusy ? 'Fetching CAS…' : 'Fetch CAS and fill Schedule CG'}
+        </button>
+        <p className="mt-3 text-[var(--caption)] text-[var(--text-muted)]">
+          Full-page walkthrough:{' '}
+          <a className="underline underline-offset-2" href="/demo/cas">
+            /demo/cas
+          </a>
+        </p>
+      </div>
+
       <div className="ntx-panel p-5">
-        <h2 className="text-[var(--h3)] font-semibold">Optional · Mutual fund CAS</h2>
+        <h2 className="text-[var(--h3)] font-semibold">Optional · Mutual fund CAS PDF</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
           Free open-source parse of a Detailed CAMS / KFintech statement for FY
           2025-26. Password defaults to your PAN in Part A. Summary or NSDL/CDSL
@@ -609,24 +854,10 @@ export function EnrichmentPanels({
       </div>
 
       <div className="ntx-panel p-5">
-        <h2 className="text-[var(--h3)] font-semibold">Optional · PAN verify</h2>
-        <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
-          Uses name, PAN and DOB from Part A — General. Never blocks the form.
-        </p>
-        <button
-          type="button"
-          className="ntx-btn ntx-btn-secondary mt-4"
-          disabled={panBusy}
-          onClick={() => void verifyPan()}
-        >
-          {panBusy ? 'Verifying…' : 'Verify PAN'}
-        </button>
-      </div>
-
-      <div className="ntx-panel p-5">
         <h2 className="text-[var(--h3)] font-semibold">Optional · IFSC check</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
-          Reads the first bank row{bankIfscHint ? ` (${bankIfscHint})` : ''} or an IFSC you type.
+          Looks up the branch and writes IFSC / bank name into the first bank row.
+          Reads the enrich field{bankIfscHint ? ` or ${bankIfscHint}` : ''} when blank.
         </p>
         <input
           className="ntx-input mt-3"
@@ -641,7 +872,7 @@ export function EnrichmentPanels({
           disabled={ifscBusy}
           onClick={() => void checkIfsc()}
         >
-          {ifscBusy ? 'Looking up…' : 'Check IFSC'}
+          {ifscBusy ? 'Looking up…' : 'Check IFSC and fill bank'}
         </button>
       </div>
 

@@ -25,7 +25,8 @@ year 2026-27 with as few manual steps as possible:
 ## Layout
 
 ```
-web/                     Next.js 15 app router, TypeScript, Tailwind. The PWA.
+design-system/           Canonical design system (tokens, components, UI kits, guidelines).
+web/                     Next.js app router, TypeScript, Tailwind. The PWA.
   src/lib/itr/           Form schema, validation rules, tax computation, JSON builder.
   src/lib/eri/           ERI provider adapter + mock + live implementations.
   src/lib/cas/           Client for the CAS parsing service.
@@ -35,6 +36,21 @@ web/                     Next.js 15 app router, TypeScript, Tailwind. The PWA.
 services/cas/            Python FastAPI service wrapping the casparser library.
 docs/reference/          The two HTML prototypes this work is ported from.
 ```
+
+## Design system
+
+`design-system/` is the source of truth for visual design and product UI voice.
+Read `design-system/readme.md` before changing any surface.
+
+- **Tokens** live only in `design-system/tokens/`. The app imports them from
+  `web/src/app/globals.css`. Do not redeclare palette or type tokens in the app.
+- **Reference components** are under `design-system/components/` (JSX kits).
+  Production React ports go in `web/src/components/` and must use the same tokens.
+- **Fonts** in the app are loaded with `next/font` in `layout.tsx`. Do not also
+  import `design-system/tokens/fonts.css` into the Next bundle.
+- **Copy rules** in the design-system readme apply to product strings: sentence
+  case, no emoji, outcome-named buttons, Indian digit grouping, statute in the
+  margin, double rule once per sheet under the final figure.
 
 ## Non-negotiables
 
@@ -118,6 +134,10 @@ Authenticate with `POST /authenticate` carrying `x-api-key`, `x-api-secret` and
 twenty-four hours — cache it in module scope and refresh on 401 rather than
 authenticating on every call.
 
+KYC / bank lookups send `x-accept-cache: true` by default so purchased response
+cache is used (`SANDBOX_ACCEPT_CACHE=0` forces a fresh origin hit). DigiLocker
+session and OCR multipart calls do not send the cache header.
+
 Every later call sends `Authorization: <access_token>` **with no `Bearer`
 prefix**, alongside `x-api-key` and `x-api-version`. Sending `Bearer` is the
 most likely mistake here. This was confirmed working: a real endpoint answered
@@ -153,12 +173,17 @@ from the ERI interface.
 | `/kyc/pan-aadhaar/status` | POST | An unlinked PAN is a filing risk — surface it early |
 | `/it/ocr/form-16/pdf` | POST multipart | Salary / TDS from Form 16 PDF → Schedule S + TDS1 |
 | `/it/ocr/form-26as/pdf` | POST multipart | Tax credits from Form 26AS → TDS2 / TCS / challans |
-| `/bank/{ifsc}` | GET | Validates the refund account IFSC |
+| `/bank/{ifsc}` | GET | Validates the refund account IFSC and fills bank name |
 | `/bank/{ifsc}/accounts/{acct}/penniless-verify` | GET | Confirms the refund account without a deposit |
 | `/kyc/digilocker/sessions/init` | POST | Starts DigiLocker consent (`redirect_url` **must be https**) |
 | `/kyc/digilocker/sessions/{id}/status` | GET | Poll until consent succeeded |
 | `/kyc/digilocker/sessions/{id}/documents/{doc}` | GET | Fetch consented PAN / Aadhaar |
 | `/it/calculator/tax-pnl/securities/domestic/submit-job` | POST | Capital gains from a broker tradebook, complementing CAS |
+
+Product wiring: `/api/sandbox/enrich` prompts for PAN / name / DOB (and optional
+Aadhaar + IFSC), verifies via KYC with cache, and writes into Part A General plus
+the first bank row. OCR and DigiLocker apply helpers still fill blank schedule
+fields only.
 
 Every one of these is optional. Absent credentials, the wizard asks the user
 instead and says why. Nothing here may become a hard dependency.
@@ -179,3 +204,25 @@ To run live DigiLocker consent:
 
 Until the product is enabled, set `DIGILOCKER_MOCK=1` for a local consent
 stand-in that exercises the same wizard apply path without calling DigiLocker.
+
+## casparser.in Pro (DigiLocker + CDSL + PAN KYC status)
+
+Pro plan features (CDSL OTP Fetch, DigiLocker KYC, KYC PAN Status, smart parse)
+are wired through `CASPARSER_API_KEY` → `https://api.casparser.in` (optional
+`CASPARSER_BASE_URL`). Soft-fail client: [`web/src/lib/casparser/client.ts`](../web/src/lib/casparser/client.ts).
+
+| App route | Upstream |
+| --- | --- |
+| `POST /api/casparser/digilocker/init` | `/v1/kyc/digilocker/session` (+ account lookup) |
+| `POST /api/casparser/digilocker/apply` | `/v1/kyc/digilocker/result/{id}` + `/v1/kyc/pan/status` |
+| `POST /api/casparser/cdsl/otp` | `/v4/cdsl/fetch` |
+| `POST /api/casparser/cdsl/verify` | `/v4/cdsl/fetch/{id}/verify` then `/v4/smart/parse` |
+| `POST /api/casparser/token` | `/v1/token` → short-lived `at_` for Portfolio Connect |
+
+The filing wizard embeds `@cas-parser/connect` (`PortfolioImport`). The browser
+only receives the minted access token — never `CASPARSER_API_KEY`.
+
+Local: keep `DIGILOCKER_MOCK=1` so DigiLocker consent works on `http://localhost`.
+Live DigiLocker on your phone needs HTTPS (ngrok) + `DIGILOCKER_MOCK=0` and a
+redirect to `/filing/digilocker/callback`. CDSL needs a 16-digit BO ID + SMS OTP
+and a real API key. Gmail inbox and CAS Generator are not wired yet.

@@ -1,0 +1,15 @@
+---
+description: NRITAX UI must follow design-system/ (tokens, voice, ledger rules)
+globs: web/src/**/*.{tsx,ts,css},design-system/**/*
+alwaysApply: false
+---
+
+# Design system
+
+`design-system/` is the canonical NRITAX 2.0 design system.
+
+- Change colours, type, spacing, radius, elevation, and motion only in `design-system/tokens/`.
+- `web/src/app/globals.css` imports those tokens and adds app `.ntx-*` utilities — do not duplicate token values in the app.
+- Before new UI, read `design-system/readme.md` and the relevant `design-system/components/` kit.
+- Prefer existing `.ntx-*` classes and CSS variables over ad-hoc Tailwind greys or new brand colours.
+- Voice: sentence case, no emoji, outcome-named buttons, statute references in the margin, Indian digit grouping.

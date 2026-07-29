@@ -58,6 +58,12 @@ export interface SandboxClientOptions {
    * Use when the Sandbox DigiLocker product is not enabled on the account.
    */
   digilockerMock?: boolean;
+  /**
+   * Send `x-accept-cache: true` on KYC / bank lookups so purchased response
+   * cache is used (no wallet charge on cache hit). Defaults to
+   * SANDBOX_ACCEPT_CACHE unset/true; set SANDBOX_ACCEPT_CACHE=0 to force origin.
+   */
+  acceptCache?: boolean;
 }
 
 export interface SandboxAuthContext {
@@ -104,6 +110,7 @@ class HttpSandboxClient implements SandboxServiceClient {
   private readonly doFetch: typeof globalThis.fetch;
   private readonly now: () => number;
   private readonly digilockerMock: boolean;
+  private readonly acceptCache: boolean;
 
   constructor(options: SandboxClientOptions) {
     const rawBase =
@@ -115,6 +122,7 @@ class HttpSandboxClient implements SandboxServiceClient {
     this.doFetch = options.fetch ?? globalThis.fetch;
     this.now = options.now ?? Date.now;
     this.digilockerMock = options.digilockerMock ?? digilockerMockEnabled();
+    this.acceptCache = options.acceptCache ?? sandboxAcceptCacheEnabled();
   }
 
   get available(): boolean {
@@ -490,6 +498,9 @@ class HttpSandboxClient implements SandboxServiceClient {
           'x-api-key': this.apiKey,
           'x-api-version': API_VERSION,
           accept: 'application/json',
+          ...(this.acceptCache && cacheablePath(path)
+            ? { 'x-accept-cache': 'true' }
+            : {}),
           ...(jsonBody ? { 'content-type': 'application/json' } : {}),
         },
         body: jsonBody ? JSON.stringify(jsonBody) : undefined,
@@ -546,6 +557,24 @@ const fail = (code: SandboxErrorCode, message: string): SandboxError => ({
   code,
   message,
 });
+
+/** Default on: purchased response cache. Set SANDBOX_ACCEPT_CACHE=0 to bypass. */
+export function sandboxAcceptCacheEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const raw = env.SANDBOX_ACCEPT_CACHE?.trim().toLowerCase();
+  if (!raw) return true;
+  return raw !== '0' && raw !== 'false' && raw !== 'no' && raw !== 'off';
+}
+
+/** KYC / bank endpoints that document x-accept-cache support. */
+function cacheablePath(path: string): boolean {
+  return (
+    path.startsWith('/kyc/pan') ||
+    path.startsWith('/bank/') ||
+    path.startsWith('/gst/compliance/public/')
+  );
+}
 
 function unreachable(cause: unknown, timeoutMs: number): string {
   const name = cause instanceof Error ? cause.name : '';
