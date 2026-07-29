@@ -1,15 +1,12 @@
 /**
- * Server-side draft persistence for ReturnData against the filing table.
+ * Server-side draft persistence using the Supabase JS client.
  *
- * Callers get soft Result objects — never throw for expected failures (missing
- * PAN, DB hiccup). Ownership is always scoped to taxpayer.userId.
+ * Callers get soft Result objects — never throws for expected failures.
+ * Ownership is always scoped to taxpayer.userId via an inner join.
  */
 
-import { and, desc, eq } from 'drizzle-orm';
-import type { InferSelectModel } from 'drizzle-orm';
-
-import { getDb } from '@/lib/db';
-import { filings, taxpayers } from '@/lib/db/schema';
+import { getServiceClient } from '@/lib/db/client';
+import type { FilingRow } from '@/lib/db/types';
 import {
   RX,
   type FormType,
@@ -17,7 +14,7 @@ import {
   type ReturnData,
 } from '@/lib/itr/types';
 
-export type FilingRow = InferSelectModel<typeof filings>;
+export type { FilingRow };
 
 export type DraftSummary = {
   id: string;
@@ -28,17 +25,14 @@ export type DraftSummary = {
 };
 
 export type TaxpayerIdentity = {
-  /** Uppercased PAN when present; empty string when absent. */
   pan: string;
   name: string;
   dateOfBirth: string;
   residentialStatus: ResidentialStatus;
 };
 
-const SAVE_FAIL =
-  'Could not save draft. Your entries stay on this device until you try again.';
-const PAN_REQUIRED =
-  'Enter a PAN in Personal Info before saving a draft.';
+const SAVE_FAIL = 'Could not save draft. Your entries stay on this device until you try again.';
+const PAN_REQUIRED = 'Enter a PAN in Personal Info before saving a draft.';
 
 function fieldStr(data: ReturnData, ...keys: string[]): string {
   for (const key of keys) {
@@ -50,20 +44,14 @@ function fieldStr(data: ReturnData, ...keys: string[]): string {
   return '';
 }
 
-/** Pull taxpayer identity from ITR-2 or ITR-3 field key styles. */
 export function taxpayerIdentityFromReturn(data: ReturnData): TaxpayerIdentity {
   const pan = fieldStr(data, 'GEN.pan', 'GEN.PAN').toUpperCase();
-
   const first = fieldStr(data, 'GEN.firstName', 'GEN.FirstName');
   const middle = fieldStr(data, 'GEN.middleName', 'GEN.MiddleName');
   const surname = fieldStr(data, 'GEN.surname', 'GEN.SurNameOrOrgName');
   const name = [first, middle, surname].filter(Boolean).join(' ').trim();
-
   const dateOfBirth = fieldStr(data, 'GEN.dob', 'GEN.DOB');
-
-  const residentialStatus: ResidentialStatus =
-    data.meta.residentialStatus ?? 'NRI';
-
+  const residentialStatus: ResidentialStatus = data.meta.residentialStatus ?? 'NRI';
   return { pan, name, dateOfBirth, residentialStatus };
 }
 
@@ -77,21 +65,27 @@ export async function loadDraft(input: {
   form: FormType;
 }): Promise<{ ok: true; filing: FilingRow | null } | { ok: false; message: string }> {
   try {
-    const db = getDb();
-    const rows = await db
-      .select({ filing: filings })
-      .from(filings)
-      .innerJoin(taxpayers, eq(filings.taxpayerId, taxpayers.id))
-      .where(
-        and(
-          eq(taxpayers.userId, input.userId),
-          eq(filings.assessmentYear, input.assessmentYear),
-          eq(filings.form, input.form),
-        ),
-      )
+    const db = getServiceClient();
+
+    // Find taxpayer IDs owned by this user
+    const { data: tRows } = await db
+      .from('taxpayer')
+      .select('id')
+      .eq('userId', input.userId);
+
+    if (!tRows || tRows.length === 0) return { ok: true, filing: null };
+    const tIds = tRows.map((t) => t.id);
+
+    const { data: rows, error } = await db
+      .from('filing')
+      .select('*')
+      .in('taxpayerId', tIds)
+      .eq('assessmentYear', input.assessmentYear)
+      .eq('form', input.form)
       .limit(1);
 
-    return { ok: true, filing: rows[0]?.filing ?? null };
+    if (error) throw error;
+    return { ok: true, filing: (rows?.[0] as FilingRow) ?? null };
   } catch {
     return { ok: false, message: 'Could not load draft. Try again in a moment.' };
   }
@@ -110,87 +104,58 @@ export async function saveDraft(input: {
     const assessmentYear = input.data.meta.assessmentYear;
     const form = input.data.meta.form;
     const regime = input.data.meta.regime;
-    const now = new Date();
+    const now = new Date().toISOString();
 
-    const db = getDb();
+    const db = getServiceClient();
 
-    const existingTaxpayer = await db
-      .select()
-      .from(taxpayers)
-      .where(and(eq(taxpayers.userId, input.userId), eq(taxpayers.pan, identity.pan)))
-      .limit(1);
-
-    let taxpayerId: string;
-
-    if (existingTaxpayer[0]) {
-      taxpayerId = existingTaxpayer[0].id;
-      const patch: Partial<typeof taxpayers.$inferInsert> = {};
-      if (identity.name && identity.name !== existingTaxpayer[0].name) {
-        patch.name = identity.name;
-      }
-      if (identity.dateOfBirth && identity.dateOfBirth !== existingTaxpayer[0].dateOfBirth) {
-        patch.dateOfBirth = identity.dateOfBirth;
-      }
-      if (identity.residentialStatus !== existingTaxpayer[0].residentialStatus) {
-        patch.residentialStatus = identity.residentialStatus;
-      }
-      if (Object.keys(patch).length > 0) {
-        await db.update(taxpayers).set(patch).where(eq(taxpayers.id, taxpayerId));
-      }
-    } else {
-      const inserted = await db
-        .insert(taxpayers)
-        .values({
+    // Upsert taxpayer
+    const { data: tRows, error: tErr } = await db
+      .from('taxpayer')
+      .upsert(
+        {
           userId: input.userId,
           pan: identity.pan,
           name: identity.name || 'Draft',
           dateOfBirth: identity.dateOfBirth || '1900-01-01',
           residentialStatus: identity.residentialStatus,
-        })
-        .returning({ id: taxpayers.id });
-      taxpayerId = inserted[0]!.id;
-    }
-
-    const existingFiling = await db
-      .select()
-      .from(filings)
-      .where(
-        and(
-          eq(filings.taxpayerId, taxpayerId),
-          eq(filings.assessmentYear, assessmentYear),
-          eq(filings.form, form),
-        ),
+        },
+        { onConflict: 'userId,pan', ignoreDuplicates: false },
       )
+      .select('id')
       .limit(1);
 
-    if (existingFiling[0]) {
-      const updated = await db
-        .update(filings)
-        .set({
-          data: input.data,
+    if (tErr || !tRows?.[0]) throw tErr ?? new Error('Taxpayer upsert failed.');
+    const taxpayerId = tRows[0].id;
+
+    // Upsert filing
+    const { data: fRows, error: fErr } = await db
+      .from('filing')
+      .upsert(
+        {
+          taxpayerId,
+          assessmentYear,
+          form,
           regime,
           status: 'draft',
+          data: input.data as unknown as Record<string, unknown>,
           updatedAt: now,
-        })
-        .where(eq(filings.id, existingFiling[0].id))
-        .returning({ id: filings.id });
-      return { ok: true, filingId: updated[0]!.id };
-    }
+        },
+        { onConflict: 'taxpayerId,assessmentYear,form', ignoreDuplicates: false },
+      )
+      .select('id')
+      .limit(1);
 
-    const created = await db
-      .insert(filings)
-      .values({
-        taxpayerId,
-        assessmentYear,
-        form,
-        regime,
-        status: 'draft',
-        data: input.data,
-        updatedAt: now,
-      })
-      .returning({ id: filings.id });
+    if (fErr || !fRows?.[0]) throw fErr ?? new Error('Filing upsert failed.');
 
-    return { ok: true, filingId: created[0]!.id };
+    // Emit draft_saved event
+    await db.from('filing_event').insert({
+      filingId: fRows[0].id,
+      event: 'draft_saved',
+      actor: 'user',
+      detail: { form, assessmentYear },
+    });
+
+    return { ok: true, filingId: fRows[0].id };
   } catch {
     return { ok: false, message: SAVE_FAIL };
   }
@@ -200,21 +165,35 @@ export async function listDrafts(
   userId: string,
 ): Promise<{ ok: true; drafts: DraftSummary[] } | { ok: false; message: string }> {
   try {
-    const db = getDb();
-    const rows = await db
-      .select({
-        id: filings.id,
-        form: filings.form,
-        assessmentYear: filings.assessmentYear,
-        updatedAt: filings.updatedAt,
-        pan: taxpayers.pan,
-      })
-      .from(filings)
-      .innerJoin(taxpayers, eq(filings.taxpayerId, taxpayers.id))
-      .where(eq(taxpayers.userId, userId))
-      .orderBy(desc(filings.updatedAt));
+    const db = getServiceClient();
 
-    return { ok: true, drafts: rows };
+    const { data: tRows } = await db
+      .from('taxpayer')
+      .select('id, pan')
+      .eq('userId', userId);
+
+    if (!tRows || tRows.length === 0) return { ok: true, drafts: [] };
+
+    const panByTaxpayerId = Object.fromEntries(tRows.map((t) => [t.id, t.pan]));
+    const tIds = tRows.map((t) => t.id);
+
+    const { data: rows, error } = await db
+      .from('filing')
+      .select('id, form, assessmentYear, updatedAt, taxpayerId')
+      .in('taxpayerId', tIds)
+      .order('updatedAt', { ascending: false });
+
+    if (error) throw error;
+
+    const drafts: DraftSummary[] = (rows ?? []).map((r) => ({
+      id: r.id,
+      form: r.form as FormType,
+      assessmentYear: r.assessmentYear,
+      updatedAt: new Date(r.updatedAt),
+      pan: panByTaxpayerId[r.taxpayerId] ?? '',
+    }));
+
+    return { ok: true, drafts };
   } catch {
     return { ok: false, message: 'Could not list drafts. Try again in a moment.' };
   }

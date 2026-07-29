@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
-import { runMigrations } from '@/lib/db';
 import { loadDraft, saveDraft } from '@/lib/filing/drafts';
 import type { FormType, ReturnData } from '@/lib/itr/types';
 
@@ -19,7 +18,6 @@ function asFormType(value: string | null): FormType | null {
  * Query: assessmentYear, form → { ok, filing: null | { id, data, updatedAt, status } }
  */
 export async function GET(req: Request) {
-  await runMigrations();
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) {
@@ -60,7 +58,6 @@ export async function GET(req: Request) {
  * Body: { data: ReturnData } → { ok, filingId?, message? }
  */
 export async function PUT(req: Request) {
-  await runMigrations();
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) {

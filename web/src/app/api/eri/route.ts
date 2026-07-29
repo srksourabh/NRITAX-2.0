@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { getEntitlement, hasPaidAccess } from '@/lib/billing/entitlements';
-import { runMigrations } from '@/lib/db';
 import { getEriProvider } from '@/lib/eri';
 import type { ConsentRequest } from '@/lib/eri/types';
 import { buildReturnJson } from '@/lib/itr/build-json';
@@ -17,7 +16,6 @@ function panFrom(data: ReturnData): string {
 }
 
 export async function POST(req: Request) {
-  await runMigrations();
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false, message: 'Sign in required.' }, { status: 401 });

@@ -2,13 +2,11 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { grantEntitlement, type PlanId } from '@/lib/billing/entitlements';
-import { runMigrations } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 /** Dev / no-Razorpay path: mark the plan paid after mock checkout. */
 export async function GET(req: Request) {
-  await runMigrations();
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.redirect(new URL('/login', req.url));

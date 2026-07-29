@@ -7,14 +7,12 @@ import {
   type PlanId,
   PLANS,
 } from '@/lib/billing/entitlements';
-import { runMigrations } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 const PLANS_SET = new Set<PlanId>(['self_serve', 'ca_assisted']);
 
 export async function GET() {
-  await runMigrations();
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false, message: 'Sign in required.' }, { status: 401 });
@@ -24,7 +22,6 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  await runMigrations();
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false, message: 'Sign in required.' }, { status: 401 });

@@ -2,10 +2,7 @@
  * Entitlements + Razorpay (or mock) checkout for self-serve vs CA-assisted plans.
  */
 
-import { eq } from 'drizzle-orm';
-
-import { getDb } from '@/lib/db';
-import { entitlements } from '@/lib/db/schema';
+import { getServiceClient } from '@/lib/db/client';
 
 export type PlanId = 'self_serve' | 'ca_assisted';
 
@@ -30,9 +27,14 @@ export async function getEntitlement(userId: string): Promise<{
   active: boolean;
   providerPaymentId?: string;
 }> {
-  const db = getDb();
-  const rows = await db.select().from(entitlements).where(eq(entitlements.userId, userId)).limit(1);
-  const row = rows[0];
+  const db = getServiceClient();
+  const { data: rows } = await db
+    .from('entitlement')
+    .select('plan, status, providerPaymentId')
+    .eq('userId', userId)
+    .limit(1);
+
+  const row = rows?.[0];
   if (!row || row.status !== 'active') return { plan: null, active: false };
   return {
     plan: row.plan as PlanId,
@@ -46,33 +48,17 @@ export async function grantEntitlement(input: {
   plan: PlanId;
   providerPaymentId: string;
 }): Promise<void> {
-  const db = getDb();
-  const existing = await db
-    .select()
-    .from(entitlements)
-    .where(eq(entitlements.userId, input.userId))
-    .limit(1);
-
-  if (existing[0]) {
-    await db
-      .update(entitlements)
-      .set({
-        plan: input.plan,
-        status: 'active',
-        providerPaymentId: input.providerPaymentId,
-        paidAt: new Date(),
-      })
-      .where(eq(entitlements.userId, input.userId));
-    return;
-  }
-
-  await db.insert(entitlements).values({
-    userId: input.userId,
-    plan: input.plan,
-    status: 'active',
-    providerPaymentId: input.providerPaymentId,
-    paidAt: new Date(),
-  });
+  const db = getServiceClient();
+  await db.from('entitlement').upsert(
+    {
+      userId: input.userId,
+      plan: input.plan,
+      status: 'active',
+      providerPaymentId: input.providerPaymentId,
+      paidAt: new Date().toISOString(),
+    },
+    { onConflict: 'userId', ignoreDuplicates: false },
+  );
 }
 
 /** Create a checkout session. Mock when RAZORPAY_KEY_ID is unset. */
@@ -101,13 +87,12 @@ export async function createCheckoutSession(input: {
     };
   }
 
-  // Live Razorpay Orders API — basic fetch; secrets from env.
   const secret = process.env.RAZORPAY_KEY_SECRET?.trim() ?? '';
-  const auth = Buffer.from(`${keyId}:${secret}`).toString('base64');
+  const basicAuth = Buffer.from(`${keyId}:${secret}`).toString('base64');
   const res = await fetch('https://api.razorpay.com/v1/orders', {
     method: 'POST',
     headers: {
-      Authorization: `Basic ${auth}`,
+      Authorization: `Basic ${basicAuth}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

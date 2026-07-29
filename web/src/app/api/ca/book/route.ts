@@ -3,12 +3,10 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getEntitlement, hasCaAccess } from '@/lib/billing/entitlements';
 import { bookSlot, listOpenSlots, setCaFilingStatus } from '@/lib/ca/booking';
-import { runMigrations } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  await runMigrations();
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false, message: 'Sign in required.' }, { status: 401 });
@@ -33,7 +31,6 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  await runMigrations();
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false, message: 'Sign in required.' }, { status: 401 });

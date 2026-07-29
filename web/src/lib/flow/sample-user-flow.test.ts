@@ -16,7 +16,7 @@ import {
   hasPaidAccess,
 } from '@/lib/billing/entitlements';
 import { bookSlot, listOpenSlots } from '@/lib/ca/booking';
-import { runMigrations } from '@/lib/db';
+import { getServiceClient } from '@/lib/db/client';
 import { getEriProvider } from '@/lib/eri';
 import { buildReturnJson } from '@/lib/itr/build-json';
 import { compareReturnRegimes, computeReturnTax } from '@/lib/itr/compute/tax-adapter';
@@ -128,16 +128,13 @@ describe('Sample user whole-flow decision (Priya Sharma · NRI · Dubai)', () =>
   });
 
   it('STEP 5 — paywall mock + CA booking + ERI mock submit', async () => {
-    await runMigrations();
-    const { getDb } = await import('@/lib/db');
-    const { users } = await import('@/lib/db/schema');
-    const db = getDb();
+    const db = getServiceClient();
     const userId = crypto.randomUUID();
-    await db.insert(users).values({
+    await db.from('user').insert({
       id: userId,
       name: USER.name,
       email: `priya-${Date.now()}@example.com`,
-      emailVerified: new Date(),
+      emailVerified: new Date().toISOString(),
     });
 
     const checkout = await createCheckoutSession({ userId, plan: 'ca_assisted' });
