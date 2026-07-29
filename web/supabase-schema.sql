@@ -153,3 +153,76 @@ create table if not exists audit_log (
   detail jsonb,
   "createdAt" timestamptz default now() not null
 );
+
+-- Lifecycle / transport / residency extensions (safe to re-run)
+alter table filing add column if not exists "transportMode" text;
+alter table filing add column if not exists "transportStatus" text default 'none';
+alter table filing add column if not exists "validationStages" jsonb;
+alter table filing add column if not exists "residencyFacts" jsonb;
+alter table filing add column if not exists "consentState" text default 'draft';
+alter table filing add column if not exists "approvedSnapshotId" text;
+alter table filing add column if not exists "refundStatus" text;
+alter table filing add column if not exists "itrvStatus" text;
+
+-- Evidence / provenance ledger
+create table if not exists evidence (
+  id text primary key default gen_random_uuid()::text,
+  "filingId" text not null references filing(id) on delete cascade,
+  "fieldKey" text,
+  source text not null,
+  "artifactId" text,
+  label text,
+  value jsonb,
+  "createdAt" timestamptz default now() not null
+);
+
+create index if not exists evidence_filing_idx on evidence ("filingId");
+
+-- AIS / 26AS import records
+create table if not exists tax_import (
+  id text primary key default gen_random_uuid()::text,
+  "filingId" text not null references filing(id) on delete cascade,
+  kind text not null,
+  "sourceName" text,
+  summary jsonb,
+  records jsonb not null default '[]'::jsonb,
+  "createdAt" timestamptz default now() not null
+);
+
+create index if not exists tax_import_filing_idx on tax_import ("filingId");
+
+-- Mismatch center rows
+create table if not exists mismatch (
+  id text primary key default gen_random_uuid()::text,
+  "filingId" text not null references filing(id) on delete cascade,
+  code text not null,
+  severity text not null default 'advisory',
+  title text not null,
+  detail text,
+  "declaredValue" jsonb,
+  "importedValue" jsonb,
+  decision text default 'open',
+  reason text,
+  "updatedAt" timestamptz default now() not null,
+  "createdAt" timestamptz default now() not null
+);
+
+create index if not exists mismatch_filing_idx on mismatch ("filingId");
+
+-- Capital-gain lots
+create table if not exists gain_lot (
+  id text primary key default gen_random_uuid()::text,
+  "filingId" text not null references filing(id) on delete cascade,
+  isin text,
+  symbol text,
+  "buyDate" text,
+  "sellDate" text,
+  quantity numeric,
+  "buyValue" numeric,
+  "sellValue" numeric,
+  "gainAmount" numeric,
+  "holdingKind" text,
+  "createdAt" timestamptz default now() not null
+);
+
+create index if not exists gain_lot_filing_idx on gain_lot ("filingId");

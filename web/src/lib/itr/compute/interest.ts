@@ -8,6 +8,7 @@
  */
 
 import { money, r0 } from '@/lib/itr/types';
+import { D, floorHundred } from '@/lib/itr/compute/decimal';
 
 const RATE_PER_MONTH = 0.01;
 
@@ -56,7 +57,7 @@ export interface InterestCharges {
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 /** Rule 119A — ignore anything below a hundred rupees. */
-const r100 = (n: number): number => Math.floor(Math.max(n, 0) / 100) * 100;
+const r100 = (n: number): number => floorHundred(n);
 
 /**
  * Months from one ISO date to another, counting part of a month as a whole
@@ -85,7 +86,7 @@ export function computeInterest(input: InterestInput): InterestCharges {
   if (late) {
     const months = monthsBetween(input.dueDate, input.filingDate);
     const shortfall = r100(assessedTax - advanceTax);
-    section234A = r0(shortfall * RATE_PER_MONTH * months);
+    section234A = r0(D(shortfall).mul(RATE_PER_MONTH).mul(months).toNumber());
     if (section234A > 0) {
       notes.push(
         `Interest under section 234A for ${months} month${months === 1 ? '' : 's'} ` +
@@ -99,7 +100,7 @@ export function computeInterest(input: InterestInput): InterestCharges {
   if (assessedTax > 0 && advanceTax < ADVANCE_TAX_FLOOR * assessedTax) {
     const months = monthsBetween(ASSESSMENT_YEAR_START, input.filingDate) || 1;
     const shortfall = r100(assessedTax - advanceTax);
-    section234B = r0(shortfall * RATE_PER_MONTH * months);
+    section234B = r0(D(shortfall).mul(RATE_PER_MONTH).mul(months).toNumber());
     if (section234B > 0) {
       notes.push(
         `Interest under section 234B for ${months} month${months === 1 ? '' : 's'} from ` +
@@ -114,7 +115,7 @@ export function computeInterest(input: InterestInput): InterestCharges {
     const paid = Math.max(r0(input.instalments[i] ?? 0), 0);
     if (paid >= instalment.safeHarbour * assessedTax) return;
     const shortfall = r100(instalment.due * assessedTax - paid);
-    section234C += r0(shortfall * RATE_PER_MONTH * instalment.months);
+    section234C += r0(D(shortfall).mul(RATE_PER_MONTH).mul(instalment.months).toNumber());
   });
   if (section234C > 0) {
     notes.push(`Interest under section 234C of ${money(section234C)} on the advance tax instalments.`);

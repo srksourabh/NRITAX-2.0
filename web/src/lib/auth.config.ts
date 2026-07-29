@@ -2,8 +2,8 @@
  * The half of the Auth.js configuration that has to run at the edge.
  *
  * Middleware imports this file, so nothing here may reach the database or a
- * Node-only module. The drizzle adapter, the database session strategy and the
- * email provider live in auth.ts.
+ * Node-only module. The server-side auth wiring, the JWT session strategy and
+ * the email provider live in auth.ts.
  */
 
 import type { NextAuthConfig } from 'next-auth';

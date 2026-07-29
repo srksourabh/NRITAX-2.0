@@ -138,6 +138,9 @@ export async function saveDraft(input: {
           regime,
           status: 'draft',
           data: input.data as unknown as Record<string, unknown>,
+          residencyFacts: input.data.meta.residencyFacts ?? null,
+          transportStatus: 'none',
+          consentState: 'draft',
           updatedAt: now,
         },
         { onConflict: 'taxpayerId,assessmentYear,form', ignoreDuplicates: false },
@@ -152,7 +155,12 @@ export async function saveDraft(input: {
       filingId: fRows[0].id,
       event: 'draft_saved',
       actor: 'user',
-      detail: { form, assessmentYear },
+      detail: {
+        form,
+        assessmentYear,
+        residentialStatus: identity.residentialStatus,
+        residencyFacts: input.data.meta.residencyFacts ?? null,
+      },
     });
 
     return { ok: true, filingId: fRows[0].id };

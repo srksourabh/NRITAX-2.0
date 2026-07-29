@@ -20,6 +20,8 @@
     "@swc/helpers": "^0.5.23",
     "cas-parser-node": "^1.15.0",
     "clsx": "^2.1.1",
+    "decimal.js": "^10.6.0",
+    "js-sha256": "^1.0.0",
     "lucide-react": "^1.27.0",
     "next": "16.2.12",
     "next-auth": "^5.0.0-beta.32",

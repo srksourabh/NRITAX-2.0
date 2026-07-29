@@ -7,12 +7,15 @@ import { FieldHelp } from '@/components/filing/FieldHelp';
 import { FormSelectionStep } from '@/components/filing/FormSelectionStep';
 import { PostValidatePanel } from '@/components/filing/PostValidatePanel';
 import { RegimeComparePanel } from '@/components/filing/RegimeComparePanel';
+import { ResidencyStep } from '@/components/filing/ResidencyStep';
 import { AppShell } from '@/components/shell/AppShell';
 import { cn } from '@/lib/cn';
 import { buildReturnJson } from '@/lib/itr/build-json';
 import { fieldHelpText, isImportantField } from '@/lib/itr/field-help';
 import { ITR2_SCHEDULES } from '@/lib/itr/itr2';
 import { ITR3_SCHEDULES } from '@/lib/itr/itr3';
+import type { ResidencyFacts } from '@/lib/itr/residency';
+import { residencyLabel } from '@/lib/itr/residency';
 import { sampleForForm } from '@/lib/itr/samples/sample-for-form';
 import {
   ASSESSMENT_YEAR,
@@ -21,14 +24,16 @@ import {
   type FieldValue,
   type FormType,
   type Regime,
+  type ResidentialStatus,
   type ReturnData,
   type ScheduleDef,
   type TableRow,
   type ValidationReport,
 } from '@/lib/itr/types';
-import { isVisible, validateReturn } from '@/lib/itr/validate';
+import { isVisible } from '@/lib/itr/validate';
+import { validateReturnStaged, type StagedValidationReport } from '@/lib/itr/validate-staged';
 
-type Step = 'choose' | 'file' | 'regime';
+type Step = 'choose' | 'residency' | 'file' | 'regime';
 
 type DraftStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -95,6 +100,7 @@ export function FilingWizard() {
   const [activeId, setActiveId] = useState('GEN');
   const [notice, setNotice] = useState<string | null>(null);
   const [report, setReport] = useState<ValidationReport | null>(null);
+  const [staged, setStaged] = useState<StagedValidationReport | null>(null);
   const [draftStatus, setDraftStatus] = useState<DraftStatus>('idle');
   const [draftMessage, setDraftMessage] = useState<string | null>(null);
   const [draftBusy, setDraftBusy] = useState(false);
@@ -170,7 +176,10 @@ export function FilingWizard() {
     }
   }
 
-  async function startForm(next: FormType) {
+  async function startForm(
+    next: FormType,
+    residency?: { status: ResidentialStatus; facts: ResidencyFacts },
+  ) {
     setForm(next);
     setActiveId('GEN');
     setReport(null);
@@ -178,7 +187,14 @@ export function FilingWizard() {
     setDraftMessage(null);
     skipAutosaveRef.current = true;
 
-    setData(blankReturn(next));
+    const blank = blankReturn(next);
+    if (residency) {
+      blank.meta.residentialStatus = residency.status;
+      blank.meta.residencyFacts = residency.facts;
+      blank.fields['GEN.resStatus'] = residency.status;
+      blank.fields['GEN.ResidentialStatus'] = residency.status;
+    }
+    setData(blank);
     setStep('file');
 
     const restored = await loadDraftFor(next);
@@ -194,7 +210,9 @@ export function FilingWizard() {
       setDraftMessage(when ? `Draft saved · ${when}` : 'Draft restored');
     } else {
       setNotice(
-        'Helpers are optional. Skip prefill, Sandbox or CAS anytime and enter particulars by hand.',
+        residency
+          ? `Residential status set to ${residencyLabel(residency.status)}. Helpers are optional — enter particulars by hand anytime.`
+          : 'Helpers are optional. Skip prefill, Sandbox or CAS anytime and enter particulars by hand.',
       );
     }
 
@@ -203,13 +221,18 @@ export function FilingWizard() {
     }, 500);
   }
 
-  /** One click on a form card opens that track immediately. */
+  /** One click on a form card opens residency, then that track. */
   async function openForm(next: FormType) {
     if (draftBusy) return;
     setPicked(next);
+    setStep('residency');
+  }
+
+  async function confirmResidency(status: ResidentialStatus, facts: ResidencyFacts) {
+    if (!picked || draftBusy) return;
     setDraftBusy(true);
     try {
-      await startForm(next);
+      await startForm(picked, { status, facts });
     } finally {
       setDraftBusy(false);
     }
@@ -233,8 +256,13 @@ export function FilingWizard() {
       const fields = { ...prev.fields, [fq]: value };
       const meta = { ...prev.meta };
       if (fq === 'GEN.status' && (value === 'I' || value === 'H')) meta.status = value;
-      if (fq === 'GEN.resStatus' && (value === 'RES' || value === 'NOR' || value === 'NRI')) {
+      if (
+        (fq === 'GEN.resStatus' || fq === 'GEN.ResidentialStatus') &&
+        (value === 'RES' || value === 'NOR' || value === 'NRI')
+      ) {
         meta.residentialStatus = value;
+        fields['GEN.resStatus'] = value;
+        fields['GEN.ResidentialStatus'] = value;
       }
       if (fq === 'GEN.dob' && typeof value === 'string') meta.dateOfBirth = value;
       return { ...prev, fields, meta };
@@ -258,14 +286,14 @@ export function FilingWizard() {
 
   function runValidation() {
     try {
-      const next = validateReturn(data);
-      setReport(next);
+      const nextStaged = validateReturnStaged(data);
+      setStaged(nextStaged);
+      setReport(nextStaged.internal);
       setNotice(
-        next.canUpload
-          ? 'Category A clear. Download the filing JSON when ready.'
-          : `${next.blocking.length} Category A item(s) would block portal upload. Draft JSON is still available.`,
+        nextStaged.canUpload
+          ? `Stages 1–2 clear. Digest ${nextStaged.digest.slice(0, 12)}…. Download JSON when ready.`
+          : `${nextStaged.internal.blocking.length} Category A item(s) or schema issues remain. Draft JSON is still available.`,
       );
-      // Scroll validation report into view
       window.setTimeout(() => {
         document.getElementById('validation-report')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
@@ -280,6 +308,7 @@ export function FilingWizard() {
     const sample = sampleForForm(form);
     setData(sample);
     setReport(null);
+    setStaged(null);
     setActiveId('GEN');
     setNotice(
       form === 'ITR2'
@@ -303,6 +332,31 @@ export function FilingWizard() {
     return (
       <AppShell right={<span className="ntx-badge ntx-badge-draft">AY {ASSESSMENT_YEAR}</span>}>
         <FormSelectionStep busy={draftBusy} onOpenForm={(next) => void openForm(next)} />
+      </AppShell>
+    );
+  }
+
+  if (step === 'residency') {
+    return (
+      <AppShell
+        right={
+          <>
+            <span className="ntx-badge ntx-badge-draft">{picked ?? '—'}</span>
+            <button
+              type="button"
+              className="ntx-btn ntx-btn-secondary"
+              onClick={() => setStep('choose')}
+            >
+              Back
+            </button>
+          </>
+        }
+      >
+        <ResidencyStep
+          busy={draftBusy}
+          onBack={() => setStep('choose')}
+          onConfirm={(status, facts) => void confirmResidency(status, facts)}
+        />
       </AppShell>
     );
   }
@@ -452,6 +506,31 @@ export function FilingWizard() {
             {report ? (
               <div id="validation-report" className="ntx-panel space-y-3 p-4 sm:p-5">
                 <h3 className="text-[var(--h3)] font-semibold">Validation report</h3>
+                {staged ? (
+                  <ul className="space-y-2 text-[var(--body-sm)]">
+                    {staged.stages.map((s) => (
+                      <li
+                        key={s.stage}
+                        className="flex flex-wrap items-start gap-2 rounded-[var(--radius-md)] border border-[var(--neutral-200)] p-3"
+                      >
+                        <span className="ntx-badge ntx-badge-draft">Stage {s.stage}</span>
+                        <span className="font-medium text-[var(--ink)]">{s.name}</span>
+                        <span
+                          className={
+                            s.status === 'pass'
+                              ? 'ntx-badge ntx-badge-filed'
+                              : s.status === 'fail'
+                                ? 'ntx-badge ntx-badge-notice'
+                                : 'ntx-badge ntx-badge-due'
+                          }
+                        >
+                          {s.status}
+                        </span>
+                        <span className="w-full text-[var(--text-muted)]">{s.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 <p className="text-[var(--body-sm)] text-[var(--text-muted)]">
                   <span className="ntx-badge ntx-badge-notice mr-2">
                     {report.blocking.length} Cat A

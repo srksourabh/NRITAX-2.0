@@ -6,6 +6,13 @@ import type { FormReviewReport } from '@/lib/ai/review';
 import type { PlanId } from '@/lib/billing/entitlements';
 import { ITD_PORTAL_HOME } from '@/lib/itd/portal';
 import type { ReturnData } from '@/lib/itr/types';
+import { MismatchCenter, type MismatchItem } from '@/components/filing/MismatchCenter';
+import {
+  dtaaEvidenceRequired,
+  scheduleFaRequired,
+  ftcForm67Needed,
+} from '@/lib/itr/nri-workflows';
+import { recommendEverifyMethods } from '@/lib/filing/everify';
 
 type EntitlementState = {
   plan: PlanId | null;
@@ -31,6 +38,25 @@ export function PostValidatePanel({
   const [eriBusy, setEriBusy] = useState(false);
   const [consentId, setConsentId] = useState<string | null>(null);
   const [ack, setAck] = useState<string | null>(null);
+  const [ackInput, setAckInput] = useState('');
+  const [transportBusy, setTransportBusy] = useState(false);
+  const [filingId, setFilingId] = useState<string | null>(null);
+  const [approveBusy, setApproveBusy] = useState(false);
+  const [mismatches, setMismatches] = useState<MismatchItem[]>([]);
+
+  const nriHints = [
+    dtaaEvidenceRequired(data.meta.residentialStatus)
+      ? 'DTAA / TRC evidence may be required for treaty relief.'
+      : null,
+    scheduleFaRequired(data.meta.residentialStatus)
+      ? 'Schedule FA may be required for foreign assets.'
+      : null,
+    ftcForm67Needed({ hasForeignTaxPaid: Boolean(data.fields['TR.taxReliefClaimed']) })
+      ? 'Form 67 may be needed for foreign tax credit.'
+      : null,
+  ].filter(Boolean);
+
+  const everify = recommendEverifyMethods(data.meta.residentialStatus);
 
   const refreshEntitlement = useCallback(async () => {
     try {
@@ -251,6 +277,87 @@ export function PostValidatePanel({
     }
   }
 
+  async function ensureFilingId(): Promise<string | null> {
+    if (filingId) return filingId;
+    const saveRes = await fetch('/api/filing', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    const saveJson = (await saveRes.json()) as { ok?: boolean; filingId?: string; message?: string };
+    if (!saveJson.ok || !saveJson.filingId) {
+      onNotice(saveJson.message ?? 'Save a draft with PAN first.');
+      return null;
+    }
+    setFilingId(saveJson.filingId);
+    return saveJson.filingId;
+  }
+
+  async function approveSnapshot() {
+    setApproveBusy(true);
+    try {
+      const id = await ensureFilingId();
+      if (!id) return;
+      const res = await fetch('/api/filing/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filingId: id, data }),
+      });
+      const json = (await res.json()) as { ok?: boolean; message?: string; digest?: string };
+      onNotice(json.message ?? (json.ok ? 'Filing approved.' : 'Approval failed.'));
+    } finally {
+      setApproveBusy(false);
+    }
+  }
+
+  async function refreshMismatches() {
+    const id = await ensureFilingId();
+    if (!id) return;
+    const res = await fetch(`/api/filing/mismatches?filingId=${encodeURIComponent(id)}`);
+    const json = (await res.json()) as { ok?: boolean; mismatches?: MismatchItem[]; message?: string };
+    if (!json.ok) {
+      onNotice(json.message ?? 'Could not load mismatches.');
+      return;
+    }
+    setMismatches(json.mismatches ?? []);
+  }
+
+  async function recordManualAck() {
+    setTransportBusy(true);
+    try {
+      const id = await ensureFilingId();
+      if (!id) return;
+
+      const res = await fetch('/api/filing/transport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filingId: id,
+          data,
+          mode: 'manual',
+          acknowledgementNumber: ackInput.trim() || undefined,
+        }),
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        message?: string;
+        acknowledgementNumber?: string;
+        digest?: string;
+      };
+      if (!json.ok) {
+        onNotice(json.message ?? 'Could not record transport.');
+        return;
+      }
+      if (json.acknowledgementNumber) setAck(json.acknowledgementNumber);
+      onNotice(
+        json.message ??
+          (json.digest ? `Transport recorded · digest ${json.digest.slice(0, 12)}…` : 'Transport recorded.'),
+      );
+    } finally {
+      setTransportBusy(false);
+    }
+  }
+
   const actionClass = (action: string) => {
     if (action === 'block') return 'ntx-badge ntx-badge-notice';
     if (action === 'flag') return 'ntx-badge ntx-badge-due';
@@ -263,12 +370,37 @@ export function PostValidatePanel({
       <div>
         <h2 className="text-[var(--h3)] font-semibold text-[var(--ink)]">After validate</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
-          AI review, paywall, optional CA booking, and ERI submit. Manual JSON download stays available
-          above.
+          AI review, paywall, optional CA booking, approval gate, mismatch center, and ERI / manual
+          transport. Manual JSON download stays available above.
+        </p>
+        {nriHints.length > 0 ? (
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-[var(--body-sm)] text-[var(--text-secondary)]">
+            {nriHints.map((h) => (
+              <li key={String(h)}>{h}</li>
+            ))}
+          </ul>
+        ) : null}
+        <p className="mt-2 text-[var(--caption)] text-[var(--text-muted)]">
+          Recommended e-verify: {everify.map((m) => m.label).join(' · ') || 'ITR-V by post'}
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="ntx-btn ntx-btn-credit"
+          disabled={approveBusy}
+          onClick={() => void approveSnapshot()}
+        >
+          {approveBusy ? '…' : 'Approve filing snapshot'}
+        </button>
+        <button
+          type="button"
+          className="ntx-btn ntx-btn-secondary"
+          onClick={() => void refreshMismatches()}
+        >
+          Refresh mismatches
+        </button>
         <button
           type="button"
           className="ntx-btn ntx-btn-secondary"
@@ -334,6 +466,17 @@ export function PostValidatePanel({
               </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {filingId && mismatches.length > 0 ? (
+        <div className="space-y-3 border-t border-[var(--rule)] pt-4">
+          <h3 className="text-[var(--label)] font-semibold text-[var(--ink)]">Mismatch center</h3>
+          <MismatchCenter
+            filingId={filingId}
+            mismatches={mismatches}
+            onNotice={onNotice}
+          />
         </div>
       ) : null}
 
@@ -411,9 +554,31 @@ export function PostValidatePanel({
             Manual portal upload
           </a>
         </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="block min-w-[14rem] flex-1">
+            <span className="text-[var(--caption)] text-[var(--text-muted)]">
+              Portal acknowledgement number
+            </span>
+            <input
+              className="ntx-input mt-1 w-full"
+              value={ackInput}
+              onChange={(e) => setAckInput(e.target.value)}
+              placeholder="Optional · after upload"
+            />
+          </label>
+          <button
+            type="button"
+            className="ntx-btn ntx-btn-credit"
+            disabled={transportBusy}
+            onClick={() => void recordManualAck()}
+          >
+            {transportBusy ? '…' : 'Record manual transport'}
+          </button>
+        </div>
         <p className="text-[var(--caption)] text-[var(--text-muted)]">
-          ERI uses the configured provider (default mock). Paid plan required for submit; JSON
-          download above stays free. Never enter an Income Tax portal password here.
+          Manual transport records digest + acknowledgement into filing history. ERI uses the
+          configured provider (default mock). Paid plan required for ERI submit; JSON download above
+          stays free. Never enter an Income Tax portal password here.
         </p>
         {consentId ? (
           <p className="text-[var(--caption)] text-[var(--text-muted)]">Consent: {consentId}</p>

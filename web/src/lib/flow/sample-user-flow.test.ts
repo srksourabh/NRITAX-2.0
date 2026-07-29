@@ -128,39 +128,51 @@ describe('Sample user whole-flow decision (Priya Sharma · NRI · Dubai)', () =>
   });
 
   it('STEP 5 — paywall mock + CA booking + ERI mock submit', async () => {
-    const db = getServiceClient();
+    const hasSupabase =
+      Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) &&
+      Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+
     const userId = crypto.randomUUID();
-    await db.from('user').insert({
-      id: userId,
-      name: USER.name,
-      email: `priya-${Date.now()}@example.com`,
-      emailVerified: new Date().toISOString(),
-    });
 
     const checkout = await createCheckoutSession({ userId, plan: 'ca_assisted' });
     expect(checkout.mode).toBe('mock');
     expect(checkout.mockCompleteUrl).toContain('ca_assisted');
 
-    await grantEntitlement({
-      userId,
-      plan: 'ca_assisted',
-      providerPaymentId: checkout.orderId,
-    });
-    const ent = await getEntitlement(userId);
-    expect(ent.active).toBe(true);
-    expect(hasPaidAccess(ent.plan)).toBe(true);
-    expect(hasCaAccess(ent.plan)).toBe(true);
+    let plan: string | null = null;
+    let caStartsAt: string | null = null;
 
-    const slots = await listOpenSlots();
-    expect(slots.length).toBeGreaterThan(0);
-    const booked = await bookSlot({
-      userId,
-      slotId: slots[0].id,
-      attendeeEmail: USER.email,
-      caBrief: 'NRI ITR-2 · salary + 112A LTCG · review TDS vs Form 16.',
-    });
-    expect(booked.ics).toContain('BEGIN:VCALENDAR');
-    expect(booked.bookingId).toBeTruthy();
+    if (hasSupabase) {
+      const db = getServiceClient();
+      await db.from('user').insert({
+        id: userId,
+        name: USER.name,
+        email: `priya-${Date.now()}@example.com`,
+        emailVerified: new Date().toISOString(),
+      });
+
+      await grantEntitlement({
+        userId,
+        plan: 'ca_assisted',
+        providerPaymentId: checkout.orderId,
+      });
+      const ent = await getEntitlement(userId);
+      expect(ent.active).toBe(true);
+      expect(hasPaidAccess(ent.plan)).toBe(true);
+      expect(hasCaAccess(ent.plan)).toBe(true);
+      plan = ent.plan;
+
+      const slots = await listOpenSlots();
+      expect(slots.length).toBeGreaterThan(0);
+      const booked = await bookSlot({
+        userId,
+        slotId: slots[0].id,
+        attendeeEmail: USER.email,
+        caBrief: 'NRI ITR-2 · salary + 112A LTCG · review TDS vs Form 16.',
+      });
+      expect(booked.ics).toContain('BEGIN:VCALENDAR');
+      expect(booked.bookingId).toBeTruthy();
+      caStartsAt = booked.startsAt.toISOString();
+    }
 
     const data = sampleNriPriyaItr2();
     const eri = getEriProvider();
@@ -178,6 +190,7 @@ describe('Sample user whole-flow decision (Priya Sharma · NRI · Dubai)', () =>
 
     const built = buildReturnJson(data, { softwareId: SAMPLE_SOFTWARE_ID });
     expect(built.fileName).toMatch(/\.json$/i);
+    expect(built.digest).toMatch(/^[a-f0-9]{64}$/);
 
     const upload = await eri.uploadReturn({
       pan: USER.pan,
@@ -192,8 +205,9 @@ describe('Sample user whole-flow decision (Priya Sharma · NRI · Dubai)', () =>
       JSON.stringify(
         {
           checkoutMode: checkout.mode,
-          plan: ent.plan,
-          caStartsAt: booked.startsAt.toISOString(),
+          plan,
+          caStartsAt,
+          supabaseWired: hasSupabase,
           eriConsent: consent.status,
           eriUploadStatus: upload.status,
           ack: upload.acknowledgementNumber ?? null,

@@ -5,7 +5,25 @@
 
 import type { FormType, Regime, ResidentialStatus, ReturnData } from '@/lib/itr/types';
 
-export type FilingStatus = 'draft' | 'validated' | 'uploaded' | 'verified' | 'processed';
+export type FilingStatus =
+  | 'draft'
+  | 'validated'
+  | 'approved'
+  | 'uploaded'
+  | 'verified'
+  | 'processed';
+export type TransportMode = 'manual' | 'eri' | 'partner';
+export type TransportStatus =
+  | 'none'
+  | 'ready'
+  | 'submitted'
+  | 'acknowledged'
+  | 'failed';
+export type ConsentLifecycle =
+  | 'draft'
+  | 'consent_captured'
+  | 'client_active'
+  | 'revoked';
 export type CaFilingStatus =
   | 'none'
   | 'requested'
@@ -17,6 +35,8 @@ export type EntitlementPlan = 'self_serve' | 'ca_assisted';
 export type EntitlementStatus = 'active' | 'expired' | 'refunded';
 export type ConsentStatus = 'active' | 'revoked' | 'expired';
 export type EriProviderName = 'sandbox' | 'casparser' | 'own';
+export type MismatchSeverity = 'blocking' | 'advisory';
+export type MismatchDecision = 'open' | 'accepted' | 'overridden' | 'deferred';
 
 export interface UserRow {
   id: string;
@@ -52,6 +72,14 @@ export interface FilingRow {
   eVerifyMethod: string | null;
   utilityValidated: string | null;
   snapshotHash: string | null;
+  transportMode: TransportMode | null;
+  transportStatus: TransportStatus | null;
+  validationStages: Record<string, unknown> | null;
+  residencyFacts: Record<string, unknown> | null;
+  consentState: ConsentLifecycle | null;
+  approvedSnapshotId: string | null;
+  refundStatus: string | null;
+  itrvStatus: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -124,6 +152,57 @@ export interface AuditLogRow {
   createdAt: string;
 }
 
+export interface EvidenceRow {
+  id: string;
+  filingId: string;
+  fieldKey: string | null;
+  source: string;
+  artifactId: string | null;
+  label: string | null;
+  value: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface TaxImportRow {
+  id: string;
+  filingId: string;
+  kind: 'ais' | 'form26as' | 'other';
+  sourceName: string | null;
+  summary: Record<string, unknown> | null;
+  records: unknown[];
+  createdAt: string;
+}
+
+export interface MismatchRow {
+  id: string;
+  filingId: string;
+  code: string;
+  severity: MismatchSeverity;
+  title: string;
+  detail: string | null;
+  declaredValue: unknown;
+  importedValue: unknown;
+  decision: MismatchDecision;
+  reason: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+
+export interface GainLotRow {
+  id: string;
+  filingId: string;
+  isin: string | null;
+  symbol: string | null;
+  buyDate: string | null;
+  sellDate: string | null;
+  quantity: number | null;
+  buyValue: number | null;
+  sellValue: number | null;
+  gainAmount: number | null;
+  holdingKind: string | null;
+  createdAt: string;
+}
+
 /** Supabase Database generic type for createClient<Database>() */
 export interface Database {
   public: {
@@ -138,6 +217,10 @@ export interface Database {
       ca_booking: { Row: CaBookingRow; Insert: Omit<CaBookingRow, 'id' | 'createdAt'>; Update: Partial<CaBookingRow> };
       consent: { Row: ConsentRow; Insert: Omit<ConsentRow, 'id'>; Update: Partial<ConsentRow> };
       audit_log: { Row: AuditLogRow; Insert: Omit<AuditLogRow, 'id' | 'createdAt'>; Update: never };
+      evidence: { Row: EvidenceRow; Insert: Omit<EvidenceRow, 'id' | 'createdAt'>; Update: Partial<EvidenceRow> };
+      tax_import: { Row: TaxImportRow; Insert: Omit<TaxImportRow, 'id' | 'createdAt'>; Update: Partial<TaxImportRow> };
+      mismatch: { Row: MismatchRow; Insert: Omit<MismatchRow, 'id' | 'createdAt' | 'updatedAt'>; Update: Partial<MismatchRow> };
+      gain_lot: { Row: GainLotRow; Insert: Omit<GainLotRow, 'id' | 'createdAt'>; Update: Partial<GainLotRow> };
     };
   };
 }

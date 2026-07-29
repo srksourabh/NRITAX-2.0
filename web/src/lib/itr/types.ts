@@ -6,6 +6,8 @@
  * JSON builder, the AI auditor) and in the browser (the wizard) unchanged.
  */
 
+import { roundRupee, roundTen } from '@/lib/itr/compute/decimal';
+
 /* ─────────────────────────── Core enums ─────────────────────────── */
 
 export const ASSESSMENT_YEAR = '2026-27' as const;
@@ -192,6 +194,14 @@ export interface ReturnMeta {
   dueDate: string;
   /** Date of birth — needed for senior-citizen slabs and 80TTB. */
   dateOfBirth?: string;
+  /** Day-count questionnaire answers that produced residentialStatus. */
+  residencyFacts?: {
+    daysInPreviousYear: number;
+    daysInPrecedingFourYears: number;
+    employmentAbroadOrCrew?: boolean;
+    nonResidentYearsOfLast10?: number;
+    daysInPrecedingSevenYears?: number;
+  };
 }
 
 export interface ReturnData {
@@ -364,6 +374,9 @@ export interface GeneratedReturn {
   assessmentYear: typeof ASSESSMENT_YEAR;
   fileName: string;
   json: Record<string, unknown>;
+  /** SHA-256 hex digest of the departmental JSON (CreationInfo.Digest). */
+  digest: string;
+  softwareId: string;
 }
 
 /* ─────────────────────────── Helpers ─────────────────────────── */
@@ -394,11 +407,11 @@ export const FIELD_PATTERN: Partial<Record<FieldType, RegExp>> = {
   bsr: RX.bsr,
 };
 
-/** Round to the nearest rupee. */
-export const r0 = (n: number): number => Math.round(n) || 0;
+/** Round to the nearest rupee using half-up decimal arithmetic. */
+export const r0 = (n: number): number => roundRupee(n) || 0;
 
 /** Round to the nearest ten rupees, as section 288B requires for tax. */
-export const r10 = (n: number): number => Math.round((n || 0) / 10) * 10;
+export const r10 = (n: number): number => roundTen(n || 0);
 
 /** Indian digit grouping, e.g. 1234567 -> "12,34,567". */
 export const inr = (n: number): string => (n || 0).toLocaleString('en-IN');

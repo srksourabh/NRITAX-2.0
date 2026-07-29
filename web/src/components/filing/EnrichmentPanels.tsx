@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { AutoFillPanel } from '@/components/filing/AutoFillPanel';
+import { TaxImportPanel } from '@/components/filing/TaxImportPanel';
 import { applyCasToReturn } from '@/lib/cas/apply-cas';
 import { casFailureMessage, resolveCasPdfPassword } from '@/lib/cas/password';
 import type { CasParseResult } from '@/lib/cas/types';
@@ -622,6 +623,26 @@ export function EnrichmentPanels({
         setActiveId={setActiveId}
         setNotice={setNotice}
       />
+
+      <div className="md:col-span-2 xl:col-span-3">
+        <TaxImportPanel
+          filingId={null}
+          onNotice={(m) => setNotice(m)}
+          ensureFilingId={async () => {
+            const res = await fetch('/api/filing', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ data }),
+            });
+            const json = (await res.json()) as { ok?: boolean; filingId?: string; message?: string };
+            if (!json.ok || !json.filingId) {
+              setNotice(json.message ?? 'Save a draft with PAN before importing AIS / 26AS.');
+              return null;
+            }
+            return json.filingId;
+          }}
+        />
+      </div>
 
       <div className="ntx-panel p-5 md:col-span-2 xl:col-span-3">
         <h2 className="text-[var(--h3)] font-semibold">

@@ -26,6 +26,7 @@
 
 import type { FieldValue, ReturnData, ScheduleDef, TableRow } from '@/lib/itr/types';
 import { r0, r10 } from '@/lib/itr/types';
+import { D, Decimal } from '@/lib/itr/compute/decimal';
 
 /** Raised by the tokeniser, the parser and the walker. Never escapes runCalcs. */
 export class CalcError extends Error {
@@ -263,46 +264,46 @@ interface Scope {
   hook(text: string): number;
 }
 
-function walk(node: Node, scope: Scope): number {
+function walk(node: Node, scope: Scope): Decimal {
   switch (node.kind) {
     case 'num':
-      return node.value;
+      return D(node.value);
     case 'ref':
-      return scope.ref(node.name);
+      return D(scope.ref(node.name));
     case 'column':
-      return scope.column(node.table, node.column);
+      return D(scope.column(node.table, node.column));
     case 'grid':
-      return scope.grid(node.grid);
+      return D(scope.grid(node.grid));
     case 'hook':
-      return scope.hook(node.text);
+      return D(scope.hook(node.text));
     case 'unary': {
       const value = walk(node.arg, scope);
-      return node.negate ? -value : value;
+      return node.negate ? value.neg() : value;
     }
     case 'binary': {
       const left = walk(node.left, scope);
       const right = walk(node.right, scope);
-      if (node.op === '+') return left + right;
-      if (node.op === '-') return left - right;
-      if (node.op === '*') return left * right;
-      if (right === 0) throw new CalcError('division by zero');
-      return left / right;
+      if (node.op === '+') return left.plus(right);
+      if (node.op === '-') return left.minus(right);
+      if (node.op === '*') return left.mul(right);
+      if (right.isZero()) throw new CalcError('division by zero');
+      return left.div(right);
     }
     case 'call': {
       const args = node.args.map((a) => walk(a, scope));
       switch (node.name) {
         case 'MIN':
-          return Math.min(...args);
+          return Decimal.min(...args);
         case 'MAX':
-          return Math.max(...args);
+          return Decimal.max(...args);
         case 'SUM':
-          return args.reduce((a, b) => a + b, 0);
+          return args.reduce((a, b) => a.plus(b), new Decimal(0));
         case 'ABS':
-          return Math.abs(args[0]);
+          return args[0]!.abs();
         case 'ROUND':
-          return Math.round(args[0]);
+          return D(Math.round(args[0]!.toNumber()));
         case 'ROUND10':
-          return r10(args[0]);
+          return D(r10(args[0]!.toNumber()));
       }
     }
   }
@@ -413,7 +414,7 @@ export function runCalcs(
     visiting.add(calc.qualified);
     let computed = 0;
     try {
-      computed = r0(walk(parseExpr(calc.expr), scope));
+      computed = r0(walk(parseExpr(calc.expr), scope).toNumber());
       if (!Number.isFinite(computed)) throw new CalcError('the result is not a number');
     } catch (error) {
       problems.push({

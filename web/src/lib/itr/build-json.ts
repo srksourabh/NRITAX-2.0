@@ -8,6 +8,8 @@
  */
 
 import { evaluateCalcs } from '@/lib/itr/compute/evaluate';
+import { roundRupee } from '@/lib/itr/compute/decimal';
+import { digestReturnJson, resolveSoftwareId } from '@/lib/itr/digest';
 import { ITR2_SCHEDULES } from '@/lib/itr/itr2';
 import { ITR3_SCHEDULES } from '@/lib/itr/itr3';
 import {
@@ -20,7 +22,7 @@ import {
   type ScheduleDef,
   type TableRow,
 } from '@/lib/itr/types';
-import { isVisible, PLACEHOLDER_SOFTWARE_ID } from '@/lib/itr/validate';
+import { isVisible } from '@/lib/itr/validate';
 
 export interface BuildJsonOptions {
   /** Departmental software id written into CreationInfo. */
@@ -96,7 +98,9 @@ function buildRow(columns: readonly FieldDef[], row: TableRow): JsonObject | nul
 function formEnvelope(
   form: FormType,
   body: JsonObject,
-  options: Required<Pick<BuildJsonOptions, 'softwareId' | 'intermediaryCity' | 'createdOn'>>,
+  options: Required<Pick<BuildJsonOptions, 'softwareId' | 'intermediaryCity' | 'createdOn'>> & {
+    digest: string;
+  },
 ): Record<string, unknown> {
   const creation = {
     SWVersionNo: '1.0',
@@ -104,7 +108,7 @@ function formEnvelope(
     JSONCreatedBy: options.softwareId,
     JSONCreationDate: options.createdOn,
     IntermediaryCity: options.intermediaryCity,
-    Digest: '-',
+    Digest: options.digest,
   };
 
   if (form === 'ITR2') {
@@ -144,11 +148,6 @@ function formEnvelope(
   };
 }
 
-function softwareIdFromEnv(): string {
-  const value = typeof process === 'undefined' ? undefined : process.env.ERI_SOFTWARE_ID;
-  return value?.trim() || PLACEHOLDER_SOFTWARE_ID;
-}
-
 /**
  * Build the departmental JSON for a return. Empty or hidden fields are omitted.
  * Calculated figures with a `path` are written from the evaluation engine.
@@ -156,7 +155,7 @@ function softwareIdFromEnv(): string {
 export function buildReturnJson(data: ReturnData, options: BuildJsonOptions = {}): GeneratedReturn {
   const form = data.meta.form;
   const schedules = options.schedules ?? (form === 'ITR3' ? ITR3_SCHEDULES : ITR2_SCHEDULES);
-  const softwareId = options.softwareId ?? softwareIdFromEnv();
+  const softwareId = resolveSoftwareId(options.softwareId);
   const intermediaryCity = options.intermediaryCity ?? 'N/A';
   const createdOn = options.createdOn ?? new Date().toISOString().slice(0, 10);
 
@@ -186,7 +185,7 @@ export function buildReturnJson(data: ReturnData, options: BuildJsonOptions = {}
           // Still emit explicit zeros when the calc resolved — skip only missing.
           if (n === undefined) continue;
         }
-        setPath(body, calc.path, Math.round(n));
+        setPath(body, calc.path, roundRupee(n));
       }
 
       for (const table of section.tables ?? []) {
@@ -206,11 +205,29 @@ export function buildReturnJson(data: ReturnData, options: BuildJsonOptions = {}
   const year = data.meta.assessmentYear || ASSESSMENT_YEAR;
   const fileName = `${form}_${pan}_AY${year}.json`;
 
+  // Digest is computed over the body + CreationInfo with a temporary Digest placeholder,
+  // then written back so the stored Digest matches the hash of the final payload minus itself.
+  const provisional = formEnvelope(form, body, {
+    softwareId,
+    intermediaryCity,
+    createdOn,
+    digest: 'PENDING',
+  });
+  const digest = digestReturnJson(provisional);
+  const json = formEnvelope(form, body, {
+    softwareId,
+    intermediaryCity,
+    createdOn,
+    digest,
+  });
+
   return {
     form,
     pan,
     assessmentYear: ASSESSMENT_YEAR,
     fileName,
-    json: formEnvelope(form, body, { softwareId, intermediaryCity, createdOn }),
+    json,
+    digest,
+    softwareId,
   };
 }

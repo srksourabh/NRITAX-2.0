@@ -17,6 +17,7 @@ import {
   slabTax,
   surchargeRate,
 } from '@/lib/itr/compute/slabs';
+import { D, max0 } from '@/lib/itr/compute/decimal';
 import {
   money,
   r0,
@@ -181,7 +182,7 @@ function computeForRegime(input: TaxInput, regime: Regime): TaxComputation {
     const exempt = b.exempt112A ? Math.min(remaining112A, amount) : 0;
     remaining112A -= exempt;
     const taxable = amount - exempt;
-    const tax = r0(taxable * b.rate);
+    const tax = r0(D(taxable).mul(b.rate).toNumber());
     if (b.surchargeCapped) cappedTax += tax;
     buckets.push({ key: b.key, label: b.label, rate: b.rate, amount, exempt, taxable, tax });
   }
@@ -246,8 +247,11 @@ function computeForRegime(input: TaxInput, regime: Regime): TaxComputation {
   let surcharge = 0;
   let marginalRelief = 0;
   if (rate > 0) {
-    const otherTax = Math.max(taxAfterRebate - cappedTax, 0);
-    surcharge = cappedTax * Math.min(rate, SURCHARGE_CAP_ON_GAINS) + otherTax * rate;
+    const otherTax = max0(D(taxAfterRebate).minus(cappedTax));
+    surcharge = D(cappedTax)
+      .mul(Math.min(rate, SURCHARGE_CAP_ON_GAINS))
+      .plus(otherTax.mul(rate))
+      .toNumber();
     if (rate > SURCHARGE_CAP_ON_GAINS && cappedTax > 0) {
       notes.push(
         'Surcharge on capital gain and dividend income is capped at 15 per cent under the proviso to section 2 of the Finance Act.',
@@ -258,7 +262,9 @@ function computeForRegime(input: TaxInput, regime: Regime): TaxComputation {
     if (threshold !== undefined) {
       const taxAtThreshold =
         slabTax(Math.max(threshold - specialRateIncome, 0), bands) + taxOnSpecial;
-      const liabilityAtThreshold = taxAtThreshold * (1 + surchargeRate(threshold, regime));
+      const liabilityAtThreshold = D(taxAtThreshold)
+        .mul(D(1).plus(surchargeRate(threshold, regime)))
+        .toNumber();
       const ceiling = liabilityAtThreshold + (totalIncome - threshold);
       if (taxAfterRebate + surcharge > ceiling) {
         marginalRelief = taxAfterRebate + surcharge - ceiling;
@@ -272,8 +278,8 @@ function computeForRegime(input: TaxInput, regime: Regime): TaxComputation {
   surcharge = r0(surcharge);
 
   /* 6. Cess, then rounding to the nearest ten rupees under section 288B. */
-  const cess = r0((taxAfterRebate + surcharge) * CESS_RATE);
-  const beforeRounding = r0(taxAfterRebate + surcharge + cess);
+  const cess = r0(D(taxAfterRebate).plus(surcharge).mul(CESS_RATE).toNumber());
+  const beforeRounding = r0(D(taxAfterRebate).plus(surcharge).plus(cess).toNumber());
   const grossTaxLiability = r10(beforeRounding);
   if (grossTaxLiability !== beforeRounding) {
     notes.push(
