@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AuthError } from 'next-auth';
 import { redirect } from 'next/navigation';
 
+import { TestLoginButton } from '@/components/auth/TestLoginButton';
 import { AppShell } from '@/components/shell/AppShell';
 import { readDemoAuth, signIn } from '@/lib/auth';
 
@@ -41,31 +42,10 @@ async function googleSignIn(formData: FormData) {
   }
 }
 
-async function demoSignIn(formData: FormData) {
-  'use server';
-  const demo = readDemoAuth();
-  if (!demo.enabled || !demo.password) {
-    redirect('/login?error=demo-disabled');
-  }
-  const redirectTo = safeCallbackUrl(formData.get('callbackUrl'));
-  try {
-    await signIn('demo', {
-      email: demo.email,
-      password: demo.password,
-      redirectTo,
-    });
-  } catch (error) {
-    if (error instanceof AuthError) {
-      redirect('/login?error=demo');
-    }
-    throw error;
-  }
-}
-
 async function demoPasswordSignIn(formData: FormData) {
   'use server';
   const demo = readDemoAuth();
-  if (!demo.enabled) {
+  if (!demo.enabled || !demo.password) {
     redirect('/login?error=demo-disabled');
   }
   const email = String(formData.get('email') ?? '')
@@ -74,13 +54,22 @@ async function demoPasswordSignIn(formData: FormData) {
   const password = String(formData.get('password') ?? '');
   const redirectTo = safeCallbackUrl(formData.get('callbackUrl'));
   try {
-    await signIn('demo', { email, password, redirectTo });
+    const result = await signIn('demo', {
+      email,
+      password,
+      redirectTo,
+      redirect: false,
+    });
+    if (result?.error) {
+      redirect('/login?error=demo');
+    }
   } catch (error) {
     if (error instanceof AuthError) {
       redirect('/login?error=demo');
     }
     throw error;
   }
+  redirect(redirectTo);
 }
 
 function errorMessage(code: string | undefined): string | null {
@@ -106,6 +95,11 @@ export default async function LoginPage({
   const googleEnabled = Boolean(
     process.env.AUTH_GOOGLE_ID?.trim() && process.env.AUTH_GOOGLE_SECRET?.trim(),
   );
+  const emailEnabled = Boolean(
+    process.env.AUTH_EMAIL_SERVER?.trim() &&
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
+  );
   const demo = readDemoAuth();
   const params = searchParams ? await searchParams : {};
   const rawError = params.error;
@@ -128,8 +122,9 @@ export default async function LoginPage({
         </p>
         <h1 className="ntx-display-sm mt-3 text-[var(--ink)]">No Indian mobile needed</h1>
         <p className="mt-3 text-[var(--text-muted)]">
-          We email you a link, or you can use Google. In local development the link is printed in
-          the terminal when SMTP is not configured.
+          {demo.enabled
+            ? 'Use test login below to enter the filing app immediately. Email and Google are optional when configured.'
+            : 'We email you a link, or you can use Google, when those providers are configured.'}
         </p>
         <hr className="ntx-double-rule mt-6 max-w-xs" />
 
@@ -140,20 +135,13 @@ export default async function LoginPage({
         ) : null}
 
         {demo.enabled ? (
-          <div className="ntx-panel mt-8 space-y-3 p-5">
-            <h2 className="text-[var(--h3)] font-semibold">Demo account</h2>
+          <div className="ntx-panel mt-8 space-y-3 border-[var(--credit)] p-5">
+            <h2 className="text-[var(--h3)] font-semibold text-[var(--ink)]">Test login</h2>
             <p className="text-[var(--body-sm)] text-[var(--text-muted)]">
-              Direct login for testing — no email required.
+              Skip email and enter the filing app immediately as{' '}
+              <span className="font-mono text-[var(--ink)]">{demo.email}</span>.
             </p>
-            <p className="font-mono text-[var(--body-sm)] text-[var(--ink)]">
-              {demo.email}
-            </p>
-            <form action={demoSignIn}>
-              <input type="hidden" name="callbackUrl" value={callbackUrl} />
-              <button type="submit" className="ntx-btn ntx-btn-credit w-full">
-                Sign in as demo
-              </button>
-            </form>
+            <TestLoginButton callbackUrl={callbackUrl} className="w-full" />
             <form action={demoPasswordSignIn} className="space-y-2 border-t border-[var(--rule)] pt-3">
               <input type="hidden" name="callbackUrl" value={callbackUrl} />
               <label className="ntx-label" htmlFor="demo-email">
@@ -172,6 +160,7 @@ export default async function LoginPage({
                 name="password"
                 type="password"
                 placeholder="Demo password"
+                defaultValue={demo.password ?? ''}
                 autoComplete="current-password"
                 required
                 className="ntx-input"
@@ -181,26 +170,34 @@ export default async function LoginPage({
               </button>
             </form>
           </div>
-        ) : null}
+        ) : (
+          <p className="mt-8 text-[var(--body-sm)] text-[var(--text-muted)]">
+            Test login is off. Set <span className="font-mono">AUTH_DEMO_PASSWORD</span> in{' '}
+            <span className="font-mono">.env.local</span>, or remove{' '}
+            <span className="font-mono">AUTH_DEMO_LOGIN=0</span>.
+          </p>
+        )}
 
-        <form action={emailSignIn} className="mt-8 flex flex-col gap-3">
-          <input type="hidden" name="callbackUrl" value={callbackUrl} />
-          <label className="ntx-label" htmlFor="email">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@example.com"
-            className="ntx-input"
-          />
-          <button type="submit" className="ntx-btn ntx-btn-primary">
-            Email me a sign-in link
-          </button>
-        </form>
+        {emailEnabled ? (
+          <form action={emailSignIn} className="mt-8 flex flex-col gap-3">
+            <input type="hidden" name="callbackUrl" value={callbackUrl} />
+            <label className="ntx-label" htmlFor="email">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
+              className="ntx-input"
+            />
+            <button type="submit" className="ntx-btn ntx-btn-primary">
+              Email me a sign-in link
+            </button>
+          </form>
+        ) : null}
 
         {googleEnabled ? (
           <form action={googleSignIn} className="mt-3">

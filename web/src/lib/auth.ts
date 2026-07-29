@@ -1,13 +1,16 @@
 /**
- * Auth.js v5. Email magic link, optional Google, and optional demo credentials.
+ * Auth.js v5. Optional Google, optional email magic link, and demo credentials.
  *
- * JWT strategy is used throughout — Credentials (demo) provider works without
- * a mail round-trip. User upsert on demo login goes directly to Supabase.
+ * JWT strategy is used throughout — Credentials (demo) works without a database
+ * adapter. The Email provider is registered only when AUTH_EMAIL_SERVER is set
+ * AND a Supabase adapter can be built; otherwise Auth.js throws MissingAdapter
+ * and even demo sign-in fails.
  */
 
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Nodemailer from 'next-auth/providers/nodemailer';
+import type { Provider } from 'next-auth/providers';
 
 import { authConfig } from '@/lib/auth.config';
 import { getServiceClient } from '@/lib/db/client';
@@ -21,7 +24,11 @@ export function readDemoAuth(): {
   password: string | null;
 } {
   const email = (process.env.AUTH_DEMO_EMAIL?.trim() || 'demo@nritax.app').toLowerCase();
-  const password = process.env.AUTH_DEMO_PASSWORD?.trim() || null;
+  const configuredPassword = process.env.AUTH_DEMO_PASSWORD?.trim() || null;
+  // Local/dev always gets a working test login unless AUTH_DEMO_LOGIN=0.
+  // Production requires an explicit AUTH_DEMO_PASSWORD.
+  const isNonProduction = process.env.NODE_ENV !== 'production';
+  const password = configuredPassword ?? (isNonProduction ? 'demo1234' : null);
   const disabled = process.env.AUTH_DEMO_LOGIN?.trim() === '0';
   return {
     enabled: Boolean(password) && !disabled,
@@ -30,15 +37,12 @@ export function readDemoAuth(): {
   };
 }
 
-const emailProvider = emailServer
-  ? Nodemailer({ server: emailServer, from: emailFrom })
-  : Nodemailer({
-      server: { host: 'localhost', port: 1025, secure: false },
-      from: emailFrom,
-      sendVerificationRequest({ identifier, url }) {
-        console.info(`\n  Sign-in link for ${identifier}\n  ${url}\n`);
-      },
-    });
+function supabaseReady(): boolean {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
+  );
+}
 
 const demoProvider = Credentials({
   id: 'demo',
@@ -62,6 +66,8 @@ const demoProvider = Credentials({
       email: demo.email,
       name: 'Demo Taxpayer',
     };
+
+    if (!supabaseReady()) return fallbackUser;
 
     try {
       const db = getServiceClient();
@@ -91,6 +97,24 @@ const demoProvider = Credentials({
   },
 });
 
+function buildProviders(): Provider[] {
+  const providers: Provider[] = [...authConfig.providers, demoProvider];
+
+  // Email magic-link needs an Auth.js adapter for verification tokens.
+  // Without it, Auth.js throws MissingAdapter and blocks every provider —
+  // including demo credentials. Skip email until Supabase + SMTP are both set.
+  if (emailServer && supabaseReady()) {
+    providers.push(
+      Nodemailer({
+        server: emailServer,
+        from: emailFrom,
+      }),
+    );
+  }
+
+  return providers;
+}
+
 type AuthInstance = ReturnType<typeof NextAuth>;
 
 let instance: AuthInstance | null = null;
@@ -101,16 +125,20 @@ function authInstance(): AuthInstance {
     ...authConfig,
     trustHost: true,
     session: { strategy: 'jwt' },
-    providers: [...authConfig.providers, emailProvider, demoProvider],
+    providers: buildProviders(),
     callbacks: {
       ...authConfig.callbacks,
       async jwt({ token, user }) {
         if (user?.id) token.sub = user.id;
+        if (user?.email) token.email = user.email;
+        if (user?.name) token.name = user.name;
         return token;
       },
       async session({ session, token }) {
-        if (session.user && token.sub) {
-          session.user.id = token.sub;
+        if (session.user) {
+          if (token.sub) session.user.id = token.sub;
+          if (typeof token.email === 'string') session.user.email = token.email;
+          if (typeof token.name === 'string') session.user.name = token.name;
         }
         return session;
       },

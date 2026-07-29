@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 import { money } from '@/lib/itr/types';
 
@@ -16,9 +16,11 @@ function formatInput(raw: string): string {
 export function LandingHero({
   primaryHref,
   primaryLabel,
+  testLogin,
 }: {
   primaryHref: string;
   primaryLabel: string;
+  testLogin?: ReactNode;
 }) {
   const [salaryRaw, setSalaryRaw] = useState('1480000');
   const [selected, setSelected] = useState<'new' | 'old'>('new');
@@ -52,6 +54,7 @@ export function LandingHero({
             <Link href={primaryHref} className="ntx-btn ntx-btn-primary">
               {primaryLabel}
             </Link>
+            {testLogin}
             <a href="#compare" className="ntx-btn ntx-btn-secondary">
               Try the regime preview
             </a>

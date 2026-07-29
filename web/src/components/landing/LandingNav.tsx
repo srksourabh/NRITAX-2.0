@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 const NAV = [
   { href: '#compare', label: 'Compare regimes' },
@@ -13,9 +14,11 @@ const NAV = [
 export function LandingNav({
   primaryHref,
   primaryLabel,
+  testLogin,
 }: {
   primaryHref: string;
   primaryLabel: string;
+  testLogin?: ReactNode;
 }) {
   return (
     <header className="ntx-shell-header sticky top-0 z-40">
@@ -30,6 +33,7 @@ export function LandingNav({
         ))}
       </nav>
       <div className="flex items-center gap-2">
+        {testLogin}
         <Link href={primaryHref} className="ntx-btn ntx-btn-primary ntx-btn-compact">
           {primaryLabel}
         </Link>
