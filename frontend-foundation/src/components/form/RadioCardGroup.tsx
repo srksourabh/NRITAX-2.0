@@ -30,15 +30,15 @@ export function RadioCardGroup<T extends string>({
 
   return (
     <fieldset aria-describedby={error ? errorId : undefined} aria-invalid={Boolean(error)}>
-      <legend className="text-sm font-semibold text-brand-ink">{label}</legend>
-      <div className={`mt-3 grid gap-3 ${columns === "three" ? "sm:grid-cols-3" : ""}`}>
+      <legend className="text-form text-brand-ink">{label}</legend>
+      <div className={`mt-2.5 grid gap-3 ${columns === "three" ? "sm:grid-cols-3" : ""}`}>
         {options.map((option) => (
           <label
             key={option.value}
-            className={`cursor-pointer rounded-lg border p-4 transition focus-within:ring-4 ${
+            className={`flex min-h-[88px] cursor-pointer flex-col rounded-lg border p-4 shadow-[0_1px_0_rgba(15,23,42,0.04)] focus-within:ring-4 ${
               value === option.value
-                ? "border-brand-blue bg-[#E8F1F7] text-brand-blue focus-within:ring-[rgba(11,74,117,0.38)]"
-                : "border-brand-rule bg-brand-surface text-slate-700 hover:border-brand-cyan hover:bg-slate-50 focus-within:ring-[rgba(11,74,117,0.38)]"
+                ? "border-brand-blue bg-[rgba(11,107,255,0.09)] text-brand-blue shadow-soft focus-within:ring-[rgba(11,107,255,0.18)]"
+                : "border-brand-rule bg-brand-surface text-brand-muted hover:border-brand-cyan hover:bg-[#F8FAFC] focus-within:ring-[rgba(11,107,255,0.18)]"
             }`}
           >
             <input
@@ -50,15 +50,15 @@ export function RadioCardGroup<T extends string>({
               required
               onChange={() => onChange(option.value)}
             />
-            <span className="block text-sm font-bold text-brand-ink">{option.label}</span>
+            <span className="block font-heading text-[16px] font-bold leading-snug text-brand-ink">{option.label}</span>
             {option.description ? (
-              <span className="mt-1 block text-sm leading-6 text-slate-600">{option.description}</span>
+              <span className="mt-1 block text-caption text-brand-muted">{option.description}</span>
             ) : null}
           </label>
         ))}
       </div>
       {error ? (
-        <p id={errorId} className="mt-2 text-sm font-medium text-red-600">
+        <p id={errorId} className="mt-2 text-caption text-red-600">
           {error}
         </p>
       ) : null}

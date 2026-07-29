@@ -1,29 +1,31 @@
 export function CTA() {
   return (
-    <section className="bg-brand-mist px-4 py-16 sm:px-6 lg:py-20">
-      <div className="mx-auto max-w-6xl rounded-xl border border-brand-rule bg-brand-surface px-6 py-12 text-center sm:px-10">
-        <p className="text-sm font-semibold uppercase text-brand-blue">Ready for first review</p>
-        <h2 className="mx-auto mt-3 max-w-3xl text-3xl font-bold leading-tight text-brand-ink sm:text-4xl">
-          Start with a guided profile, then grow into validation, JSON generation, and ERI filing.
-        </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-slate-700">
-          This frontend foundation is intentionally focused: a polished landing
-          experience, a safe onboarding start, and clear seams for future backend
-          integration.
-        </p>
-        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <a
-            href="#onboarding"
-            className="inline-flex min-h-12 items-center justify-center rounded-lg border border-brand-blue bg-brand-blue px-7 text-base font-semibold text-brand-surface transition hover:bg-[#093C60] focus-visible:outline-brand-blue"
-          >
-            Start Filing
-          </a>
-          <a
-            href="#trust"
-            className="inline-flex min-h-12 items-center justify-center rounded-lg border border-slate-300 bg-brand-surface px-7 text-base font-semibold text-brand-ink transition hover:border-brand-cyan hover:bg-slate-50 focus-visible:outline-brand-blue"
-          >
-            Review trust model
-          </a>
+    <section className="bg-white px-6 py-24 lg:px-8">
+      <div className="relative mx-auto max-w-7xl overflow-hidden rounded-lg border border-brand-rule bg-brand-navy px-6 py-12 text-center shadow-premium sm:px-8">
+        <div className="relative mx-auto max-w-4xl">
+          <p className="text-caption uppercase tracking-wide text-brand-gold">Ready for founder review</p>
+          <h2 className="mx-auto mt-3 max-w-3xl font-heading text-section text-white">
+            Start with a guided profile, then grow into validation, JSON generation, and ERI filing.
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-body text-white/76">
+            This frontend foundation is intentionally focused: a polished landing
+            experience, a safe onboarding start, and clear seams for future backend
+            integration.
+          </p>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <a
+              href="#onboarding"
+              className="inline-flex h-12 items-center justify-center rounded-lg bg-brand-blue px-6 text-button text-white shadow-soft hover:bg-[#0757D7] focus-visible:outline-white sm:px-8"
+            >
+              Start Your Tax Journey
+            </a>
+            <a
+              href="#trust"
+              className="inline-flex h-12 items-center justify-center rounded-lg border border-white/25 bg-white/[0.06] px-6 text-button text-white hover:bg-white/12 focus-visible:outline-white sm:px-8"
+            >
+              Review trust model
+            </a>
+          </div>
         </div>
       </div>
     </section>

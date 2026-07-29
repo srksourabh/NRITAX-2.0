@@ -7,12 +7,14 @@ import { StepProgress } from "./form/StepProgress";
 import {
   initialOnboardingData,
   type CredentialStatus,
+  type IncomeSource,
   type OnboardingData,
   type OnboardingErrors,
   type OnboardingStep,
+  type PanAvailability,
   type TaxRegime
 } from "../types/onboarding";
-import { hasValidationErrors, normalizePan, validateOnboardingStep } from "../validation/onboardingValidation";
+import { hasValidationErrors, validateOnboardingStep } from "../validation/onboardingValidation";
 import {
   validateOnboardingData,
   type ValidationServiceResult
@@ -21,31 +23,53 @@ import {
   generateFilingJsonDraft,
   type JsonGenerationResult
 } from "../services/jsonGenerationService";
+import {
+  prepareFilingWorkflow,
+  type FilingEngineResult
+} from "../services/filingEngineService";
 
 const steps: OnboardingStep[] = [
-  { id: "personal", label: "Personal" },
-  { id: "tax", label: "Tax details" },
-  { id: "regime", label: "Tax regime" },
-  { id: "credentials", label: "ITD access" }
+  { id: "personal", label: "Details" },
+  { id: "taxProfile", label: "Tax profile" },
+  { id: "readiness", label: "Readiness" }
+];
+
+const panAvailabilityOptions: Array<RadioCardOption<PanAvailability>> = [
+  { value: "yes", label: "PAN available", description: "I have my Indian PAN." },
+  { value: "no", label: "No PAN", description: "I need guidance on PAN availability." },
+  { value: "not-sure", label: "Not sure", description: "I want NRITAX to help confirm." }
 ];
 
 const regimeOptions: Array<RadioCardOption<TaxRegime>> = [
-  {
-    value: "old",
-    label: "Old Tax Regime",
-    description: "Use deductions and exemptions where applicable."
-  },
-  {
-    value: "new",
-    label: "New Tax Regime",
-    description: "Use newer slab-based calculation assumptions."
-  }
+  { value: "old", label: "Old Regime", description: "Use eligible deductions and exemptions where applicable." },
+  { value: "new", label: "New Regime", description: "Use the newer slab-based tax calculation preference." }
 ];
 
 const credentialOptions: Array<RadioCardOption<CredentialStatus>> = [
-  { value: "yes", label: "Yes" },
-  { value: "no", label: "No" },
-  { value: "not-sure", label: "Not sure" }
+  { value: "yes", label: "Yes", description: "I can access the portal myself." },
+  { value: "no", label: "No", description: "I do not currently have access." },
+  { value: "not-sure", label: "Not sure", description: "I need help confirming access." }
+];
+
+const incomeSourceOptions: Array<{ value: IncomeSource; label: string }> = [
+  { value: "salary", label: "Salary" },
+  { value: "house-property", label: "House property" },
+  { value: "capital-gains", label: "Capital gains" },
+  { value: "foreign-income", label: "Foreign income" },
+  { value: "other", label: "Other income" }
+];
+
+const countryOptions = [
+  "United Arab Emirates",
+  "United States",
+  "United Kingdom",
+  "Singapore",
+  "Canada",
+  "Australia",
+  "Qatar",
+  "Saudi Arabia",
+  "Germany",
+  "Other"
 ];
 
 export function TaxOnboardingForm() {
@@ -57,6 +81,7 @@ export function TaxOnboardingForm() {
   const [serviceError, setServiceError] = useState("");
   const [validationResult, setValidationResult] = useState<ValidationServiceResult | null>(null);
   const [jsonResult, setJsonResult] = useState<JsonGenerationResult | null>(null);
+  const [filingResult, setFilingResult] = useState<FilingEngineResult | null>(null);
 
   const updateField = <K extends keyof OnboardingData>(field: K, value: OnboardingData[K]) => {
     setData((previous) => ({ ...previous, [field]: value }));
@@ -68,6 +93,14 @@ export function TaxOnboardingForm() {
     });
   };
 
+  const toggleIncomeSource = (value: IncomeSource) => {
+    const nextSources = data.incomeSources.includes(value)
+      ? data.incomeSources.filter((source) => source !== value)
+      : [...data.incomeSources, value];
+
+    updateField("incomeSources", nextSources);
+  };
+
   const validateCurrentStep = () => {
     const nextErrors = validateOnboardingStep(currentStep, data);
     setErrors(nextErrors);
@@ -77,6 +110,7 @@ export function TaxOnboardingForm() {
   const handleNext = async () => {
     if (isSubmitting) return;
     if (!validateCurrentStep()) return;
+
     if (currentStep === steps.length - 1) {
       setIsSubmitting(true);
       setServiceError("");
@@ -90,8 +124,10 @@ export function TaxOnboardingForm() {
         }
 
         const nextJsonResult = await generateFilingJsonDraft(data, nextValidationResult);
+        const nextFilingResult = await prepareFilingWorkflow(nextJsonResult);
         setValidationResult(nextValidationResult);
         setJsonResult(nextJsonResult);
+        setFilingResult(nextFilingResult);
         setSubmitted(true);
       } catch {
         setServiceError("Unable to complete the mock onboarding workflow. Please try again.");
@@ -100,6 +136,7 @@ export function TaxOnboardingForm() {
       }
       return;
     }
+
     setCurrentStep((step) => step + 1);
   };
 
@@ -117,65 +154,65 @@ export function TaxOnboardingForm() {
     setServiceError("");
     setValidationResult(null);
     setJsonResult(null);
+    setFilingResult(null);
   };
 
   return (
     <section
-      className="animate-rise overflow-hidden rounded-xl border border-brand-rule bg-brand-surface"
+      className="overflow-hidden rounded-lg border border-brand-rule bg-brand-surface shadow-fintech"
       aria-labelledby="onboarding-form-title"
     >
-      <div className="border-b border-brand-rule bg-brand-surface p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold text-brand-blue">Basic onboarding</p>
-          <h3 id="onboarding-form-title" className="mt-1 text-2xl font-bold text-brand-ink">
-            Start your filing journey
-          </h3>
+      <div className="border-b border-brand-rule bg-[#F8FAFC] p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-caption uppercase tracking-wide text-brand-blue">NRI onboarding</p>
+            <h3 id="onboarding-form-title" className="mt-1 font-heading text-card text-brand-ink">
+              Check filing readiness
+            </h3>
+          </div>
+          <span className="rounded-md border border-brand-rule bg-brand-surface px-3 py-1 text-caption text-brand-blue">
+            Step {currentStep + 1}/3
+          </span>
         </div>
-        <span className="rounded-full border border-brand-rule bg-brand-mist px-3 py-1 font-mono text-xs font-bold text-brand-blue">
-          Step {currentStep + 1}/4
-        </span>
-      </div>
 
-      <StepProgress steps={steps} currentStep={currentStep} />
+        <StepProgress steps={steps} currentStep={currentStep} />
       </div>
 
       {submitted ? (
-        <div className="m-5 rounded-xl border border-[rgba(20,112,74,0.24)] bg-[rgba(20,112,74,0.10)] p-6 sm:m-6" role="status">
-          <p className="text-sm font-bold uppercase text-emerald-700">
-            Onboarding draft captured
+        <div
+          className="m-4 rounded-lg border border-[rgba(25,195,125,0.24)] bg-[rgba(25,195,125,0.10)] p-5 sm:m-5 sm:p-6"
+          role="status"
+        >
+          <p className="text-caption uppercase tracking-wide text-brand-credit">Readiness profile captured</p>
+          <h4 className="mt-3 font-heading text-card text-brand-ink">
+            Ready for validation, JSON draft, and CA review routing
+          </h4>
+          <p className="mt-3 text-body text-brand-muted">
+            This frontend-only flow called mock validation, JSON generation, and filing workflow services.
+            Connect the real APIs inside the service files when backend engines are ready.
           </p>
-          <h4 className="mt-3 text-2xl font-bold text-brand-ink">Ready for the next workflow</h4>
-          <p className="mt-3 text-sm leading-7 text-slate-700">
-            This frontend-only form called mock validation and JSON preparation
-            services. Replace those service adapters with backend APIs when the
-            engines are ready for integration.
-          </p>
-          <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+          <dl className="mt-5 grid gap-3 text-caption sm:grid-cols-2">
             <SummaryItem label="Name" value={data.fullName} />
             <SummaryItem label="Country" value={data.country} />
-            <SummaryItem label="PAN" value={data.pan.toUpperCase()} />
+            <SummaryItem label="PAN availability" value={formatPanAvailability(data.panAvailability)} />
             <SummaryItem label="Regime" value={formatRegime(data.taxRegime)} />
-            <SummaryItem label="ITD credentials" value={formatCredential(data.credentialStatus)} />
+            <SummaryItem label="Income sources" value={formatIncomeSources(data.incomeSources)} />
+            <SummaryItem label="Portal access" value={formatCredential(data.credentialStatus)} />
             <SummaryItem label="Validation ref" value={validationResult?.referenceId ?? "-"} />
             <SummaryItem label="JSON draft ref" value={jsonResult?.jsonReferenceId ?? "-"} />
+            <SummaryItem label="Filing workflow ref" value={filingResult?.workflowReferenceId ?? "-"} />
           </dl>
-          {validationResult?.warnings.length ? (
-            <div className="mt-5 rounded-lg border border-[rgba(161,92,7,0.26)] bg-[rgba(161,92,7,0.12)] p-4 text-sm leading-6 text-[#7C4705]">
-              {validationResult.warnings.join(" ")}
-            </div>
-          ) : null}
           <button
             type="button"
             onClick={handleReset}
-            className="mt-6 min-h-11 rounded-lg border border-[rgba(20,112,74,0.24)] bg-brand-surface px-5 text-sm font-semibold text-brand-credit transition hover:bg-slate-50 focus-visible:outline-brand-blue"
+            className="mt-5 h-11 rounded-lg border border-[rgba(25,195,125,0.24)] bg-brand-surface px-5 text-button text-brand-credit shadow-soft hover:bg-[#F8FAFC] focus-visible:outline-brand-blue"
           >
             Start again
           </button>
         </div>
       ) : (
         <form
-          className="p-5 sm:p-6"
+          className="p-5"
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
@@ -185,10 +222,11 @@ export function TaxOnboardingForm() {
           <p className="sr-only" aria-live="polite">
             Step {currentStep + 1} of {steps.length}: {steps[currentStep].label}
           </p>
+
           {currentStep === 0 && (
-            <div className="grid gap-5">
+            <div className="grid gap-3.5">
               <FormField
-                label="Full Name"
+                label="Name"
                 name="fullName"
                 value={data.fullName}
                 placeholder="Enter your full name"
@@ -196,54 +234,98 @@ export function TaxOnboardingForm() {
                 error={errors.fullName}
                 onChange={(value) => updateField("fullName", value)}
               />
-              <FormField
-                label="Country"
-                name="country"
-                value={data.country}
-                placeholder="Example: United Arab Emirates"
-                autoComplete="country-name"
-                error={errors.country}
-                onChange={(value) => updateField("country", value)}
+              <div>
+                <label htmlFor="country" className="text-form text-brand-ink">
+                  Country of Residence
+                </label>
+                <select
+                  id="country"
+                  name="country"
+                  value={data.country}
+                  autoComplete="country-name"
+                  aria-invalid={Boolean(errors.country)}
+                  aria-describedby={errors.country ? "country-error" : undefined}
+                  required
+                  onChange={(event) => updateField("country", event.target.value)}
+                    className={`mt-2 min-h-11 w-full rounded-lg border bg-brand-surface px-4 text-form text-brand-ink shadow-[0_1px_0_rgba(15,23,42,0.04)] outline-none focus:ring-4 ${
+                    errors.country
+                      ? "border-brand-notice focus:border-brand-notice focus:ring-red-100"
+                      : "border-brand-rule hover:border-brand-cyan focus:border-brand-blue focus:ring-[rgba(11,107,255,0.18)]"
+                  }`}
+                >
+                  <option value="">Select country</option>
+                  {countryOptions.map((country) => (
+                    <option key={country} value={country}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
+                {errors.country ? (
+                  <p id="country-error" className="mt-2 text-caption text-red-600">
+                    {errors.country}
+                  </p>
+                ) : null}
+              </div>
+              <RadioCardGroup
+                label="PAN availability"
+                name="panAvailability"
+                options={panAvailabilityOptions}
+                value={data.panAvailability}
+                columns="three"
+                error={errors.panAvailability}
+                onChange={(value) => updateField("panAvailability", value)}
               />
             </div>
           )}
 
           {currentStep === 1 && (
-            <div className="grid gap-5">
-              <FormField
-                label="PAN Number"
-                name="pan"
-                value={data.pan}
-                placeholder="ABCDE1234F"
-                maxLength={10}
-                autoComplete="off"
-                inputMode="text"
-                helperText="Use the standard ten-character PAN format, for example ABCDE1234F."
-                error={errors.pan}
-                onChange={(value) => updateField("pan", normalizePan(value))}
+            <div className="grid gap-3.5">
+              <RadioCardGroup
+                label="Tax regime"
+                name="taxRegime"
+                options={regimeOptions}
+                value={data.taxRegime}
+                error={errors.taxRegime}
+                onChange={(value) => updateField("taxRegime", value)}
               />
-              <p className="rounded-lg border border-[#C9E0EF] bg-[#E8F1F7] p-4 text-sm leading-6 text-slate-700">
-                PAN is captured here only as frontend state. Do not persist taxpayer
-                data until secure backend storage, consent, and privacy controls are approved.
-              </p>
+              <fieldset aria-describedby={errors.incomeSources ? "income-source-error" : undefined}>
+                <legend className="text-form text-brand-ink">Income sources</legend>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {incomeSourceOptions.map((option) => {
+                    const checked = data.incomeSources.includes(option.value);
+                    return (
+                      <label
+                        key={option.value}
+                        className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3.5 text-form ${
+                          checked
+                            ? "border-brand-blue bg-[rgba(11,107,255,0.09)] text-brand-blue shadow-soft"
+                            : "border-brand-rule bg-brand-surface text-brand-muted hover:border-brand-cyan"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleIncomeSource(option.value)}
+                          className="size-4 rounded border-brand-rule text-brand-blue focus:ring-brand-blue"
+                        />
+                        {option.label}
+                      </label>
+                    );
+                  })}
+                </div>
+                {errors.incomeSources ? (
+                  <p id="income-source-error" className="mt-2 text-caption text-red-600">
+                    {errors.incomeSources}
+                  </p>
+                ) : null}
+              </fieldset>
             </div>
           )}
 
           {currentStep === 2 && (
-            <RadioCardGroup
-              label="Select your preferred tax regime"
-              name="taxRegime"
-              options={regimeOptions}
-              value={data.taxRegime}
-              error={errors.taxRegime}
-              onChange={(value) => updateField("taxRegime", value)}
-            />
-          )}
-
-          {currentStep === 3 && (
-            <div className="grid gap-5">
+            <div className="grid gap-3.5">
               <RadioCardGroup
-                label="Do you have Income Tax Department login credentials?"
+                label="Do you have Income Tax Department portal access?"
                 name="credentialStatus"
                 options={credentialOptions}
                 value={data.credentialStatus}
@@ -252,42 +334,38 @@ export function TaxOnboardingForm() {
                 onChange={(value) => updateField("credentialStatus", value)}
               />
               <SecurityNotice>
-                NRITAX.AI never asks for or stores your Income Tax Department password.
+                We never store your Income Tax credentials.
               </SecurityNotice>
-              <p className="rounded-lg border border-brand-rule bg-brand-mist p-4 text-sm leading-6 text-slate-700">
-                On submit, this UI calls mock validation and JSON draft services only.
-                Connect the real backend engines inside the files under src/services.
-              </p>
             </div>
           )}
 
           {serviceError ? (
             <div
-              className="mt-5 rounded-lg border border-[rgba(179,38,30,0.24)] bg-[rgba(179,38,30,0.10)] p-4 text-sm font-medium text-[#8C1D17]"
+              className="mt-5 rounded-lg border border-[rgba(179,38,30,0.24)] bg-[rgba(179,38,30,0.08)] p-4 text-caption text-brand-notice"
               role="alert"
             >
               {serviceError}
             </div>
           ) : null}
 
-          <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
               onClick={handleBack}
               disabled={currentStep === 0 || isSubmitting}
-              className="min-h-12 rounded-lg border border-slate-300 bg-brand-surface px-5 text-sm font-semibold text-slate-700 transition hover:border-brand-cyan hover:bg-slate-50 hover:text-brand-blue focus-visible:outline-brand-blue disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-11 rounded-lg border border-brand-rule bg-brand-surface px-5 text-button text-brand-muted shadow-soft hover:border-brand-blue hover:text-brand-blue focus-visible:outline-brand-blue disabled:cursor-not-allowed disabled:opacity-40"
             >
               Back
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="min-h-12 rounded-lg border border-brand-blue bg-brand-blue px-6 text-sm font-semibold text-brand-surface transition hover:bg-[#093C60] focus-visible:outline-brand-blue disabled:cursor-not-allowed disabled:opacity-70"
+              className="h-11 rounded-lg border border-brand-blue bg-brand-blue px-5 text-button text-white shadow-glow hover:bg-[#0757D7] focus-visible:outline-brand-blue disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting
-                ? "Preparing draft..."
+                ? "Preparing workflow..."
                 : currentStep === steps.length - 1
-                  ? "Submit and continue"
+                  ? "Submit readiness"
                   : "Continue"}
             </button>
           </div>
@@ -300,15 +378,15 @@ export function TaxOnboardingForm() {
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-brand-rule bg-brand-surface p-4">
-      <dt className="text-xs font-bold uppercase text-slate-500">{label}</dt>
-      <dd className="mt-1 font-semibold text-brand-ink">{value || "-"}</dd>
+      <dt className="text-[12px] font-semibold uppercase tracking-wide text-brand-muted">{label}</dt>
+      <dd className="mt-1 text-form text-brand-ink">{value || "-"}</dd>
     </div>
   );
 }
 
 function formatRegime(value: OnboardingData["taxRegime"]) {
-  if (value === "old") return "Old Tax Regime";
-  if (value === "new") return "New Tax Regime";
+  if (value === "old") return "Old Regime";
+  if (value === "new") return "New Regime";
   return "-";
 }
 
@@ -317,4 +395,18 @@ function formatCredential(value: OnboardingData["credentialStatus"]) {
   if (value === "no") return "No";
   if (value === "not-sure") return "Not sure";
   return "-";
+}
+
+function formatPanAvailability(value: OnboardingData["panAvailability"]) {
+  if (value === "yes") return "Available";
+  if (value === "no") return "Not available";
+  if (value === "not-sure") return "Not sure";
+  return "-";
+}
+
+function formatIncomeSources(values: OnboardingData["incomeSources"]) {
+  if (!values.length) return "-";
+  return values
+    .map((value) => incomeSourceOptions.find((option) => option.value === value)?.label ?? value)
+    .join(", ");
 }

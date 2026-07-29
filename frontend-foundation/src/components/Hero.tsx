@@ -1,93 +1,74 @@
+import { DashboardMockup } from "./DashboardMockup";
+
+const trustBadges = ["Secure Filing", "NRI Focused", "CA Ready", "Privacy First"];
+
 const heroStats = [
-  ["PAN", "Identifier-safe onboarding"],
-  ["26AS", "Future source-backed checks"],
-  ["ITR", "JSON preparation ready"]
-];
-
-const trustBadges = ["AI-assisted", "CA review path", "No password storage", "Government ready"];
-
-const ledgerRows = [
-  ["Profile status", "Draft", "01"],
-  ["Tax regime", "Selected by you", "02"],
-  ["Validation engine", "Mock connected", "03"],
-  ["JSON draft", "API-ready", "04"]
-];
+  [8, "", "guided filing stages"],
+  [0, "", "passwords collected"],
+  [100, "%", "consent-led flow"]
+] as const;
 
 export function Hero() {
   return (
-    <section id="top" className="bg-brand-mist px-4 py-16 sm:px-6 lg:py-24">
-      <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
-        <div className="animate-rise">
-          <div className="flex flex-wrap gap-2">
+    <section id="top" className="relative overflow-hidden border-b border-brand-rule bg-white px-6 py-10 sm:py-14 lg:px-8 lg:py-[72px]">
+      <div className="absolute inset-0 bg-white" />
+
+      <div className="relative mx-auto grid max-w-[1280px] gap-5 lg:grid-cols-12 lg:items-center">
+        <div className="lg:col-span-5">
+          <div className="inline-flex items-center gap-2 rounded-lg border border-brand-rule bg-white px-4 py-2 text-caption uppercase tracking-wide text-brand-blue shadow-soft">
+            <span className="size-2 rounded-full bg-brand-credit" />
+            NRITAX 2.0 / AY 2026-27
+          </div>
+          <h1 className="mt-5 max-w-3xl font-heading text-[40px] font-extrabold leading-[1.04] text-brand-ink sm:text-[48px] lg:text-hero">
+            Complete Your NRI Tax Filing with Confidence
+          </h1>
+          <p className="mt-4 max-w-xl text-[18px] font-[450] leading-7 text-brand-muted">
+            A secure, CA-assisted filing platform for NRIs who need clarity, verified calculations, and a polished path from profile to submission.
+          </p>
+
+          <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
+            <a
+              href="#onboarding"
+              className="inline-flex h-12 items-center justify-center rounded-lg bg-brand-blue px-6 text-button text-white shadow-glow hover:bg-[#0757D7] focus-visible:outline-brand-blue"
+            >
+              Start Your Tax Journey
+            </a>
+            <a
+              href="#showcase"
+              className="inline-flex h-12 items-center justify-center rounded-lg border border-brand-rule bg-white px-6 text-button text-brand-ink shadow-soft hover:border-brand-blue hover:text-brand-blue focus-visible:outline-brand-blue"
+            >
+              Talk to a CA Expert
+            </a>
+          </div>
+
+          <div className="mt-5 grid max-w-2xl grid-cols-2 gap-2.5 sm:grid-cols-4">
             {trustBadges.map((badge) => (
               <span
                 key={badge}
-                className="rounded-full border border-brand-rule bg-brand-surface px-3 py-2 text-xs font-semibold text-brand-blue"
+                className="rounded-lg border border-brand-rule bg-white px-3 py-2.5 text-center text-caption text-brand-muted shadow-[0_1px_0_rgba(15,23,42,0.04)]"
               >
                 {badge}
               </span>
             ))}
           </div>
-          <h1 className="mt-6 max-w-3xl text-4xl font-bold leading-tight text-brand-ink sm:text-5xl lg:text-6xl">
-            We prepare your NRI tax filing journey in India.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-700">
-            Start with a secure profile, see each filing step clearly, and keep
-            the path ready for validation, JSON preparation, CA review, and
-            official filing integrations.
-          </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a
-              href="#onboarding"
-              className="inline-flex min-h-12 items-center justify-center rounded-lg border border-brand-blue bg-brand-blue px-7 text-base font-semibold text-brand-surface transition hover:bg-[#093C60] focus-visible:outline-brand-blue"
-            >
-              Start my filing profile
-            </a>
-            <a
-              href="#how-it-works"
-              className="inline-flex min-h-12 items-center justify-center rounded-lg border border-slate-300 bg-brand-surface px-7 text-base font-semibold text-brand-ink transition hover:border-brand-cyan hover:bg-slate-50 focus-visible:outline-brand-blue"
-            >
-              See the workflow
-            </a>
-          </div>
-          <dl className="mt-10 grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
-            {heroStats.map(([value, label]) => (
-              <div key={value} className="rounded-xl border border-brand-rule bg-brand-surface p-4">
-                <dt className="font-mono text-lg font-bold text-brand-ink">{value}</dt>
-                <dd className="mt-1 text-sm text-slate-600">{label}</dd>
+
+          <div className="mt-5 grid max-w-2xl gap-2.5 sm:grid-cols-3">
+            {heroStats.map(([value, suffix, label]) => (
+              <div
+                key={label}
+                className="rounded-lg border border-brand-rule bg-white p-3.5 shadow-soft"
+              >
+                <p className="font-heading text-[24px] font-extrabold leading-none text-brand-ink">
+                  {value}{suffix}
+                </p>
+                <p className="mt-1.5 text-caption text-brand-muted">{label}</p>
               </div>
             ))}
-          </dl>
+          </div>
         </div>
 
-        <div className="animate-rise rounded-xl border border-brand-rule bg-brand-surface p-4 [animation-delay:120ms]">
-          <div className="border-b border-brand-rule bg-brand-navy px-5 py-4 text-brand-surface">
-            <p className="font-mono text-xs text-slate-300">NRITAX.AI 2.0</p>
-            <p className="mt-1 text-2xl font-bold">Filing preparation sheet</p>
-          </div>
-          <div className="p-5">
-            <div className="grid gap-3">
-              {ledgerRows.map(([label, value, statute]) => (
-                <div key={label} className="grid grid-cols-[1fr_auto_40px] items-center gap-4 border-b border-brand-rule py-3">
-                  <span className="text-sm font-medium text-brand-ink">{label}</span>
-                  <span className="text-right text-sm text-slate-700">{value}</span>
-                  <span className="text-right font-mono text-xs text-brand-blue">{statute}</span>
-                </div>
-              ))}
-              <div className="mt-2 border-y-2 border-brand-ink py-3">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="font-semibold text-brand-ink">Next action</span>
-                  <span className="text-right font-mono text-lg font-semibold text-brand-credit">
-                    Review
-                  </span>
-                </div>
-              </div>
-            </div>
-            <p className="mt-5 text-sm leading-6 text-slate-600">
-              Each future figure should trace to a source, section, or backend
-              engine result before filing.
-            </p>
-          </div>
+        <div className="mx-auto w-full max-w-2xl lg:col-span-7 lg:max-w-none">
+          <DashboardMockup />
         </div>
       </div>
     </section>

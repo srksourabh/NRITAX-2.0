@@ -12,7 +12,9 @@ export type JsonGenerationResult = {
     formType: string;
     taxpayerName: string;
     country: string;
+    panAvailability: OnboardingData["panAvailability"];
     taxRegimePreference: OnboardingData["taxRegime"];
+    incomeSources: OnboardingData["incomeSources"];
     hasIncomeTaxLoginCredentials: OnboardingData["credentialStatus"];
   };
 };
@@ -34,7 +36,9 @@ export async function generateFilingJsonDraft(
       formType: "ITR-2/ITR-3 routing pending",
       taxpayerName: data.fullName,
       country: data.country,
+      panAvailability: data.panAvailability,
       taxRegimePreference: data.taxRegime,
+      incomeSources: data.incomeSources,
       hasIncomeTaxLoginCredentials: data.credentialStatus
     }
   };

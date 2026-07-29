@@ -1,27 +1,23 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --ink: #141A22;
-  --primary: #0B4A75;
-  --primary-50: #E8F1F7;
-  --primary-100: #C9E0EF;
-  --primary-200: #94C2DE;
-  --primary-600: #093C60;
-  --paper: #EEF1EE;
-  --surface: #FCFDFC;
-  --rule: #D2D9D3;
-  --neutral-50: #F6F8F6;
-  --neutral-100: #E7EBE7;
-  --neutral-200: #D2D9D3;
-  --neutral-300: #B4BEB6;
-  --neutral-500: #5C6660;
-  --neutral-700: #39423C;
-  --credit: #14704A;
-  --due: #A15C07;
-  --notice: #B3261E;
-  --focus-ring: 0 0 0 3px rgba(11,74,117,0.38);
+  --ink: #0F172A;
+  --primary: #0B6BFF;
+  --primary-50: #EFF6FF;
+  --primary-100: #DBEAFE;
+  --primary-200: #BFDBFE;
+  --primary-600: #0757D7;
+  --accent: #19C37D;
+  --paper: #F8FAFC;
+  --surface: #FFFFFF;
+  --rule: #E2E8F0;
+  --credit: #19C37D;
+  --notice: #DC2626;
+  --focus-ring: 0 0 0 3px rgba(11,107,255,0.30);
   color: var(--ink);
   background: var(--paper);
   font-family:
@@ -33,14 +29,31 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+h1,
+h2,
+h3 {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 96px;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   background: var(--paper);
+  font-weight: 450;
 }
 
 #root {
@@ -68,17 +81,6 @@ select {
   outline-offset: 2px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
-  *,
-  *::before,
-  *::after {
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 1ms !important;
-  }
+.icon-float {
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
 }

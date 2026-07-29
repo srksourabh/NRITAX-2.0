@@ -1,64 +1,57 @@
 import { IconBadge } from "./ui/IconBadge";
+import { SectionReveal } from "./SectionReveal";
 
 const features = [
   {
     icon: "spark",
-    title: "AI-assisted guidance",
-    text: "Guide NRI users through filing decisions with structured, explainable next steps.",
-    metric: "RAG-ready"
+    title: "Guided Tax Workspace",
+    text: "Guide NRIs through filing decisions with verified context, structured questions, and explainable next steps."
   },
   {
     icon: "shield",
-    title: "Secure data handling",
-    text: "Start with minimal collection, explicit consent readiness, and no password capture.",
-    metric: "Privacy first"
+    title: "Smart ITR Validation",
+    text: "Prepare the UI for Sourabh Sir's validation engine with clear error, warning, and review states."
+  },
+  {
+    icon: "file",
+    title: "JSON Tax Filing Engine",
+    text: "Connect frontend data into the future JSON preparation engine without duplicating backend logic."
+  },
+  {
+    icon: "link",
+    title: "Investment Data Integration",
+    text: "Designed for future Demat, mutual fund, DigiLocker, and approved third-party data connections."
   },
   {
     icon: "review",
-    title: "CA review support",
-    text: "Keep the product ready for expert review, premium support, and assisted filing.",
-    metric: "Expert path"
-  },
-  {
-    icon: "workflow",
-    title: "Filing workflow",
-    text: "Turn complex NRI tax preparation into a clear step-by-step preparation path.",
-    metric: "API-ready"
+    title: "CA Review Workflow",
+    text: "Route complex NRI profiles to expert review while keeping progress transparent for users and CAs."
   }
 ] as const;
 
 export function Features() {
   return (
-    <section id="features" className="bg-brand-mist px-4 py-16 sm:px-6 lg:py-20">
-      <div className="mx-auto max-w-6xl">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase text-brand-blue">Platform capabilities</p>
-            <h2 className="mt-3 text-3xl font-bold leading-tight text-brand-ink sm:text-4xl">
-              Built like a filing product, not a generic dashboard.
-            </h2>
-          </div>
-          <p className="max-w-md text-base leading-8 text-slate-700">
-            The design uses ledger-paper surfaces, official ink, source-backed
-            language, and calm tax-specific status signals.
+    <section id="features" className="relative overflow-hidden bg-brand-mist px-6 py-10 sm:py-14 lg:px-8 lg:py-[72px]">
+      <div className="mx-auto max-w-[1280px]">
+        <SectionReveal className="relative max-w-[700px]">
+          <p className="text-caption uppercase tracking-wide text-brand-blue">Product</p>
+          <h2 className="mt-3 font-heading text-section text-brand-ink">
+            Premium infrastructure for global tax confidence.
+          </h2>
+          <p className="mt-4 text-body-lg text-brand-muted">
+            NRITAX 2.0 combines guided filing, tax expertise, and secure product design for a high-trust NRI filing journey.
           </p>
-        </div>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        </SectionReveal>
+
+        <div className="relative mt-6 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, index) => (
             <article
               key={feature.title}
-              className="group animate-rise rounded-xl border border-brand-rule bg-brand-surface p-6 transition hover:border-brand-cyan hover:bg-slate-50"
-              style={{ animationDelay: `${index * 50}ms` }}
+              className="group flex h-full min-h-[188px] flex-col rounded-lg border border-brand-rule bg-brand-surface p-6 shadow-soft hover:border-brand-blue hover:shadow-fintech"
             >
-              <div className="flex items-center justify-between gap-4">
-                <IconBadge icon={feature.icon} tone={index === 2 ? "emerald" : "blue"} />
-                <span className="rounded-full border border-brand-rule bg-slate-50 px-3 py-1 font-mono text-xs font-medium text-slate-600">
-                  {feature.metric}
-                </span>
-              </div>
-              <h3 className="mt-6 text-lg font-semibold text-brand-ink">{feature.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-700">{feature.text}</p>
-              <div className="mt-6 h-px bg-brand-rule" />
+              <IconBadge icon={feature.icon} tone={index === 4 ? "emerald" : index === 3 ? "cyan" : "blue"} />
+              <h3 className="mt-4 font-heading text-card text-brand-ink">{feature.title}</h3>
+              <p className="mt-2 line-clamp-2 text-body text-brand-muted">{feature.text}</p>
             </article>
           ))}
         </div>

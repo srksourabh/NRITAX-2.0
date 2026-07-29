@@ -34,7 +34,7 @@ export function FormField({
 
   return (
     <div className="block">
-      <label htmlFor={fieldId} className="text-sm font-medium text-slate-700">
+      <label htmlFor={fieldId} className="text-form text-brand-ink">
         {label}
       </label>
       <input
@@ -49,19 +49,19 @@ export function FormField({
         aria-describedby={describedBy || undefined}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className={`mt-2 min-h-11 w-full rounded-md border bg-brand-surface px-3 text-base font-medium text-brand-ink outline-none transition placeholder:text-slate-500 focus:ring-4 ${
+        className={`mt-2 min-h-11 w-full rounded-lg border bg-brand-surface px-4 text-form text-brand-ink shadow-[0_1px_0_rgba(15,23,42,0.04)] outline-none placeholder:text-brand-muted/60 focus:ring-4 ${
           error
-            ? "border-brand-notice focus:border-brand-notice focus:ring-[rgba(179,38,30,0.38)]"
-            : "border-slate-300 hover:border-brand-cyan focus:border-brand-blue focus:ring-[rgba(11,74,117,0.38)]"
+            ? "border-brand-notice focus:border-brand-notice focus:ring-red-100"
+            : "border-brand-rule hover:border-brand-cyan focus:border-brand-blue focus:ring-[rgba(11,107,255,0.18)]"
         }`}
       />
       {helperText ? (
-        <p id={helperId} className="mt-2 text-sm leading-6 text-slate-500">
+        <p id={helperId} className="mt-2 text-caption text-brand-muted">
           {helperText}
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} className="mt-2 text-sm font-medium text-red-600">
+        <p id={errorId} className="mt-2 text-caption text-red-600">
           {error}
         </p>
       ) : null}

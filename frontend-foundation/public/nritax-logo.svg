@@ -1,0 +1,17 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">NRITAX logo</title>
+  <desc id="desc">Deep blue rounded square logo with NRI initials and an AI accent spark.</desc>
+  <rect width="64" height="64" rx="18" fill="#0F172A"/>
+  <rect x="4" y="4" width="56" height="56" rx="15" fill="url(#paint0_linear)"/>
+  <path d="M15 43V21h4.6l11.1 14.2V21h5.3v22h-4.6L20.3 28.8V43H15Z" fill="white"/>
+  <path d="M40 43V21h5.6v22H40Z" fill="white"/>
+  <path d="M48.8 17.2l1.5-4.2 1.5 4.2 4.2 1.5-4.2 1.5-1.5 4.2-1.5-4.2-4.2-1.5 4.2-1.5Z" fill="#38BDF8"/>
+  <path d="M14 48h36" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="paint0_linear" x1="8" y1="8" x2="57" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="0.55" stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+  </defs>
+</svg>

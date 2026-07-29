@@ -4,7 +4,7 @@ type SecurityNoticeProps = {
 
 export function SecurityNotice({ children }: SecurityNoticeProps) {
   return (
-    <p className="rounded-lg border border-[rgba(161,92,7,0.26)] bg-[rgba(161,92,7,0.12)] p-4 text-sm font-semibold leading-6 text-[#7C4705]">
+    <p className="rounded-lg border border-[rgba(25,195,125,0.24)] bg-[rgba(25,195,125,0.10)] p-4 text-caption text-brand-ink">
       {children}
     </p>
   );

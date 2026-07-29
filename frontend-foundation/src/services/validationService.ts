@@ -16,7 +16,7 @@ export async function validateOnboardingData(data: OnboardingData): Promise<Vali
   // Suggested future endpoint: POST /api/v1/validation/onboarding
   await mockDelay();
 
-  const hasInvalidStep = [0, 1, 2, 3].some((stepIndex) =>
+  const hasInvalidStep = [0, 1, 2].some((stepIndex) =>
     hasValidationErrors(validateOnboardingStep(stepIndex, data))
   );
 
