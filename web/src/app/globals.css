@@ -124,7 +124,7 @@ a:hover {
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   font-size: var(--label);
-  font-weight: var(--weight-semibold);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   text-decoration: none;
   transition:
@@ -169,12 +169,7 @@ a:hover {
   color: var(--surface);
 }
 
-.ntx-btn:disabled,
-.ntx-btn[disabled] {
-  opacity: 0.45;
-  cursor: not-allowed;
-  pointer-events: none;
-}
+/* DS-spec disabled: explicit colours, not opacity (see appended DS block below) */
 
 .ntx-choice-card {
   cursor: pointer;
@@ -291,6 +286,73 @@ a:hover {
   font-weight: var(--weight-regular);
   line-height: var(--caption-lh);
   text-align: left;
+}
+
+/* Rich help panel — wider, structured */
+.ntx-field-help-panel-rich {
+  width: min(22rem, calc(100vw - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+}
+
+.ntx-field-help-heading {
+  display: block;
+  font-size: var(--body-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 2px;
+}
+
+.ntx-field-help-body {
+  display: block;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.ntx-field-help-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.ntx-field-help-required {
+  color: var(--notice);
+}
+
+.ntx-field-help-pill {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--neutral-100);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ntx-field-help-required .ntx-field-help-pill {
+  background: color-mix(in srgb, var(--notice) 15%, transparent);
+  color: var(--notice);
+}
+
+.ntx-field-help-code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.68rem;
+  background: var(--neutral-100);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: var(--ink);
+  word-break: break-all;
 }
 
 .ntx-field-grid {
@@ -485,8 +547,41 @@ a:hover {
 }
 
 .ntx-landing-hero {
-  background: var(--paper);
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(165deg, rgba(252, 253, 252, 0.92) 0%, rgba(244, 246, 244, 0.88) 45%, rgba(232, 238, 234, 0.95) 100%),
+    radial-gradient(ellipse 80% 60% at 12% 18%, rgba(26, 58, 47, 0.08), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 88% 8%, rgba(180, 140, 60, 0.1), transparent 50%),
+    url('/landing-ledger-grid.svg');
+  background-size: auto, auto, auto, 120px 120px;
 }
+
+.ntx-landing-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(26, 58, 47, 0.03) 50%, transparent 100%);
+  pointer-events: none;
+}
+
+.ntx-landing-prefill {
+  position: relative;
+  background:
+    linear-gradient(180deg, var(--paper) 0%, var(--neutral-50) 100%),
+    url('/landing-ledger-grid.svg');
+  background-size: auto, 120px 120px;
+}
+
+.ntx-landing-alt {
+  background:
+    linear-gradient(180deg, var(--neutral-50) 0%, var(--paper) 100%),
+    url('/landing-ledger-grid.svg');
+  background-size: auto, 120px 120px;
+}
+
 
 .ntx-landing-hero-copy {
   display: flex;
@@ -738,10 +833,6 @@ a:hover {
 
 .ntx-landing-sheet-label {
   color: var(--text-secondary);
-}
-
-.ntx-landing-alt {
-  background: var(--neutral-50);
 }
 
 .ntx-landing-feature-grid,
@@ -1043,5 +1134,349 @@ a:hover {
   .ntx-landing-onboard,
   .ntx-landing-progress {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NRITAX 2.0 Design System — Component classes
+   Canonical DS token references from /design-system/tokens/
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Button: correct DS spec (weight-medium, not semibold; no opacity on disabled) ── */
+.ntx-btn {
+  font-weight: var(--weight-medium);
+}
+
+.ntx-btn:disabled,
+.ntx-btn[disabled] {
+  background: var(--surface-disabled);
+  color: var(--neutral-400);
+  border-color: var(--neutral-200);
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 1; /* DS uses explicit colours, not opacity */
+}
+
+.ntx-btn-quiet {
+  background: transparent;
+  color: var(--primary);
+  border-color: transparent;
+}
+
+.ntx-btn-quiet:hover {
+  background: var(--primary-50);
+  color: var(--primary);
+}
+
+.ntx-btn-destructive {
+  background: var(--surface);
+  color: var(--notice);
+  border-color: rgba(179, 38, 30, 0.4);
+}
+
+.ntx-btn-destructive:hover {
+  background: var(--notice-tint);
+  color: var(--notice);
+}
+
+/* ── Typography display classes ── */
+.ntx-display-xl {
+  font-family: var(--font-display);
+  font-variation-settings: var(--font-display-settings);
+  font-weight: var(--weight-bold);
+  font-size: var(--display-xl-mobile);
+  line-height: var(--display-xl-lh);
+}
+
+.ntx-display-lg {
+  font-family: var(--font-display);
+  font-variation-settings: var(--font-display-settings);
+  font-weight: var(--weight-bold);
+  font-size: var(--display-lg-mobile);
+  line-height: var(--display-lg-lh);
+}
+
+@media (min-width: 768px) {
+  .ntx-display-xl { font-size: var(--display-xl); }
+  .ntx-display-lg { font-size: var(--display-lg); }
+}
+
+/* ── Statute chip (margin reference) ── */
+.ntx-statute-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-xs);
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+  font-family: var(--font-figure);
+  font-size: var(--statute);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+/* ── Status pill (filing status taxonomy) ── */
+.ntx-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ntx-status-pill-credit { background: var(--credit-tint); color: var(--credit-text); border: 1px solid var(--credit-border); }
+.ntx-status-pill-due    { background: var(--due-tint);    color: var(--due-text);    border: 1px solid var(--due-border); }
+.ntx-status-pill-notice { background: var(--notice-tint); color: var(--notice-text); border: 1px solid var(--notice-border); }
+.ntx-status-pill-info   { background: var(--info-tint);   color: var(--info-text);   border: 1px solid var(--info-border); }
+.ntx-status-pill-draft  { background: var(--draft-tint);  color: var(--draft-text);  border: 1px solid var(--draft-border); }
+
+/* On-ink variant (shell header) */
+.ntx-status-pill-on-ink {
+  background: rgba(252, 253, 252, 0.10);
+  color: var(--surface);
+  border: 1px solid rgba(252, 253, 252, 0.28);
+}
+
+.ntx-status-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+/* ── Ledger block ── */
+.ntx-ledger-block {
+  background: var(--surface);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-none);
+  padding: 20px;
+  max-width: var(--ledger-max-width);
+}
+
+.ntx-ledger-currency-header {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 8px;
+}
+
+.ntx-ledger-currency-header span {
+  width: var(--ledger-amount-col);
+  text-align: right;
+  font-family: var(--font-figure);
+  font-size: var(--statute);
+  color: var(--neutral-500);
+}
+
+.ntx-ledger-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: var(--ledger-row-pad-y) 0;
+  padding-left: 9px;
+  margin-left: -12px;
+  border-left: 3px solid transparent;
+}
+
+.ntx-ledger-row-label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--body-sm);
+  line-height: var(--body-sm-lh);
+  color: var(--ink);
+}
+
+.ntx-ledger-row-amount {
+  flex: 0 0 var(--ledger-amount-col);
+  width: var(--ledger-amount-col);
+  text-align: right;
+  font-family: var(--font-figure);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: var(--figure);
+  line-height: var(--figure-lh);
+  color: var(--ink);
+}
+
+.ntx-ledger-row-subtotal .ntx-ledger-row-label { font-weight: var(--weight-medium); }
+.ntx-ledger-row-final .ntx-ledger-row-label    { font-weight: var(--weight-semibold); }
+.ntx-ledger-row-final .ntx-ledger-row-amount   { font-size: var(--figure-lg); line-height: var(--figure-lg-lh); font-weight: var(--weight-medium); }
+
+/* ── Card: interactive hover per DS spec ── */
+.ntx-panel-interactive {
+  transition: background-color var(--motion-instant), border-color var(--motion-instant);
+  cursor: pointer;
+}
+
+.ntx-panel-interactive:hover {
+  background: var(--neutral-50);
+  border-color: var(--primary-200);
+}
+
+/* ── Character box inputs (PAN / Aadhaar / IFSC) ── */
+.ntx-charbox-group {
+  display: flex;
+  gap: var(--charbox-gap);
+  flex-wrap: nowrap;
+}
+
+.ntx-charbox-segment {
+  display: flex;
+  gap: var(--charbox-gap);
+}
+
+.ntx-charbox-segment + .ntx-charbox-segment {
+  margin-left: calc(var(--charbox-group-gap) - var(--charbox-gap));
+}
+
+.ntx-charbox {
+  width: var(--charbox-width);
+  height: var(--charbox-height);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  text-align: center;
+  font-family: var(--font-figure);
+  font-size: var(--figure);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--ink);
+  text-transform: uppercase;
+  padding: 0;
+  caret-color: var(--primary);
+}
+
+.ntx-charbox:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Hero figure (refund / payable) ── */
+.ntx-hero-figure {
+  font-family: var(--font-figure);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-size: var(--figure-xl-mobile);
+  line-height: var(--figure-xl-lh);
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+}
+
+@media (min-width: 768px) {
+  .ntx-hero-figure { font-size: var(--figure-xl); }
+}
+
+/* ── Income head accent stripe ── */
+.ntx-head-salary  { border-left: 3px solid var(--head-salary); }
+.ntx-head-house   { border-left: 3px solid var(--head-house); }
+.ntx-head-capgains{ border-left: 3px solid var(--head-capgains); }
+.ntx-head-business{ border-left: 3px solid var(--head-business); }
+.ntx-head-other   { border-left: 3px solid var(--head-other); }
+.ntx-head-foreign { border-left: 3px solid var(--head-foreign); }
+
+/* ── Empty state ── */
+.ntx-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  padding: 48px 24px;
+  color: var(--text-muted);
+}
+
+.ntx-empty-state-title {
+  font-size: var(--h3);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  line-height: var(--h3-lh);
+}
+
+.ntx-empty-state-body {
+  font-size: var(--body-sm);
+  max-width: 320px;
+  line-height: var(--body-sm-lh);
+}
+
+/* ── Sticky action bar (mobile primary CTA) ── */
+.ntx-sticky-action-bar {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  box-shadow: var(--elev-sticky);
+  padding: 12px var(--gutter-mobile);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+/* ── Dialog / modal ── */
+.ntx-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-backdrop);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.ntx-dialog {
+  background: var(--surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--elev-overlay);
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 28px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ntx-dialog-title {
+  font-size: var(--h2);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  line-height: var(--h2-lh);
+}
+
+/* ── Acknowledgement stamp animation ── */
+.ntx-stamp {
+  animation: nritax-stamp var(--motion-stamp) both;
+}
+
+/* ── Indeterminate progress bar (document parsing) ── */
+.ntx-progress-track {
+  height: 3px;
+  background: var(--neutral-100);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.ntx-progress-indeterminate {
+  height: 100%;
+  width: 40%;
+  background: var(--primary);
+  border-radius: var(--radius-full);
+  animation: nritax-indeterminate 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ntx-progress-indeterminate {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
   }
 }

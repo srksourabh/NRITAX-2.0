@@ -738,10 +738,35 @@ export function EnrichmentPanels({
         </div>
       </div>
 
-      <div className="ntx-panel p-5">
+      <div className="ntx-panel p-5 md:col-span-2 xl:col-span-1">
         <h2 className="text-[var(--h3)] font-semibold">Optional · ITD prefill JSON</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
-          From the Income Tax portal if you have a login. No login? Skip and type below.
+          Download pre-filled data from the Income Tax e-Filing portal, then upload the JSON
+          here. We never ask for your portal password.
+        </p>
+        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[var(--body-sm)] text-[var(--text-secondary)]">
+          <li>
+            Open the{' '}
+            <a
+              className="underline underline-offset-2"
+              href="https://www.incometax.gov.in/iec/foportal/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              e-Filing portal
+            </a>{' '}
+            and sign in.
+          </li>
+          <li>e-File → Income Tax Returns → File Income Tax Return (AY 2026-27).</li>
+          <li>Download Prefill / pre-filled JSON when the portal offers it.</li>
+          <li>Select that file below. Edit any field afterwards.</li>
+        </ol>
+        <p className="mt-3 text-[var(--caption)] text-[var(--text-muted)]">
+          Full walkthrough:{' '}
+          <a className="underline underline-offset-2" href="/#prefill-guide">
+            Prefill JSON guide
+          </a>
+          .
         </p>
         <input
           type="file"

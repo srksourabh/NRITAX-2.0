@@ -13,7 +13,7 @@ const STEPS = [
   },
   {
     title: 'Validate and download',
-    text: 'CBDT rules run on your figures. Download the departmental JSON and file on the portal.',
+    text: 'CBDT rules run on your figures. Download the departmental JSON and upload it on the official e-Filing portal.',
   },
 ] as const;
 

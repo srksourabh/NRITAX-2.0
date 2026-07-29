@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import { ITD_PORTAL_HOME, ITD_PORTAL_LABEL } from '@/lib/itd/portal';
+
 export function LandingCta({
   primaryHref,
   primaryLabel,
@@ -23,8 +25,8 @@ export function LandingCta({
             <Link href={primaryHref} className="ntx-btn ntx-btn-credit">
               {primaryLabel}
             </Link>
-            <a href="#trust" className="ntx-btn ntx-btn-on-primary">
-              Review the trust model
+            <a href="#prefill-guide" className="ntx-btn ntx-btn-on-primary">
+              How to get ITD JSON
             </a>
           </div>
         </div>
@@ -50,10 +52,11 @@ export function LandingFooter() {
         <div className="ntx-landing-footer-links">
           <a href="#features">Features</a>
           <a href="#how-it-works">How it works</a>
+          <a href="#prefill-guide">Prefill JSON</a>
           <a href="#trust">Trust</a>
           <a href="#start">Start</a>
-          <a href="https://incometax.gov.in" target="_blank" rel="noopener noreferrer">
-            Income Tax portal
+          <a href={ITD_PORTAL_HOME} target="_blank" rel="noopener noreferrer">
+            {ITD_PORTAL_LABEL}
           </a>
         </div>
       </div>

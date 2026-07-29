@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { FormReviewReport } from '@/lib/ai/review';
 import type { PlanId } from '@/lib/billing/entitlements';
+import { ITD_PORTAL_HOME } from '@/lib/itd/portal';
 import type { ReturnData } from '@/lib/itr/types';
 
 type EntitlementState = {
@@ -403,7 +404,7 @@ export function PostValidatePanel({
           </button>
           <a
             className="ntx-btn ntx-btn-secondary"
-            href="https://incometax.gov.in"
+            href={ITD_PORTAL_HOME}
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -327,7 +327,8 @@ export function FormSelectionStep({
       <p className="mt-3 max-w-xl text-[var(--text-muted)]">
         Choose ITR-2 or ITR-3 if you already know. If you are not sure, we ask a few plain questions.
         After a direct pick we confirm business or profession income once — so a wrong track is caught
-        early.
+        early. Once the form opens, use <strong>Load Sample Data</strong> to fill a complete NRI
+        specimen and download JSON, or use DigiLocker / CAS / Sandbox helpers to prefill your own.
       </p>
       <div className="mt-10 grid gap-4 md:grid-cols-3">
         <FormChoiceCard

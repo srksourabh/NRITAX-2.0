@@ -13,7 +13,7 @@ import { buildReturnJson } from '@/lib/itr/build-json';
 import { fieldHelpText, isImportantField } from '@/lib/itr/field-help';
 import { ITR2_SCHEDULES } from '@/lib/itr/itr2';
 import { ITR3_SCHEDULES } from '@/lib/itr/itr3';
-import { sampleNriPriyaItr2 } from '@/lib/itr/samples/nri-priya-itr2';
+import { sampleForForm } from '@/lib/itr/samples/sample-for-form';
 import {
   ASSESSMENT_YEAR,
   emptyReturn,
@@ -257,23 +257,34 @@ export function FilingWizard() {
   }
 
   function runValidation() {
-    const next = validateReturn(data);
-    setReport(next);
-    setNotice(
-      next.canUpload
-        ? 'Category A clear. Download the filing JSON when ready.'
-        : `${next.blocking.length} Category A item(s) would block portal upload. Draft JSON is still available.`,
-    );
+    try {
+      const next = validateReturn(data);
+      setReport(next);
+      setNotice(
+        next.canUpload
+          ? 'Category A clear. Download the filing JSON when ready.'
+          : `${next.blocking.length} Category A item(s) would block portal upload. Draft JSON is still available.`,
+      );
+      // Scroll validation report into view
+      window.setTimeout(() => {
+        document.getElementById('validation-report')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setNotice(`Validation error: ${msg}`);
+    }
   }
 
-  function loadPriyaSample() {
-    if (form !== 'ITR2') return;
+  function loadSampleData() {
     skipAutosaveRef.current = true;
-    setData(sampleNriPriyaItr2());
+    const sample = sampleForForm(form);
+    setData(sample);
     setReport(null);
     setActiveId('GEN');
     setNotice(
-      'Loaded sample · Priya Sharma (UAE NRI, ITR-2, salary + 112A LTCG). Run Validate to confirm Category A.',
+      form === 'ITR2'
+        ? 'Loaded sample data · Priya Sharma (UAE NRI, ITR-2, salary + 112A LTCG). Run Validate, then Download JSON.'
+        : 'Loaded sample data · Priya Sharma (UAE NRI, ITR-3 identity + salary heads). Review Schedule BP and run Validate before Download JSON.',
     );
     window.setTimeout(() => {
       skipAutosaveRef.current = false;
@@ -284,7 +295,7 @@ export function FilingWizard() {
     const built = buildReturnJson(data);
     downloadText(JSON.stringify(built.json, null, 2), built.fileName);
     setNotice(
-      `Downloaded ${built.fileName}. Upload at incometax.gov.in → e-File → Upload JSON.`,
+      `Downloaded ${built.fileName}. Upload at https://www.incometax.gov.in/iec/foportal/ → e-File → Upload JSON.`,
     );
   }
 
@@ -354,11 +365,13 @@ export function FilingWizard() {
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
             <div className="flex flex-wrap gap-2 sm:justify-end">
-              {form === 'ITR2' ? (
-                <button type="button" className="ntx-btn ntx-btn-secondary" onClick={loadPriyaSample}>
-                  Load sample
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className="ntx-btn ntx-btn-credit"
+                onClick={loadSampleData}
+              >
+                Load Sample Data
+              </button>
               <button
                 type="button"
                 className="ntx-btn ntx-btn-secondary"
@@ -373,7 +386,7 @@ export function FilingWizard() {
               <button type="button" className="ntx-btn ntx-btn-secondary" onClick={runValidation}>
                 Validate
               </button>
-              <button type="button" className="ntx-btn ntx-btn-credit" onClick={downloadJson}>
+              <button type="button" className="ntx-btn ntx-btn-primary" onClick={downloadJson}>
                 Download JSON
               </button>
             </div>
@@ -437,7 +450,7 @@ export function FilingWizard() {
             ) : null}
 
             {report ? (
-              <div className="ntx-panel space-y-3 p-4 sm:p-5">
+              <div id="validation-report" className="ntx-panel space-y-3 p-4 sm:p-5">
                 <h3 className="text-[var(--h3)] font-semibold">Validation report</h3>
                 <p className="text-[var(--body-sm)] text-[var(--text-muted)]">
                   <span className="ntx-badge ntx-badge-notice mr-2">
@@ -556,7 +569,7 @@ function SchedulePanel({
                               <span className="inline-flex items-center gap-1">
                                 {col.label}
                                 {isImportantField(col) ? (
-                                  <FieldHelp label={col.label} text={fieldHelpText(col)} />
+                                  <FieldHelp label={col.label} text={fieldHelpText(col)} field={col} fq={`${table.key}.${col.key}`} />
                                 ) : null}
                               </span>
                             </th>
@@ -626,7 +639,7 @@ function FieldInput({
           {field.label}
           {field.required ? <span className="text-[var(--notice)]"> *</span> : null}
         </label>
-        {showHelp ? <FieldHelp label={field.label} text={help} /> : null}
+        {showHelp ? <FieldHelp label={field.label} text={help} field={field} fq={fq} /> : null}
       </div>
       {field.options ? (
         <select

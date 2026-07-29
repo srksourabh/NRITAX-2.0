@@ -5,6 +5,7 @@ import Link from 'next/link';
 const NAV = [
   { href: '#compare', label: 'Compare regimes' },
   { href: '#how-it-works', label: 'How it works' },
+  { href: '#prefill-guide', label: 'Prefill JSON' },
   { href: '#trust', label: 'Trust' },
   { href: '#start', label: 'Start' },
 ] as const;

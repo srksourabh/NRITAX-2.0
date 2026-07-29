@@ -204,9 +204,7 @@ export const ITR3_SCHEDULES: ScheduleDef[] = [
             type: 'sel', required: true,
             options: [
               { value: 'N', label: 'No — new tax regime applies' },
-              { value: 'Y', label: 'Yes — opting for the old regime' },
-              { value: 'Y', label: 'Continuing to opt out' },
-              { value: 'N', label: 'Re-entering the new regime' },
+              { value: 'Y', label: 'Yes — opting out of the new regime' },
             ],
             source: 'forms', path: 'PartA_GEN1/FilingStatus/OptOldRegimeCurrAY',
             hint: 'Opting out needs Form 10-IEA filed on or before the due date under section 139(1).',

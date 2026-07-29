@@ -7,6 +7,7 @@ import { LandingHowItWorks } from './LandingHowItWorks';
 import { LandingLedger } from './LandingLedger';
 import { LandingNav } from './LandingNav';
 import { LandingOnboarding } from './LandingOnboarding';
+import { LandingPrefillGuide } from './LandingPrefillGuide';
 import { LandingTrust } from './LandingTrust';
 
 export function LandingPage({ signedIn }: { signedIn: boolean }) {
@@ -21,6 +22,7 @@ export function LandingPage({ signedIn }: { signedIn: boolean }) {
         <LandingLedger />
         <LandingFeatures />
         <LandingHowItWorks />
+        <LandingPrefillGuide />
         <LandingTrust />
         {!signedIn ? <LandingOnboarding primaryHref={primaryHref} /> : null}
         <LandingCta primaryHref={primaryHref} primaryLabel={primaryLabel} />

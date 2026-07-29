@@ -18,6 +18,7 @@
     "@auth/drizzle-adapter": "^1.11.3",
     "@cas-parser/connect": "^2.1.2",
     "@electric-sql/pglite": "^0.5.4",
+    "@swc/helpers": "^0.5.23",
     "cas-parser-node": "^1.15.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
