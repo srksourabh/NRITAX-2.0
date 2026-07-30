@@ -103,6 +103,13 @@ export interface AccessTokenSuccess {
 
 export type AccessTokenResult = AccessTokenSuccess | CasparserError;
 
+export interface GenerateCasSuccess {
+  ok: true;
+  message: string;
+}
+
+export type GenerateCasResult = GenerateCasSuccess | CasparserError;
+
 export interface CasparserClient {
   readonly available: boolean;
   createAccessToken(expiryMinutes?: number): Promise<AccessTokenResult>;
@@ -136,4 +143,11 @@ export interface CasparserClient {
     pdfUrl: string;
     password?: string;
   }): Promise<SmartParseResult>;
+  generateMutualFundCas(input: {
+    email: string;
+    fromDate: string;
+    toDate: string;
+    password: string;
+    pan?: string;
+  }): Promise<GenerateCasResult>;
 }

@@ -17,6 +17,7 @@ import type {
   CdslVerifyResult,
   DigilockerResultOutcome,
   DigilockerSessionResult,
+  GenerateCasResult,
   PanKycStatusResult,
   SmartParseResult,
 } from '@/lib/casparser/types';
@@ -313,6 +314,48 @@ class HttpCasparserClient implements CasparserClient {
     const res = await this.request('POST', '/v4/smart/parse', body);
     if (!res.ok) return res.error;
     return { ok: true, raw: res.payload };
+  }
+
+  async generateMutualFundCas(input: {
+    email: string;
+    fromDate: string;
+    toDate: string;
+    password: string;
+    pan?: string;
+  }): Promise<GenerateCasResult> {
+    if (!this.apiKey) return fail('UNAVAILABLE', NO_KEY);
+    const email = input.email.trim().toLowerCase();
+    const password = input.password.trim();
+    const fromDate = input.fromDate.trim();
+    const toDate = input.toDate.trim();
+    if (!email || !email.includes('@')) {
+      return fail('BAD_REQUEST', 'Enter the email registered with CAMS / KFintech.');
+    }
+    if (!password) {
+      return fail('BAD_REQUEST', 'Enter a PDF password (usually your PAN).');
+    }
+    if (!fromDate || !toDate) {
+      return fail('BAD_REQUEST', 'Statement from and to dates are required.');
+    }
+
+    const body: Record<string, string> = {
+      email,
+      from_date: fromDate,
+      to_date: toDate,
+      password,
+    };
+    const pan = input.pan?.trim().toUpperCase();
+    if (pan) body.pan_no = pan;
+
+    const res = await this.request('POST', '/v4/generate', body);
+    if (!res.ok) return res.error;
+    return {
+      ok: true,
+      message:
+        asString(res.payload.msg) ||
+        asString(res.payload.message) ||
+        'Detailed CAS requested. Check the RTA email in a few minutes, then upload the PDF.',
+    };
   }
 
   private async request(
