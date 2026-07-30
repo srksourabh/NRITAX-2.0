@@ -11,7 +11,7 @@ Three facts shape every decision in this system:
 2. **The user does not trust the number until they can see how it was reached.** Every computed figure traces to a line item and a section of the Act. Opacity reads as a scam in this category.
 3. **The product is used once a year under deadline pressure.** Nothing relies on learned behaviour. Every screen has to be legible cold.
 
-The register is the **accountant's ledger**, not the fintech dashboard: cool ledger paper, official ink, right-aligned monospaced figures, statute references in the margin. Calm, dense, slightly institutional. It does not make tax fun; it makes tax legible.
+The register is the **accountant's ledger / filing sheet**, not the fintech dashboard: cool paper, official ink, seal-green CTAs, right-aligned monospaced figures, statute references in the margin. Calm, dense, slightly institutional. It does not make tax fun; it makes tax legible.
 
 ---
 
@@ -22,7 +22,7 @@ The register is the **accountant's ledger**, not the fintech dashboard: cool led
 | A written brand and design brief supplied in the project prompt ("DESIGN", v1.0) | The entire foundation: palette with measured contrast ratios, type scale, spacing, radii, elevation, motion, component behaviour, filing status taxonomy, deadline tiers, voice rules, accessibility targets |
 | `uploads/*.jpg` — 15 stock photographs (rupee notes, tax paperwork, desks, spreadsheets) | Imagery library, copied to `assets/imagery/` |
 
-**No codebase, Figma file, logo artwork, font binaries or slide template were provided.** Everything visual here is derived from the written brief, so nothing was recreated from a screenshot. Where the brief and this implementation could differ, the brief wins.
+**No codebase, Figma file, font binaries or slide template were provided originally.** Palette and chrome now follow the departmental ITR filing-sheet model (ink mast, seal CTA) plus the written brief. Where the brief and this implementation could differ on filing-sheet chrome, the filing-sheet model wins.
 
 ### Gaps and substitutions, flagged
 
@@ -75,23 +75,25 @@ The register is the **accountant's ledger**, not the fintech dashboard: cool led
 
 **Secondary motif: the character box.** PAN, TAN, Aadhaar and IFSC are entered into per-character boxes (40×44, 6px gap, 14px group gap, 3px radius) mirroring the physical form. It cuts transposition errors on the four identifiers that block a filing.
 
-**Colour.** Seven core values — `ink #141A22`, `primary #0B4A75`, `credit #14704A`, `due #A15C07`, `notice #B3261E`, `paper #EEF1EE`, `surface #FCFDFC` — over a cool, green-cast neutral ramp. Never `#000000` or `#FFFFFF`. Tax-specific rules: a **payable figure is ink, never red** (owing tax is not an error); **green is only for confirmed refunds, verifications and completions**; the regime comparison never colours the loser. `neutral-400` is excluded from text use (3.00:1) — placeholders use `neutral-500`. **The semantic tints are only valid on `surface` and `paper`**: `due-text` on `ink` measures 2.08:1, so a pill on the shell header uses `StatusPill onInk` — `surface` text on a 10% white fill over `ink`, 17.15:1, with the state colour carried by the dot (`credit #5FBF95` 8.34:1, `due #D89A3C` 7.55:1, `notice #F08279` 6.71:1, all non-text indicators on ink and clear of 3:1). All pairs are computed with the WCAG relative-luminance formula, tabulated in `guidelines/colors-tints.html` and the brief.
+**Colour.** Seven core values — `ink #141C29`, `primary #1B5E9C` (optional / informational blue), `credit` / `seal #0D6B5B` (filled CTA and confirmed refunds), `due #9A6212`, `notice #B3261E`, `paper #F5F6F8`, `surface #FFFFFF` — over a cool ink-cast neutral ramp. Never `#000000`. Tax-specific rules: a **payable figure is ink, never red** (owing tax is not an error); **seal green is for primary CTAs, confirmed refunds, verifications and completions**; the regime comparison never colours the loser. `neutral-400` is excluded from text use — placeholders use `neutral-500`. **The semantic tints are only valid on `surface` and `paper`**: pills on the shell header use `StatusPill onInk` — surface text on a 10% white fill over `ink`, with the state colour carried by the dot (`credit #8FE3D0`, `due #D89A3C`, `notice #F08279`). Focus ring is seal-tinted: `0 0 0 3px rgba(13,107,91,0.22)`.
 
-**Type.** Three families, three jobs. **Archivo Expanded** (600/700) for display only, at or above 28px and in the wordmark — never in body, labels, buttons or tables. **IBM Plex Sans** (400/500/600) for all UI and body. **IBM Plex Mono** (400/500) for every figure, statute reference and identifier. **IBM Plex Sans Devanagari** for Hindi, metrically matched, line heights 0.1 higher. Body never below 13px. No fourth typeface.
+**Chrome.** The only dark region in the app is the `ink` masthead with a **3px `seal` bottom border** and the circular seal logo (`assets/logo/nritax-seal.svg` / `SealMark`) beside the `NRITAX 2.0` wordmark. Marketing may add one full-bleed `ink` band and a `primary-800` footer — no more. No gradients. No textures, patterns or grain. No illustrations. `primary-50` and `primary-100` are the only tinted backgrounds allowed for informational surfaces.
 
-**Backgrounds.** `paper` is the canvas on both surfaces. `surface` is the working sheet. Exactly one dark region in the app: the `ink` shell header (56px mobile, 60px desktop). Marketing may add one full-bleed `ink` band and a `primary-800` footer — no more. No gradients. No textures, patterns or grain. No illustrations. `primary-50` and `primary-100` are the only tinted backgrounds allowed.
+**Type.** Three families, three jobs. **Archivo Expanded** (600/700) for display only, at or above 28px and in the wordmark — never in body, labels, buttons or tables. **IBM Plex Sans** (400/500/600) for all UI and body. **IBM Plex Mono** (400/500) for every figure, statute reference and identifier. **IBM Plex Sans Devanagari** for Hindi, metrically matched, line heights 0.1 higher. Body never below 13px. No fourth typeface. Brand name is always **NRITAX 2.0** (never NRITAX.AI).
+
+**Backgrounds.** `paper` is the canvas on both surfaces. `surface` is the working sheet.
 
 **Imagery.** Documentary and cool: paper, folders, desks, currency. Slightly desaturated (`saturate(0.85)`), never warm-graded, never lifestyle. Preferred marketing imagery is a real product screen or a redacted acknowledgement, not a photograph.
 
 **Cards.** `surface` fill, 1px `neutral-200` border, 12px radius, **no shadow at rest**. Borders carry separation; shadows carry float. A ledger block sits square-cornered inside the rounded card — that soft-container/hard-sheet contrast is intentional and consistent.
 
-**Shadows.** Three only: `raised` for dropdowns and popovers, `overlay` (`0 16px 32px -8px rgba(20,26,34,0.14)` with a `rgba(20,26,34,0.44)` backdrop) for modals and sheets, `sticky` (a top hairline, no blur) for action bars. No inner shadows anywhere.
+**Shadows.** Three only: `raised` for dropdowns and popovers, `overlay` (`0 16px 32px -8px rgba(20,28,41,0.14)` with a `rgba(20,28,41,0.44)` backdrop) for modals and sheets, `sticky` (a top hairline, no blur) for action bars. No inner shadows anywhere.
 
 **Transparency and blur.** Transparency only in semantic tints, the modal backdrop and nav text on ink. **No backdrop blur anywhere** — no frosted bars, no protection gradients. Sticky bars are opaque `surface` with a hairline.
 
-**Radii.** `0` ledger rules, table cell edges; `3px` character boxes, statute chips; `6px` inputs, checkboxes; `8px` buttons, dropdowns; `12px` cards, upload zones; `16px` modals and sheets; `full` pills, avatars, progress tracks.
+**Radii.** `0` ledger rules, table cell edges; `3px` character boxes, statute chips; `5px` buttons and mast actions (`--radius-control`); `6px` inputs, checkboxes; `8px` schedule cards, dropdowns; `12px` cards, upload zones; `16px` modals and sheets; `full` pills, avatars, progress tracks. Primary buttons are not pills.
 
-**Hover, press, focus.** Hover on a primary button darkens to `primary-600`; a secondary fills `neutral-50` and its border darkens; an interactive card changes border to `primary-200` and fill to `neutral-50`. **Nothing lifts, nothing scales, nothing shrinks on press** — the press state is the darker colour plus the focus ring. Focus is `0 0 0 3px rgba(11,74,117,0.38)` plus a 1px `primary` border, `rgba(179,38,30,0.38)` on destructive controls, visible on every interactive element including the active character box.
+**Hover, press, focus.** Hover on a primary button darkens to `seal-2`; a secondary fills `neutral-50` and its border darkens; an interactive card changes border to `primary-200` and fill to `neutral-50`. **Nothing lifts, nothing scales, nothing shrinks on press** — the press state is the darker colour plus the focus ring. Focus is `0 0 0 3px rgba(13,107,91,0.22)` plus a 1px `seal` or `primary` border as appropriate, `rgba(179,38,30,0.38)` on destructive controls, visible on every interactive element including the active character box.
 
 **Motion.** `instant` 100ms linear (colour, border), `quick` 150ms (hover, focus, chip), `panel` 220ms (drawers, sheets, accordions), and `stamp` 180ms `cubic-bezier(0.16,1,0.3,1)` — used **once per return**, on the acknowledgement: scale 1.06 → 1, opacity 0 → 1, −1.5deg → 0. No scroll-triggered reveals, no parallax, no marquees, no staggered entrances. The only continuous animation permitted is the indeterminate bar while a document is parsed. `prefers-reduced-motion: reduce` collapses everything to a 100ms opacity change.
 
@@ -122,7 +124,8 @@ The register is the **accountant's ledger**, not the fintech dashboard: cool led
 | `SKILL.md` | Agent Skills front matter, for use in Claude Code. |
 | `thumbnail.html` | Homepage tile. |
 | `tokens/` | `fonts.css`, `colors.css`, `typography.css`, `spacing.css`, `radius.css`, `elevation.css`, `motion.css`, `base.css` |
-| `assets/imagery/` | The 15 supplied photographs. No logo or icon assets exist. |
+| `assets/imagery/` | The 15 supplied photographs. |
+| `assets/logo/` | Circular seal mark (`nritax-seal.svg`) — ink disc, seal ring, mono NT / 2.0. |
 | `guidelines/` | 22 specimen cards feeding the Design System tab (Colors, Type, Spacing, Brand). |
 
 ### Components
@@ -132,11 +135,11 @@ The register is the **accountant's ledger**, not the fintech dashboard: cool led
 `components/ledger/` — **LedgerBlock** (+ **LedgerRow**, `formatFigure`), **HeroFigure**, **RegimeComparison**, **DataTable**
 `components/filing/` — **FilingProgress** (+ `FILING_STEPS`), **DocumentUpload**, **DeadlineBanner** (+ `deadlineTier`), **TrustBar**, **Acknowledgement**
 `components/feedback/` — **Explainer**, **Dialog**, **ExpertPanel**
-`components/navigation/` — **AppShell**, **Wordmark**, **StickyActionBar**
+`components/navigation/` — **AppShell**, **BrandLockup**, **SealMark**, **Wordmark**, **StickyActionBar**
 
 Each directory holds `<Name>.jsx`, `<Name>.d.ts`, `<Name>.prompt.md` and one `@dsCard` HTML.
 
-**Intentional additions** (defined by the brief's behaviour but not named as components in it): `HeroFigure` (the brief's `figure-xl` refund/payable figure, which appears on four screens), `Acknowledgement` (the brief's stamp moment, which needs a home), `AppShell` / `Wordmark` / `StickyActionBar` (the brief specifies shell header height, the sticky bar and the absence of a logo), `StatuteChip` (the margin reference, used by three other components).
+**Intentional additions** (defined by the brief's behaviour but not named as components in it): `HeroFigure` (the brief's `figure-xl` refund/payable figure, which appears on four screens), `Acknowledgement` (the brief's stamp moment, which needs a home), `AppShell` / `BrandLockup` / `SealMark` / `Wordmark` / `StickyActionBar` (filing-sheet masthead chrome), `StatuteChip` (the margin reference, used by three other components).
 
 ### UI kits
 | Kit | Entry | Screens |

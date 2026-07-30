@@ -150,7 +150,7 @@ a:hover {
   justify-content: center;
   min-height: var(--control-height);
   padding: var(--btn-pad-y) var(--btn-pad-x);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   border: 1px solid transparent;
   font-size: var(--label);
   font-weight: var(--weight-medium);
@@ -554,7 +554,7 @@ a:hover {
 }
 
 .ntx-landing .ntx-btn {
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   min-height: 2.5rem;
   padding-inline: 0.95rem;
   font-size: 0.8125rem;
@@ -666,7 +666,7 @@ a:hover {
   background: #1d2837;
   color: #dde4ec;
   padding: 7px 12px;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   font-size: 12.5px;
   font-weight: 520;

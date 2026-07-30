@@ -19,19 +19,22 @@ The product UI is governed by **`design-system/`** at the repo root. That folder
 
 ## Production rules (`web/`)
 
-- Tokens: change them only in `design-system/tokens/`. The Next app imports those files; do not re-copy hex values into `globals.css`.
+- Tokens: change them only in `design-system/tokens/` (and sync `web/design-system/tokens/` for the Vercel web root). Do not re-copy hex values into `globals.css`.
 - Fonts: load via `next/font` in `web/src/app/layout.tsx` (Archivo + IBM Plex Sans/Mono). Do not add a Google Fonts `<link>` or import `tokens/fonts.css` into the app.
 - App utilities (buttons, inputs, shell, badges) live as `.ntx-*` classes in `web/src/app/globals.css` and compose DS tokens. Prefer those classes over one-off Tailwind colour utilities.
 - When porting a DS component into React/TSX, match the kit’s behaviour and tokens; put production components under `web/src/components/`. Keep kit JSX in `design-system/` as the reference.
 
 ## Non-negotiables (short)
 
-- Register is the **accountant’s ledger**, not fintech chrome: cool paper, official ink, right-aligned mono figures, statute in the margin.
-- Seven core colours only for meaning: `ink`, `primary`, `credit`, `due`, `notice`, `paper`, `surface`. No purple gradients, no glass, no decorative shadows at rest.
+- Brand name is always **NRITAX 2.0** (never NRITAX.AI).
+- Register is the **accountant’s ledger / filing sheet**: cool paper, official ink, seal CTA, right-aligned mono figures, statute in the margin.
+- Seven core colours only for meaning: `ink`, `primary` (opt blue), `credit`/`seal`, `due`, `notice`, `paper`, `surface`. No purple gradients, no glass, no decorative shadows at rest.
+- Primary filled button = seal green (`--seal`), radius `--radius-control` (5px). Masthead = ink + 3px seal border + circular seal logo.
 - Archivo Expanded only for display (≥28px) and the wordmark. Plex Sans for UI. Plex Mono for figures, statutes, identifiers.
 - Sentence case. No emoji. Outcome-named buttons. Errors state cause + fix.
 - Double rule appears **once per sheet**, under the final payable/refund figure.
 - Indian digit grouping via `Intl.NumberFormat('en-IN')`. Whole rupees only.
+- Mobile-first React; usable at 360px with no horizontal scroll.
 
 ## Artifacts
 

@@ -27,13 +27,13 @@ const tones = {
 };
 
 const DOTS = { credit: 'var(--credit)', due: 'var(--due)', notice: 'var(--notice)', info: 'var(--primary-200)', primary: 'var(--primary-200)', draft: 'var(--neutral-300)' };
-const ON_INK_DOTS = { credit: '#5FBF95', due: '#D89A3C', notice: '#F08279', info: 'var(--primary-200)', primary: 'var(--primary-200)', draft: 'var(--neutral-300)' };
+const ON_INK_DOTS = { credit: '#8FE3D0', due: '#D89A3C', notice: '#F08279', info: 'var(--primary-200)', primary: 'var(--primary-200)', draft: 'var(--neutral-300)' };
 
 export function StatusPill({ status, tone, label, dot = false, onInk = false }) {
   const resolved = status ? FILING_STATUSES[status] : null;
   const key = tone || (resolved ? resolved.tone : 'draft');
   const t = onInk
-    ? { background: 'rgba(252,253,252,0.10)', color: 'var(--surface)', border: '1px solid rgba(252,253,252,0.28)' }
+    ? { background: 'rgba(255,255,255,0.10)', color: 'var(--surface)', border: '1px solid rgba(255,255,255,0.28)' }
     : tones[key];
   return (
     <span style={{

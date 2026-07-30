@@ -1,12 +1,12 @@
 # Marketing site — UI kit
 
-Generous density (64px section rhythm), `paper` canvas with one full-bleed `ink` band and a `primary-800` footer. Archivo Expanded at `display-xl` and `display-lg`.
+Generous density (64px section rhythm), `paper` canvas with one full-bleed `ink` band (3px seal border on `SiteNav`) and a `primary-800` footer. Archivo Expanded at `display-xl` and `display-lg`. Primary CTA buttons are seal green.
 
 ## Screens
 
 | File | Screen |
 |---|---|
-| `SiteChrome.jsx` | `SiteNav` (ink header) and `SiteFooter` (primary-800 with the trust bar) |
+| `SiteChrome.jsx` | `SiteNav` (ink + seal border + BrandLockup) and `SiteFooter` (primary-800 with the trust bar) |
 | `HomeScreen.jsx` | Hero with a live regime computation, the ledger band, four-step section, acknowledgement proof |
 | `PricingScreen.jsx` | Three plans, the s.234F late-fee ledger, questions |
 | `GuideScreen.jsx` | A guide article at the 680px reading width |

@@ -3,13 +3,14 @@ import React from 'react';
 const base = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
   fontFamily: 'var(--font-ui)', fontSize: 'var(--label)', fontWeight: 'var(--weight-medium)',
-  lineHeight: 1, borderRadius: 'var(--radius-md)', cursor: 'pointer',
+  lineHeight: 1, borderRadius: 'var(--radius-control)', cursor: 'pointer',
   transition: 'background-color var(--motion-instant), border-color var(--motion-instant), color var(--motion-instant)',
   whiteSpace: 'nowrap', textDecoration: 'none',
 };
 
+/* Primary CTA = seal green (filing-sheet .btn.pri). Quiet/link stay opt blue. */
 const variants = {
-  primary: { background: 'var(--primary)', color: 'var(--surface)', border: '1px solid var(--primary)' },
+  primary: { background: 'var(--seal)', color: 'var(--surface)', border: '1px solid var(--seal)' },
   secondary: { background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--neutral-300)' },
   quiet: { background: 'transparent', color: 'var(--primary)', border: '1px solid transparent' },
   destructive: { background: 'var(--surface)', color: 'var(--notice)', border: '1px solid rgba(179,38,30,0.4)' },
@@ -17,7 +18,7 @@ const variants = {
 };
 
 const hovers = {
-  primary: { background: 'var(--primary-600)', border: '1px solid var(--primary-600)' },
+  primary: { background: 'var(--seal-2)', border: '1px solid var(--seal-2)' },
   secondary: { background: 'var(--neutral-50)', border: '1px solid var(--neutral-400)' },
   quiet: { background: 'var(--primary-50)' },
   destructive: { background: 'var(--notice-tint)' },

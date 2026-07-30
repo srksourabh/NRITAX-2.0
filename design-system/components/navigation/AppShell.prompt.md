@@ -7,4 +7,6 @@ The frame every filing-app screen sits in.
 </AppShell>
 ```
 
-The `ink` header is the only dark region in the product — do not introduce dark bands anywhere else in the app. `StickyActionBar` keeps the primary action in the thumb zone on mobile; it carries a top hairline, never a shadow or a blur. `Wordmark` is plain type because no logo artwork was supplied.
+The `ink` header is the only dark region in the product — do not introduce dark bands anywhere else in the app. It carries a **3px `seal` bottom border** and the **BrandLockup** (circular seal + `NRITAX 2.0` wordmark). `StickyActionBar` keeps the primary action in the thumb zone on mobile; it carries a top hairline, never a shadow or a blur.
+
+Logo artwork: `assets/logo/nritax-seal.svg` (also inlined as `SealMark`).

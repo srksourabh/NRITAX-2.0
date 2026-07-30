@@ -1,6 +1,6 @@
 # Filing application — UI kit
 
-A click-through recreation of the NRITAX 2.0 filing surface. Compact density (24–32px rhythm), `paper` canvas, `ink` shell header, Archivo Expanded used only at `display-sm` for step titles.
+A click-through recreation of the NRITAX 2.0 filing surface. Compact density (24–32px rhythm), `paper` canvas, `ink` shell header with **3px seal bottom border** and circular seal lockup, Archivo Expanded used only at `display-sm` for step titles. Primary actions use **seal green** (`--seal`), not opt blue.
 
 ## Screens
 

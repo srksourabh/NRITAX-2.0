@@ -1,6 +1,25 @@
 import React from 'react';
 
-/** No logo artwork was supplied with the brand materials, so the wordmark is plain type: Archivo Expanded 600. */
+/** Circular seal mark — ink disc, seal ring, mono NT / 2.0 (filing-sheet masthead). */
+export function SealMark({ size = 36, title = 'NRITAX 2.0' }) {
+  const gid = React.useId().replace(/:/g, '');
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={title} style={{ flex: 'none', display: 'block' }}>
+      <circle cx="32" cy="32" r="30" fill="#141C29" stroke="#0D6B5B" strokeWidth="2.5" />
+      <circle cx="32" cy="30" r="22" fill={`url(#${gid})`} />
+      <text x="32" y="36" textAnchor="middle" fontFamily="ui-monospace,SF Mono,Menlo,monospace" fontSize="16" fontWeight="700" fill="#8FE3D0" letterSpacing="0.04em">NT</text>
+      <text x="32" y="48" textAnchor="middle" fontFamily="ui-monospace,SF Mono,Menlo,monospace" fontSize="6.5" fontWeight="600" fill="#6E8FA0" letterSpacing="0.18em">2.0</text>
+      <defs>
+        <radialGradient id={gid} cx="50%" cy="42%" r="55%">
+          <stop offset="0%" stopColor="#0D6B5B" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#0D6B5B" stopOpacity="0.06" />
+        </radialGradient>
+      </defs>
+    </svg>
+  );
+}
+
+/** Brand name in Archivo Expanded + Plex Mono 2.0. Pair with SealMark in chrome. */
 export function Wordmark({ color = 'var(--surface)', size = 17 }) {
   return (
     <span style={{
@@ -11,6 +30,15 @@ export function Wordmark({ color = 'var(--surface)', size = 17 }) {
   );
 }
 
+export function BrandLockup({ color = 'var(--surface)', sealSize = 36, wordSize = 17 }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+      <SealMark size={sealSize} />
+      <Wordmark color={color} size={wordSize} />
+    </span>
+  );
+}
+
 export function AppShell({ nav, right, children, footer }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: 'var(--paper)' }}>
@@ -18,14 +46,15 @@ export function AppShell({ nav, right, children, footer }) {
         height: 'var(--shell-header-height)', flex: '0 0 auto', background: 'var(--ink)',
         color: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '12px',
         padding: '0 var(--gutter-mobile)', overflow: 'hidden',
+        borderBottom: '3px solid var(--seal)',
       }}>
-        <span style={{ flex: '0 0 auto' }}><Wordmark /></span>
+        <span style={{ flex: '0 0 auto' }}><BrandLockup /></span>
         <nav style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: '1 1 auto', minWidth: 0, overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {(nav || []).map((n) => (
             <button key={n.label} type="button" onClick={n.onClick} style={{
-              background: n.active ? 'rgba(252,253,252,0.10)' : 'transparent', border: 'none',
-              color: n.active ? 'var(--surface)' : 'rgba(252,253,252,0.72)',
-              height: 'var(--control-height-compact)', padding: '0 12px', borderRadius: 'var(--radius-md)',
+              background: n.active ? 'rgba(255,255,255,0.10)' : 'transparent', border: 'none',
+              color: n.active ? 'var(--surface)' : 'rgba(255,255,255,0.72)',
+              height: 'var(--control-height-compact)', padding: '0 12px', borderRadius: 'var(--radius-control)',
               fontSize: 'var(--label)', fontWeight: 'var(--weight-medium)', cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto',
               transition: 'background-color var(--motion-instant), color var(--motion-instant)',
             }}>{n.label}</button>
