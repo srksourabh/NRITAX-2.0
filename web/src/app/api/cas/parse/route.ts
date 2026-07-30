@@ -2,12 +2,17 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { createCasClient } from '@/lib/cas/client';
+import { applyCasPipeline } from '@/lib/cas/pipeline';
+import type { ReturnData } from '@/lib/itr/types';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Optional CAS parse. Always returns JSON the wizard can soft-handle — a down
  * or unconfigured service must never block manual capital-gain entry.
+ *
+ * When `return_data` is present, also runs the shared apply pipeline (local
+ * FIFO result preferred over re-mapping).
  */
 export async function POST(req: Request) {
   const session = await auth();
@@ -23,6 +28,7 @@ export async function POST(req: Request) {
     const file = form.get('file');
     const financialYear = String(form.get('financial_year') ?? '2025-26');
     const password = String(form.get('password') ?? '') || undefined;
+    const returnDataRaw = form.get('return_data');
 
     if (!(file instanceof File)) {
       return NextResponse.json({
@@ -50,9 +56,50 @@ export async function POST(req: Request) {
       });
     }
 
+    let applied:
+      | {
+          data: ReturnData;
+          fieldsApplied: number;
+          rowsApplied: number;
+          warnings: string[];
+        }
+      | undefined;
+
+    if (typeof returnDataRaw === 'string' && returnDataRaw.trim()) {
+      try {
+        const data = JSON.parse(returnDataRaw) as ReturnData;
+        if (data?.meta) {
+          const pipeline = applyCasPipeline({
+            data,
+            source: 'local-cas',
+            casResult: parsed,
+            financialYear,
+          });
+          if (pipeline.ok) {
+            applied = {
+              data: pipeline.data,
+              fieldsApplied: pipeline.fieldsApplied,
+              rowsApplied: pipeline.rowsApplied,
+              warnings: pipeline.warnings,
+            };
+          }
+        }
+      } catch {
+        // Soft-fail: still return the parse result for client-side apply.
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       result: parsed,
+      ...(applied
+        ? {
+            data: applied.data,
+            fieldsApplied: applied.fieldsApplied,
+            rowsApplied: applied.rowsApplied,
+            warnings: applied.warnings,
+          }
+        : {}),
       message: `Statement read (${parsed.source}). ${parsed.gains.length} gain legs · ${parsed.summary.schedule112A.length} Schedule 112A rows.`,
     });
   } catch {

@@ -3,8 +3,7 @@
 import { PortfolioConnect, type ParsedData, type PortfolioConnectError } from '@cas-parser/connect';
 import { useCallback, useEffect, useState } from 'react';
 
-import { applyCasToReturn } from '@/lib/cas/apply-cas';
-import { mapPortfolioConnectToCasResult } from '@/lib/casparser/map-portfolio-connect';
+import { applyCasPipeline } from '@/lib/cas/pipeline';
 import type { ReturnData } from '@/lib/itr/types';
 
 type SoftJson = {
@@ -66,19 +65,24 @@ export function PortfolioImport({
   }, [mintToken]);
 
   function onSuccess(result: ParsedData) {
-    const cas = mapPortfolioConnectToCasResult(result);
-    if (!cas) {
+    const applied = applyCasPipeline({
+      data,
+      source: 'portfolio-connect',
+      portfolio: result,
+      financialYear: '2025-26',
+    });
+    if (!applied.ok) {
       setNotice(
-        'Portfolio Connect returned no usable investor data. Try another statement, or enter gains by hand.',
+        applied.message ||
+          'Portfolio Connect returned no usable investor data. Try another statement, or enter gains by hand.',
       );
       return;
     }
-    const applied = applyCasToReturn(data, cas);
     setData(applied.data);
     setActiveId('CG');
-    const pan = cas.investor.pan ? ` · PAN ${cas.investor.pan}` : '';
+    const pan = applied.cas.investor.pan ? ` · PAN ${applied.cas.investor.pan}` : '';
     setNotice(
-      `Portfolio Connect · ${cas.source}${pan} · ${applied.fieldsApplied} CG fields · ${applied.rowsApplied} Schedule 112A rows. Review carefully.`,
+      `Portfolio Connect · ${applied.cas.source}${pan} · ${applied.fieldsApplied} CG fields · ${applied.rowsApplied} Schedule 112A rows. Review carefully.`,
     );
   }
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { AutoFillPanel } from '@/components/filing/AutoFillPanel';
 import { TaxImportPanel } from '@/components/filing/TaxImportPanel';
-import { applyCasToReturn } from '@/lib/cas/apply-cas';
+import { applyCasPipeline } from '@/lib/cas/pipeline';
 import { casFailureMessage, resolveCasPdfPassword } from '@/lib/cas/password';
 import type { CasParseResult } from '@/lib/cas/types';
 import { importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
@@ -312,7 +312,16 @@ export function EnrichmentPanels({
         setNotice(casFailureMessage(json.code, json.message));
         return;
       }
-      const applied = applyCasToReturn(data, json.result);
+      const applied = applyCasPipeline({
+        data,
+        source: 'local-cas',
+        casResult: json.result,
+        financialYear: '2025-26',
+      });
+      if (!applied.ok) {
+        setNotice(applied.message);
+        return;
+      }
       setData(applied.data);
       setActiveId('CG');
       const warn =
@@ -356,7 +365,16 @@ export function EnrichmentPanels({
         setNotice(json.message ?? 'Demo CAS fetch unavailable. Upload a PDF or enter gains by hand.');
         return;
       }
-      const applied = applyCasToReturn(dataRef.current, json.result);
+      const applied = applyCasPipeline({
+        data: dataRef.current,
+        source: 'demo',
+        casResult: json.result,
+        financialYear: '2025-26',
+      });
+      if (!applied.ok) {
+        setNotice(applied.message);
+        return;
+      }
       setData(applied.data);
       setActiveId('CG');
       setNotice(

@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
-import { applyCasToReturn } from '@/lib/cas/apply-cas';
+import { applyCasPipeline } from '@/lib/cas/pipeline';
 import { createCasparserClient } from '@/lib/casparser/client';
-import { mapSmartParseToCasResult } from '@/lib/casparser/map-smart-parse';
 import type { ReturnData } from '@/lib/itr/types';
 
 export const dynamic = 'force-dynamic';
@@ -74,23 +73,25 @@ export async function POST(req: Request) {
       });
     }
 
-    const financialYear = '2025-26';
-
-    const casResult = mapSmartParseToCasResult(parsed.raw, financialYear);
-    if (!casResult) {
+    const applied = applyCasPipeline({
+      data,
+      source: 'cdsl',
+      raw: parsed.raw,
+      financialYear: '2025-26',
+    });
+    if (!applied.ok) {
       return NextResponse.json({
         ok: false,
-        message: 'Could not read the CDSL CAS. Upload a Detailed PDF instead.',
+        message: applied.message || 'Could not read the CDSL CAS. Upload a Detailed PDF instead.',
       });
     }
 
-    const applied = applyCasToReturn(data, casResult);
     return NextResponse.json({
       ok: true,
       data: applied.data,
       fieldsApplied: applied.fieldsApplied,
       rowsApplied: applied.rowsApplied,
-      warnings: [...casResult.warnings, ...applied.warnings],
+      warnings: applied.warnings,
       files: verified.files,
       message: `${verified.message ?? 'CAS fetched.'} · ${applied.fieldsApplied} CG fields · ${applied.rowsApplied} Schedule 112A rows. Review carefully.`,
     });
