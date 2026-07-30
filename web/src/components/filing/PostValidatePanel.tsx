@@ -193,14 +193,16 @@ export function PostValidatePanel({
   async function eriConsent() {
     setEriBusy(true);
     try {
+      const id = await ensureFilingId();
       const res = await fetch('/api/eri', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'consent', data }),
+        body: JSON.stringify({ action: 'consent', data, filingId: id ?? undefined }),
       });
       const json = (await res.json()) as {
         ok?: boolean;
         message?: string;
+        warnings?: string[];
         consent?: { consentId: string; status: string; message?: string };
       };
       if (!json.ok || !json.consent) {
@@ -208,7 +210,8 @@ export function PostValidatePanel({
         return;
       }
       setConsentId(json.consent.consentId);
-      onNotice(json.consent.message ?? `Consent ${json.consent.status}.`);
+      const warn = json.warnings?.[0] ? ` · ${json.warnings[0]}` : '';
+      onNotice(`${json.consent.message ?? `Consent ${json.consent.status}.`}${warn}`);
     } finally {
       setEriBusy(false);
     }
@@ -225,10 +228,16 @@ export function PostValidatePanel({
     }
     setEriBusy(true);
     try {
+      const id = await ensureFilingId();
       const res = await fetch('/api/eri', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'upload', data, consentId }),
+        body: JSON.stringify({
+          action: 'upload',
+          data,
+          consentId,
+          filingId: id ?? undefined,
+        }),
       });
       const json = (await res.json()) as {
         ok?: boolean;
@@ -257,20 +266,28 @@ export function PostValidatePanel({
     }
     setEriBusy(true);
     try {
+      const id = filingId;
       const res = await fetch('/api/eri', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'status', data, acknowledgementNumber: ack }),
+        body: JSON.stringify({
+          action: 'status',
+          data,
+          acknowledgementNumber: ack,
+          filingId: id ?? undefined,
+        }),
       });
       const json = (await res.json()) as {
         ok?: boolean;
         message?: string;
+        eriConsentId?: string;
         status?: { status: string; message?: string };
       };
       if (!json.ok || !json.status) {
         onNotice(json.message ?? 'Status failed.');
         return;
       }
+      if (json.eriConsentId && !consentId) setConsentId(json.eriConsentId);
       onNotice(json.status.message ?? json.status.status);
     } finally {
       setEriBusy(false);

@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getEntitlement, hasPaidAccess } from '@/lib/billing/entitlements';
 import { getEriProvider } from '@/lib/eri';
+import {
+  loadEriConsentId,
+  persistEriConsentId,
+} from '@/lib/eri/consent-persist';
 import type { ConsentRequest } from '@/lib/eri/types';
 import { buildReturnJson } from '@/lib/itr/build-json';
 import type { ReturnData } from '@/lib/itr/types';
@@ -41,9 +45,12 @@ export async function POST(req: Request) {
     data?: ReturnData;
     consentId?: string;
     acknowledgementNumber?: string;
+    filingId?: string;
   };
 
   const provider = getEriProvider();
+  const filingId =
+    typeof payload.filingId === 'string' ? payload.filingId.trim() : '';
 
   try {
     if (payload.action === 'consent') {
@@ -65,12 +72,27 @@ export async function POST(req: Request) {
         returnUrl: `${new URL(req.url).origin}/filing`,
       };
       const consent = await provider.requestConsent(consentReq);
-      return NextResponse.json({ ok: true, consent, provider: provider.name });
+      const warnings: string[] = [];
+      if (filingId) {
+        const persisted = await persistEriConsentId(filingId, consent.consentId);
+        if (!persisted.ok) warnings.push(persisted.warning);
+      }
+      return NextResponse.json({
+        ok: true,
+        consent,
+        provider: provider.name,
+        ...(warnings.length ? { warnings } : {}),
+      });
     }
 
     if (payload.action === 'upload') {
       const data = payload.data;
-      const consentId = payload.consentId;
+      let consentId =
+        typeof payload.consentId === 'string' ? payload.consentId.trim() : '';
+      if (!consentId && filingId) {
+        const loaded = await loadEriConsentId(filingId);
+        if (loaded.ok && loaded.consentId) consentId = loaded.consentId;
+      }
       if (!data?.meta || !consentId) {
         return NextResponse.json({ ok: false, message: 'data and consentId required.' });
       }
@@ -83,7 +105,18 @@ export async function POST(req: Request) {
         form: data.meta.form,
         json: built.json,
       });
-      return NextResponse.json({ ok: true, upload: result, provider: provider.name });
+      const warnings: string[] = [];
+      if (filingId) {
+        const persisted = await persistEriConsentId(filingId, consentId);
+        if (!persisted.ok) warnings.push(persisted.warning);
+      }
+      return NextResponse.json({
+        ok: true,
+        upload: result,
+        provider: provider.name,
+        consentId,
+        ...(warnings.length ? { warnings } : {}),
+      });
     }
 
     if (payload.action === 'status') {
@@ -99,7 +132,17 @@ export async function POST(req: Request) {
         pan: panFrom(data),
         acknowledgementNumber,
       });
-      return NextResponse.json({ ok: true, status, provider: provider.name });
+      let eriConsentId: string | null = null;
+      if (filingId) {
+        const loaded = await loadEriConsentId(filingId);
+        if (loaded.ok) eriConsentId = loaded.consentId;
+      }
+      return NextResponse.json({
+        ok: true,
+        status,
+        provider: provider.name,
+        ...(eriConsentId ? { eriConsentId } : {}),
+      });
     }
 
     return NextResponse.json({
