@@ -26,7 +26,7 @@ The register is the **accountant's ledger**, not the fintech dashboard: cool led
 
 ### Gaps and substitutions, flagged
 
-- **No logo.** There is no NRITAX mark in the sources, and none was drawn. `Wordmark` renders the brand name in Archivo Expanded 600 with "2.0" in Plex Mono. Supply real artwork and it drops into `assets/`.
+- **Logo.** Circular seal mark (`assets/logo/nritax-seal.svg`) — ink disc, seal-green ring, mono `NT` / `2.0`. Wired in the web app as `NritaxSeal`, `/logo.svg`, and Next `icon` / `apple-icon` routes.
 - **No font binaries.** Archivo (variable, width axis pinned to `wdth 125` for "Expanded"), IBM Plex Sans, IBM Plex Mono and IBM Plex Sans Devanagari all load from Google Fonts in `tokens/fonts.css`. The brief calls for self-hosted, subset files — send them and the `@import` becomes real `@font-face` rules.
 - **No icon set.** See [Iconography](#iconography).
 - **Stock imagery conflicts with the brief.** The brief says marketing should use real product screens and a redacted acknowledgement, "no stock photos of people pointing at phones". The 15 supplied photos are kept in `assets/imagery/` and are only used in the imagery specimen card; the marketing kit uses the ledger and the acknowledgement as its imagery instead.

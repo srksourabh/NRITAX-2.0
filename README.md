@@ -1,4 +1,4 @@
-# NRITAX
+# NRITAX 2.0
 
 File an Indian income tax return — ITR-2 or ITR-3, assessment year 2026-27 — from
 anywhere in the world, with most of the figures pulled in for you.

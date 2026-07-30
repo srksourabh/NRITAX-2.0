@@ -16,7 +16,7 @@ import { authConfig } from '@/lib/auth.config';
 import { getServiceClient } from '@/lib/db/client';
 
 const emailServer = process.env.AUTH_EMAIL_SERVER?.trim();
-const emailFrom = process.env.AUTH_EMAIL_FROM?.trim() || 'NRITAX <no-reply@localhost>';
+const emailFrom = process.env.AUTH_EMAIL_FROM?.trim() || 'NRITAX 2.0 <no-reply@localhost>';
 
 export function readDemoAuth(): {
   enabled: boolean;

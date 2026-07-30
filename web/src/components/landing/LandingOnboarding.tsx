@@ -95,9 +95,9 @@ export function LandingOnboarding({
   };
 
   return (
-    <section id="start" className="ntx-section ntx-landing-alt" aria-labelledby="start-heading">
+    <section id="start" className="ntx-section" aria-labelledby="start-heading">
       <div className="ntx-shell ntx-landing-onboard">
-        <div>
+        <div className="ntx-landing-rise">
           <p className="ntx-landing-kicker">Start securely</p>
           <h2 id="start-heading" className="ntx-display-lg mt-3 text-[var(--ink)]">
             Begin a filing profile without sharing passwords
@@ -106,17 +106,17 @@ export function LandingOnboarding({
             Four short questions. We keep the draft in this browser only, then take you to
             sign-in so the filing wizard can open.
           </p>
-          <div className="ntx-panel ntx-landing-security">
+          <div className="ntx-landing-security">
             <h3>Security note</h3>
             <p>
-              NRITAX never asks for or stores your Income Tax Department password. We only ask
+              NRITAX 2.0 never asks for or stores your Income Tax Department password. We only ask
               whether you can reach the portal, so we know whether to aim for JSON download or
               a later ERI path.
             </p>
           </div>
         </div>
 
-        <div className="ntx-panel ntx-landing-form" aria-labelledby="onboarding-form-title">
+        <div className="ntx-landing-form ntx-landing-rise" aria-labelledby="onboarding-form-title">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[var(--body-sm)] font-semibold text-[var(--primary)]">
@@ -126,7 +126,7 @@ export function LandingOnboarding({
                 Start your filing journey
               </h3>
             </div>
-            <span className="ntx-badge ntx-badge-draft">
+            <span className="rounded-full bg-[var(--primary-50)] px-3 py-1 text-xs font-bold text-[var(--primary)]">
               Step {step + 1}/{STEPS.length}
             </span>
           </div>

@@ -22,9 +22,13 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'NRITAX',
+  title: 'NRITAX 2.0 · AY 2026-27',
   description:
-    'File an Indian ITR-2 or ITR-3 return from anywhere, with the figures pulled in for you.',
+    'Import portal prefill, complete ITR-2 or ITR-3 schedules, validate, and export departmental JSON — for NRIs filing from anywhere.',
+  icons: {
+    icon: [{ url: '/logo.svg', type: 'image/svg+xml' }],
+    apple: '/apple-icon',
+  },
 };
 
 export default function RootLayout({

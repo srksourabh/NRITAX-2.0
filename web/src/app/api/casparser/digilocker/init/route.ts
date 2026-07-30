@@ -74,7 +74,7 @@ export async function POST(req: Request) {
 
     const result = await client.digilockerStartSession({
       redirectUrl,
-      consentPurpose: 'KYC for income tax return filing with NRITAX',
+      consentPurpose: 'KYC for income tax return filing with NRITAX 2.0',
       documents: ['aadhaar', 'pan'],
       userFlow,
       prefillMobile: userFlow === 'signup' && mobile.length === 10 ? mobile : undefined,

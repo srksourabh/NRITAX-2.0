@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { NritaxSeal } from '@/components/brand/NritaxSeal';
 import { cn } from '@/lib/cn';
 
 export function AppShell({
@@ -13,7 +14,11 @@ export function AppShell({
     <div className="flex min-h-full flex-col">
       <header className="ntx-shell-header">
         <Link href="/" className="ntx-brand">
-          NRITAX
+          <NritaxSeal size={36} className="ntx-brand-seal" />
+          <span className="ntx-brand-mark">
+            <b>NRITAX 2.0</b>
+            <span>AY 2026-27</span>
+          </span>
         </Link>
         <div className="flex max-w-[65%] flex-wrap items-center justify-end gap-2 text-[var(--body-sm)] text-[var(--neutral-300)] sm:max-w-none sm:gap-3">
           {right}

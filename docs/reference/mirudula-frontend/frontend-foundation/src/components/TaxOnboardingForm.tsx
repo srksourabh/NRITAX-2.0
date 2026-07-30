@@ -250,7 +250,7 @@ export function TaxOnboardingForm() {
                 onChange={(value) => updateField("credentialStatus", value)}
               />
               <SecurityNotice>
-                NRITAX.AI never asks for or stores your Income Tax Department password.
+                NRITAX 2.0 never asks for or stores your Income Tax Department password.
               </SecurityNotice>
               <p className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
                 On submit, this UI calls mock validation and JSON draft services only.

@@ -27,7 +27,7 @@ export function buildIcsInvite(input: {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//NRITAX//CA Booking//EN',
+    'PRODID:-//NRITAX 2.0//CA Booking//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:REQUEST',
     'BEGIN:VEVENT',
@@ -129,10 +129,10 @@ export async function bookSlot(input: {
   const organizer = process.env.AUTH_EMAIL_FROM?.trim() || 'ca@nritax.app';
   const ics = buildIcsInvite({
     uid: `${bookingId}@nritax.app`,
-    title: 'NRITAX CA review call',
+    title: 'NRITAX 2.0 CA review call',
     description:
       input.caBrief?.slice(0, 1500) ||
-      'CA review of your NRITAX draft return. Bring Form 16 / 26AS / AIS if asked.',
+      'CA review of your NRITAX 2.0 draft return. Bring Form 16 / 26AS / AIS if asked.',
     startsAt: new Date(slot.startsAt),
     endsAt: new Date(slot.endsAt),
     organizerEmail: organizer.replace(/.*<|>.*/g, '') || 'ca@nritax.app',

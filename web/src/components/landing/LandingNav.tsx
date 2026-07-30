@@ -1,42 +1,52 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+
+import { NritaxSeal } from '@/components/brand/NritaxSeal';
 
 const NAV = [
-  { href: '#compare', label: 'Compare regimes' },
+  { href: '#features', label: 'Features' },
   { href: '#how-it-works', label: 'How it works' },
-  { href: '#prefill-guide', label: 'Prefill JSON' },
+  { href: '#prefill', label: 'Import prefill' },
   { href: '#trust', label: 'Trust' },
-  { href: '#start', label: 'Start' },
+  { href: '#start', label: 'Onboarding' },
 ] as const;
 
 export function LandingNav({
   primaryHref,
   primaryLabel,
-  testLogin,
 }: {
   primaryHref: string;
   primaryLabel: string;
-  testLogin?: ReactNode;
 }) {
   return (
-    <header className="ntx-shell-header sticky top-0 z-40">
-      <a href="#top" className="ntx-brand">
-        NRITAX<span className="ntx-brand-version"> 2.0</span>
-      </a>
-      <nav className="ntx-landing-nav" aria-label="Landing">
-        {NAV.map((item) => (
-          <a key={item.href} href={item.href} className="ntx-landing-nav-link">
-            {item.label}
+    <header className="ntx-landing-header">
+      <div className="ntx-landing-header-inner">
+        <a href="#top" className="ntx-landing-brand" aria-label="NRITAX 2.0 home">
+          <NritaxSeal size={44} className="ntx-landing-seal" />
+          <span className="ntx-landing-mark">
+            <b>NRITAX 2.0 · AY 2026-27</b>
+            <span>NRI ITR-2 / ITR-3 · prefill in, departmental JSON out</span>
+          </span>
+        </a>
+        <nav className="ntx-landing-nav" aria-label="Landing">
+          {NAV.map((item) => (
+            <a key={item.href} href={item.href} className="ntx-landing-nav-link">
+              {item.label}
+            </a>
+          ))}
+        </nav>
+        <div className="ntx-landing-acts">
+          <a href="#prefill" className="ntx-btn-mast">
+            Import prefill
           </a>
-        ))}
-      </nav>
-      <div className="flex items-center gap-2">
-        {testLogin}
-        <Link href={primaryHref} className="ntx-btn ntx-btn-primary ntx-btn-compact">
-          {primaryLabel}
-        </Link>
+          <a href="#how-it-works" className="ntx-btn-mast ntx-btn-mast-ghost">
+            Validate path
+          </a>
+          <Link href={primaryHref} className="ntx-btn-mast ntx-btn-mast-pri">
+            {primaryLabel}
+          </Link>
+        </div>
       </div>
     </header>
   );

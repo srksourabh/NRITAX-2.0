@@ -121,7 +121,7 @@ export function PortfolioImport({
         enableGenerator: true,
         enableCdslFetch: true,
         enableInbox: false,
-        title: 'Import investments into NRITAX',
+        title: 'Import investments into NRITAX 2.0',
         subtitle: 'Upload CAS, fetch CDSL via OTP, or request a mutual-fund statement',
         prefill: {
           pan: prefill?.pan,

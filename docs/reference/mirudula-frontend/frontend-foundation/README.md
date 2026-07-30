@@ -1,12 +1,12 @@
-# NRITAX.AI 2.0 Frontend Foundation
+# NRITAX 2.0 Frontend Foundation
 
-This folder contains the initial frontend foundation for **NRITAX.AI 2.0**, an NRI income tax filing platform. It is prepared as a clean, standalone React + TypeScript + Tailwind CSS implementation that can later be added to the official GitHub repository after access is available.
+This folder contains the initial frontend foundation for **NRITAX 2.0**, an NRI income tax filing platform. It is prepared as a clean, standalone React + TypeScript + Tailwind CSS implementation that can later be added to the official GitHub repository after access is available.
 
 No backend code is included.
 
 ## Purpose
 
-The goal is to provide the first implementation-ready landing page and basic onboarding flow for NRITAX.AI 2.0.
+The goal is to provide the first implementation-ready landing page and basic onboarding flow for NRITAX 2.0.
 
 The page communicates:
 
@@ -18,7 +18,7 @@ The page communicates:
 
 ## User Flow
 
-1. User lands on the NRITAX.AI 2.0 landing page.
+1. User lands on the NRITAX 2.0 landing page.
 2. User reviews the hero section, trust cards, and workflow steps.
 3. User clicks **Start Filing**.
 4. User completes a four-step onboarding form:
@@ -40,7 +40,7 @@ This implementation follows the important security requirement:
 
 Visible user message:
 
-> NRITAX.AI never asks for or stores your Income Tax Department password.
+> NRITAX 2.0 never asks for or stores your Income Tax Department password.
 
 PAN is currently stored only in local React component state. It should not be persisted until backend security, consent, and privacy controls are finalized.
 
@@ -138,7 +138,7 @@ npm run preview
 Recommended screenshots to capture for review:
 
 1. **Desktop landing page hero**  
-   Shows NRITAX.AI 2.0 branding, main heading, CTA, trust stats, and filing journey preview.
+   Shows NRITAX 2.0 branding, main heading, CTA, trust stats, and filing journey preview.
 
 2. **Feature and workflow sections**  
    Shows four trust cards and the four-step "How it works" section.
@@ -201,7 +201,7 @@ POST /api/v1/ca-review/requests
 
 ## Assumptions
 
-- This implementation will later be merged into the official NRITAX.AI 2.0 repository after GitHub access is available.
+- This implementation will later be merged into the official NRITAX 2.0 repository after GitHub access is available.
 - Backend APIs are not finalized yet.
 - PAN handling, consent storage, and taxpayer data persistence require approved backend security and privacy design.
 - Tax regime selection is captured as a preference only; no tax calculation logic is included.

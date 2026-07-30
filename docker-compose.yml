@@ -27,6 +27,28 @@ services:
       timeout: 5s
       retries: 5
 
+  portal-fetch:
+    build: ./services/portal-fetch
+    environment:
+      PORTAL_FETCH_SECRET: ${PORTAL_FETCH_SECRET:-dev-portal-fetch-secret}
+      PORTAL_FETCH_PORT: ${PORTAL_FETCH_PORT:-8090}
+      BROWSERBASE_API_KEY: ${BROWSERBASE_API_KEY:-}
+      BROWSERBASE_PROJECT_ID: ${BROWSERBASE_PROJECT_ID:-}
+      PORTAL_FETCH_MOCK: ${PORTAL_FETCH_MOCK:-1}
+    ports:
+      - '${PORTAL_FETCH_PORT:-8090}:8090'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   web:
     build: ./web
     depends_on:
@@ -34,10 +56,14 @@ services:
         condition: service_healthy
       cas:
         condition: service_started
+      portal-fetch:
+        condition: service_started
     environment:
       DATABASE_URL: postgres://nritax:nritax@postgres:5432/nritax
       CAS_SERVICE_URL: http://cas:8000
       CAS_SERVICE_TOKEN: ${CAS_SERVICE_TOKEN:-dev-cas-token}
+      PORTAL_FETCH_URL: http://portal-fetch:8090
+      PORTAL_FETCH_SECRET: ${PORTAL_FETCH_SECRET:-dev-portal-fetch-secret}
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET before running docker compose}
       AUTH_URL: ${AUTH_URL:-http://localhost:3000}
       ERI_PROVIDER: ${ERI_PROVIDER:-mock}

@@ -30,7 +30,7 @@ export function Trust() {
               Built around secure, auditable filing preparation.
             </h2>
             <p className="mt-4 text-base leading-8 text-slate-300">
-              NRITAX.AI 2.0 should feel useful from the first click while keeping
+              NRITAX 2.0 should feel useful from the first click while keeping
               sensitive taxpayer workflows disciplined, explainable, and ready
               for compliance review.
             </p>

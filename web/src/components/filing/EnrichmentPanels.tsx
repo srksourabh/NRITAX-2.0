@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { AutoFillPanel } from '@/components/filing/AutoFillPanel';
+import { PortalFetchPanel } from '@/components/filing/PortalFetchPanel';
 import { TaxImportPanel } from '@/components/filing/TaxImportPanel';
 import { applyCasPipeline } from '@/lib/cas/pipeline';
 import { casFailureMessage, resolveCasPdfPassword } from '@/lib/cas/password';
@@ -777,11 +778,19 @@ export function EnrichmentPanels({
         </div>
       </div>
 
+      <PortalFetchPanel
+        form={form}
+        data={data}
+        setData={setData}
+        setActiveId={setActiveId}
+        setNotice={setNotice}
+      />
+
       <div className="ntx-panel p-5 md:col-span-2 xl:col-span-1">
         <h2 className="text-[var(--h3)] font-semibold">Optional · ITD prefill JSON</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
-          Download pre-filled data from the Income Tax e-Filing portal, then upload the JSON
-          here. We never ask for your portal password.
+          Prefer the fetch helper when available. Or download pre-filled data from the
+          e-Filing portal yourself and upload the JSON here.
         </p>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[var(--body-sm)] text-[var(--text-secondary)]">
           <li>
@@ -802,7 +811,7 @@ export function EnrichmentPanels({
         </ol>
         <p className="mt-3 text-[var(--caption)] text-[var(--text-muted)]">
           Full walkthrough:{' '}
-          <a className="underline underline-offset-2" href="/#prefill-guide">
+          <a className="underline underline-offset-2" href="/#prefill">
             Prefill JSON guide
           </a>
           .

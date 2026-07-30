@@ -32,7 +32,7 @@ export function App() {
               <div className="mt-6 rounded-2xl border border-blue-100 bg-white p-5 shadow-soft">
                 <p className="text-sm font-semibold text-brand-ink">Security note</p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  NRITAX.AI never asks for or stores your Income Tax Department
+                  NRITAX 2.0 never asks for or stores your Income Tax Department
                   password. Future integrations should use consent-based official
                   workflows only.
                 </p>
