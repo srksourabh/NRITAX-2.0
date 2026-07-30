@@ -21,7 +21,8 @@ season needs a working fill → JSON path now.
 
 ## Success
 
-- Prefill JSON uploaded from incometax.gov.in maps into the form when available.
+- Prefill JSON from incometax.gov.in maps into the form when available (manual
+  upload or optional portal-fetch helper).
 - No helper is required: missing prefill, IT portal login, Sandbox, DigiLocker,
   or CAS never blocks the wizard — the form stays open for manual entry.
 - Sandbox (PAN, IFSC, DigiLocker) and CAS enrich what they can when present.
@@ -42,27 +43,29 @@ UI follows the NRITAX 2.0 Claude design system (`NRITAX 2.0 Filing App.html`):
 
 Every enrichment step is skippable:
 
-1. Optional: upload ITD prefill JSON (or skip and enter manually).
+1. Optional: upload ITD prefill JSON, or use portal-fetch when configured
+   (or skip and enter manually).
 2. Optional: Sandbox PAN / IFSC / DigiLocker (or skip).
 3. Optional: CAS statement upload (or enter capital gains by hand).
 4. Always: fill remaining fields → validate → compute tax → download JSON.
 
 ## Constraint
 
-No live ERI upload or prefill fetch until registered. Manual prefill JSON in;
-manual final JSON out.
+No live ERI upload until registered. Prefill may arrive via manual JSON upload
+or optional portal-fetch helper (ephemeral portal password only; never stored).
+Manual final JSON out.
 
 ## Out of scope (this phase)
 
 - Filing through an ERI on the user's behalf
-- Holding the Income Tax portal password
+- Persisting the Income Tax portal password across sessions
 - Treating Sandbox as an ERI
 - Blocking on OCR or full KYC Console activation before form + JSON works
 
 ## Two JSONs
 
-1. **ITD prefill JSON** — downloaded by the taxpayer from the department before
-   the wizard; uploaded into NRITAX (`prefill-file.ts` path).
+1. **ITD prefill JSON** — downloaded by the taxpayer (or optional portal-fetch
+   helper) from the department; imported via `prefill-file.ts`.
 2. **Final filing JSON** — generated after fill, validation, and tax calc;
    downloaded by the user and uploaded to the department by hand.
 

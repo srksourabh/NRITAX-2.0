@@ -104,9 +104,11 @@ Section 71(3A) house property set-off ceiling 2,00,000.
 
 ## Security rules
 
-- The taxpayer's Income Tax portal password is never collected, logged or stored.
-  If a flow appears to need it, the flow is wrong — raise it instead of adding a
-  field.
+- The taxpayer's Income Tax portal password must never be logged or persisted to
+  the database. Optional portal prefill fetch may collect it only for an active
+  job: hold in worker memory (TTL ≤ 10 minutes), wipe on success/fail/timeout.
+  See `docs/superpowers/specs/2026-07-31-portal-prefill-fetch-design.md`.
+  Manual JSON upload remains the default path when fetch is unavailable.
 - PAN, Aadhaar and bank account numbers are personal data. Never write them to
   application logs. Mask them in any error message that could surface to a third
   party.
