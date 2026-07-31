@@ -1,8 +1,8 @@
 const TRUST = [
   {
-    label: 'No portal password',
+    label: 'Ephemeral credentials',
     detail:
-      'We never collect, log or store your Income Tax Department password. If a screen asks for it, that screen is a bug.',
+      'Optional e-Filing fetch uses your portal password only for that job, in transit over HTTPS, then wipes it. We do not keep it for later use.',
   },
   {
     label: 'Consent before fetches',
@@ -32,8 +32,8 @@ export function LandingTrust() {
               Built around secure, auditable filing preparation
             </h2>
             <p>
-              Useful from the first click, and disciplined about taxpayer data. Credential-safe
-              onboarding is a hard rule, not a slogan.
+              Useful from the first click, and disciplined about taxpayer data. Encrypted,
+              ephemeral credential handling is a hard rule, not a slogan.
             </p>
           </div>
           <div className="ntx-landing-trust-grid">

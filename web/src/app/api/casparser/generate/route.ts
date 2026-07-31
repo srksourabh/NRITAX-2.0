@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: false,
       message:
-        'Could not request a Detailed CAS. Set CASPARSER_API_KEY in web/.env.local, or request the statement from CAMS / KFintech and upload the PDF.',
+        'Could not request a Detailed CAS. Request the statement from CAMS / KFintech and upload the PDF, or try again later.',
     });
   }
 }

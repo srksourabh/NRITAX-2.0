@@ -14,7 +14,7 @@ describe('createCasparserClient inbox', () => {
     });
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.message).toMatch(/CASPARSER_API_KEY/i);
+    expect(result.message).toMatch(/not configured|by hand|upload/i);
   });
 
   it('returns oauth url from connect', async () => {

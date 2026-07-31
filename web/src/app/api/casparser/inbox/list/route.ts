@@ -55,7 +55,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: false,
       message:
-        'Could not list Gmail CAS files. Set CASPARSER_API_KEY and ensure cas_inbox_token table exists, or upload a PDF by hand.',
+        'Could not list Gmail CAS files. Reconnect Gmail, or upload a PDF by hand.',
     });
   }
 }

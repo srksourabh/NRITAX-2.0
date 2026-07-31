@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: false,
       message:
-        'Could not start Gmail connect. Set CASPARSER_API_KEY in web/.env.local, or upload a CAS PDF by hand.',
+        'Could not start Gmail connect. Try again later, or upload a CAS PDF by hand.',
     });
   }
 }

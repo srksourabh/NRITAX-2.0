@@ -18,7 +18,7 @@ const STEPS = [
   },
   {
     title: 'Download the pre-filled JSON',
-    text: 'When the portal offers Prefill / Download pre-filled data, download the JSON file to your device. Do not share your portal password with NRITAX 2.0.',
+    text: 'When the portal offers Prefill / Download pre-filled data, download the JSON file to your device. You stay signed in on the department site for this path.',
   },
   {
     title: 'Upload it in NRITAX 2.0',
@@ -42,7 +42,7 @@ export function LandingPrefillGuide() {
             </h2>
             <p className="ntx-landing-section-lede">
               If you can sign in to the Income Tax portal, pull their pre-filled JSON and drop it
-              into NRITAX 2.0. No portal password is ever collected here.
+              into NRITAX 2.0. For this path you sign in on the department site only.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
               <a

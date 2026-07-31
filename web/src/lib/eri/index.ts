@@ -1,14 +1,15 @@
 /**
- * Picks the ERI provider the environment asks for.
+ * Picks the ERI / filing-handoff provider from the environment.
  *
- * With ERI_PROVIDER unset, or set to "mock", the whole filing flow runs offline
- * against src/lib/eri/mock.ts. Every other name goes to the REST adapter, which
- * needs ERI_BASE_URL and ERI_API_KEY. Nothing here logs, so no key can leak
- * through this module.
+ * - mock     — offline specimen (default)
+ * - quicko   — Quicko Refer redirect (fastest third-party path; needs affiliate id)
+ * - sandbox  — Sandbox IT Compliance ERI proxy (needs ITD ERI user + password + SW id)
+ * - suvit    — reserved name until a contract exists
  */
 
 import { createMockProvider } from '@/lib/eri/mock';
-import { createSandboxProvider } from '@/lib/eri/sandbox';
+import { createQuickoReferProvider } from '@/lib/eri/quicko-refer';
+import { createSandboxComplianceProvider } from '@/lib/eri/sandbox-compliance';
 import { EriError } from '@/lib/eri/types';
 import type { EriConfig, EriProvider, EriProviderName } from '@/lib/eri/types';
 
@@ -43,11 +44,29 @@ export function readEriConfig(
     apiKey: read(env.ERI_API_KEY),
     apiSecret: read(env.ERI_API_SECRET),
     eriUserId: read(env.ERI_USER_ID),
+    eriPassword: read(env.ERI_PASSWORD),
     softwareId: read(env.ERI_SOFTWARE_ID),
+    quickoAffiliateId: read(env.QUICKO_AFFILIATE_ID),
   };
 }
 
 /** The provider to file through. Defaults to the offline mock. */
 export function getEriProvider(config: EriConfig = readEriConfig()): EriProvider {
-  return config.provider === 'mock' ? createMockProvider() : createSandboxProvider(config);
+  switch (config.provider) {
+    case 'mock':
+      return createMockProvider();
+    case 'quicko':
+      return createQuickoReferProvider(config);
+    case 'sandbox':
+      return createSandboxComplianceProvider(config);
+    case 'suvit':
+      throw new EriError(
+        'ERI_PROVIDER=suvit needs a partner contract. Use quicko (Refer) or sandbox (Compliance ERI) meanwhile.',
+        'ERI_CONFIG',
+      );
+    default: {
+      const _exhaustive: never = config.provider;
+      throw new EriError(`Unknown ERI provider: ${_exhaustive}`, 'ERI_CONFIG');
+    }
+  }
 }

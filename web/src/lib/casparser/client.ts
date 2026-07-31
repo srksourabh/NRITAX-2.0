@@ -32,7 +32,7 @@ const DEFAULT_TIMEOUT_MS = 60_000;
 const CDSL_TIMEOUT_MS = 55_000;
 
 const NO_KEY =
-  'CASPARSER_API_KEY is not set. Paste your Pro key in web/.env.local, or enter details by hand.';
+  'Statement import is not configured. Enter details by hand, or upload a CAS PDF.';
 
 export interface CasparserClientOptions {
   baseUrl?: string;
@@ -80,7 +80,7 @@ class HttpCasparserClient implements CasparserClient {
     if (!accessToken) {
       return fail(
         'UPSTREAM',
-        'CAS Parser did not return an access token. Check CASPARSER_API_KEY.',
+        'CAS Parser did not return an access token. Try again later, or enter details by hand.',
       );
     }
     return {
@@ -524,7 +524,7 @@ class HttpCasparserClient implements CasparserClient {
         ok: false,
         error: failErr(
           'AUTH_FAILED',
-          'CAS Parser authentication failed. Check CASPARSER_API_KEY, or enter details by hand.',
+          'CAS Parser authentication failed. Try again later, or enter details by hand.',
         ),
       };
     }

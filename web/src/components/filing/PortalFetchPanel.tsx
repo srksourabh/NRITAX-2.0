@@ -352,13 +352,14 @@ export function PortalFetchPanel({
   return (
     <div className="ntx-panel p-5 md:col-span-2 xl:col-span-2">
       <h2 className="text-[var(--h3)] font-semibold">
-        Fetch prefill from e-Filing (optional)
+        Browser automation · fetch prefill JSON
       </h2>
       <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
-        We sign in with your portal password for this job only, download the
-        pre-filled JSON, and map it into blank fields. Password and OTP are wiped
-        when the job ends. If the helper is down, upload the JSON manually beside
-        this panel.
+        Optional: a cloud browser signs in to the e-Filing portal for this job only, downloads
+        the department pre-filled JSON, and maps blank fields. Password and OTP stay in memory
+        for the job, then are wiped. You can still upload a prefill JSON file by hand. After you
+        finish the return, Download JSON and upload that file yourself on the portal — we do not
+        file through a third-party ERI platform.
       </p>
 
       <div className="mt-4 space-y-3">

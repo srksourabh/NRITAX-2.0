@@ -125,7 +125,7 @@ describe('createCasparserClient mock DigiLocker', () => {
     });
     expect(otp.ok).toBe(false);
     if (otp.ok) return;
-    expect(otp.message).toMatch(/CASPARSER_API_KEY/i);
+    expect(otp.message).toMatch(/not configured|by hand|upload/i);
   });
 
   it('calls pan status with x-api-key when configured', async () => {

@@ -47,7 +47,7 @@ export function PortfolioImport({
         setAccessToken(null);
         setTokenError(
           json.message ??
-            'CASPARSER_API_KEY missing. Paste your Pro key in web/.env.local.',
+            'Portfolio Connect is unavailable right now. Upload a CAS PDF, or enter gains by hand.',
         );
         return;
       }

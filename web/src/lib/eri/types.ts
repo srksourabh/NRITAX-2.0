@@ -20,10 +20,14 @@ export interface EriConfig {
   baseUrl?: string;
   apiKey?: string;
   apiSecret?: string;
-  /** Our registered ERI user id, printed into CreationInfo.SWCreatedBy. */
+  /** ITD e-Return Intermediary login id (e.g. ERIP…). Used by Sandbox Compliance. */
   eriUserId?: string;
-  /** Departmental software identifier, e.g. "SW20000". */
+  /** ITD ERI password. Server-only; never expose to the browser. */
+  eriPassword?: string;
+  /** Departmental software identifier, e.g. "SW20000619". */
   softwareId?: string;
+  /** Quicko Clique affiliate id for Refer handoff (ERI_PROVIDER=quicko). */
+  quickoAffiliateId?: string;
 }
 
 /* ─────────────────────────── Consent ─────────────────────────── */

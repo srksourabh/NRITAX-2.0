@@ -2,16 +2,34 @@ import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
 import { getEntitlement, hasPaidAccess } from '@/lib/billing/entitlements';
-import { getEriProvider } from '@/lib/eri';
+import { getEriProvider, readEriConfig } from '@/lib/eri';
 import {
   loadEriConsentId,
   persistEriConsentId,
 } from '@/lib/eri/consent-persist';
+import { describeEriReadiness } from '@/lib/eri/readiness';
 import type { ConsentRequest } from '@/lib/eri/types';
+import { EriError } from '@/lib/eri/types';
 import { buildReturnJson } from '@/lib/itr/build-json';
 import type { ReturnData } from '@/lib/itr/types';
 
 export const dynamic = 'force-dynamic';
+
+/** Filing-provider readiness for the After-validate panel (no secrets). */
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ ok: false, message: 'Sign in required.' }, { status: 401 });
+  }
+  try {
+    const readiness = describeEriReadiness(readEriConfig());
+    return NextResponse.json({ ok: true, readiness });
+  } catch (error) {
+    const message =
+      error instanceof EriError ? error.message : 'Could not read ERI configuration.';
+    return NextResponse.json({ ok: false, message });
+  }
+}
 
 function panFrom(data: ReturnData): string {
   return String(data.fields['GEN.pan'] ?? data.fields['GEN.PAN'] ?? '')
@@ -26,12 +44,6 @@ export async function POST(req: Request) {
   }
 
   const entitlement = await getEntitlement(session.user.id);
-  if (!hasPaidAccess(entitlement.plan)) {
-    return NextResponse.json({
-      ok: false,
-      message: 'ERI submit requires a paid plan. Download JSON remains free.',
-    });
-  }
 
   let body: unknown;
   try {
@@ -48,7 +60,22 @@ export async function POST(req: Request) {
     filingId?: string;
   };
 
-  const provider = getEriProvider();
+  let provider;
+  try {
+    provider = getEriProvider();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'ERI config failed.';
+    return NextResponse.json({ ok: false, message });
+  }
+
+  const handoffOnly = provider.name === 'quicko';
+  if (!handoffOnly && !hasPaidAccess(entitlement.plan)) {
+    return NextResponse.json({
+      ok: false,
+      message: 'ERI submit requires a paid plan. Download JSON remains free. Quicko Refer handoff does not require pay.',
+    });
+  }
+
   const filingId =
     typeof payload.filingId === 'string' ? payload.filingId.trim() : '';
 

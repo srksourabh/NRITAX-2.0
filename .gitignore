@@ -12,3 +12,5 @@ __pycache__/
 .venv/
 services/cas/.venv/
 .DS_Store
+
+supabase/.temp/

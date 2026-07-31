@@ -104,12 +104,12 @@ export function CasFetchDemo() {
           Enter PAN and date of birth. We fetch a CAS into Schedule CG.
         </h1>
         <p className="ntx-landing-section-lede">
-          Specimen CAS by PAN and DOB for the offline demo. For live DigiLocker + optional
-          CDSL OTP (BO ID), use Auto-fill in the{' '}
+          Specimen CAS by PAN and DOB for the offline demo. For live DigiLocker and
+          optional CDSL OTP, open Auto-fill in the{' '}
           <Link href="/filing" className="underline underline-offset-2">
             filing wizard
-          </Link>{' '}
-          with <span className="ntx-figure">CASPARSER_API_KEY</span> set.
+          </Link>
+          .
         </p>
 
         <div className="ntx-panel mt-8 p-6">

@@ -1,0 +1,23 @@
+# Deploy portal-fetch (Browserbase + Playwright worker) on Render.
+# Dashboard: https://dashboard.render.com → New → Blueprint → this repo
+# Or: render.yaml at repo root (Render Blueprint).
+
+services:
+  - type: web
+    name: nritax-portal-fetch
+    runtime: docker
+    dockerfilePath: ./services/portal-fetch/Dockerfile
+    dockerContext: ./services/portal-fetch
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: PORTAL_FETCH_SECRET
+        generateValue: true
+      - key: PORTAL_FETCH_MOCK
+        value: '0'
+      - key: BROWSERBASE_API_KEY
+        sync: false
+      - key: BROWSERBASE_PROJECT_ID
+        sync: false
+      - key: NODE_ENV
+        value: production

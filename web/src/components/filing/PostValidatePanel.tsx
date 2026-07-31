@@ -89,6 +89,13 @@ export function PostValidatePanel({
   const [filingId, setFilingId] = useState<string | null>(null);
   const [approveBusy, setApproveBusy] = useState(false);
   const [mismatches, setMismatches] = useState<MismatchItem[]>([]);
+  const [eriReady, setEriReady] = useState<{
+    summary: string;
+    mode: string;
+    live: boolean;
+    referUrl?: string;
+    nextSteps: string[];
+  } | null>(null);
 
   const nriHints = [
     dtaaEvidenceRequired(data.meta.residentialStatus)
@@ -120,6 +127,27 @@ export function PostValidatePanel({
   useEffect(() => {
     void refreshEntitlement();
   }, [refreshEntitlement]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/eri');
+        const json = (await res.json()) as {
+          ok?: boolean;
+          readiness?: {
+            summary: string;
+            mode: string;
+            live: boolean;
+            referUrl?: string;
+            nextSteps: string[];
+          };
+        };
+        if (json.ok && json.readiness) setEriReady(json.readiness);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     downloadBlocked?.(Boolean(review?.blocksFilingRecommendation));
@@ -330,13 +358,21 @@ export function PostValidatePanel({
         ok?: boolean;
         message?: string;
         warnings?: string[];
-        consent?: { consentId: string; status: string; message?: string };
+        consent?: {
+          consentId: string;
+          status: string;
+          message?: string;
+          redirectUrl?: string;
+        };
       };
       if (!json.ok || !json.consent) {
         onNotice(json.message ?? 'Consent failed.');
         return;
       }
       setConsentId(json.consent.consentId);
+      if (json.consent.redirectUrl && typeof window !== 'undefined') {
+        window.open(json.consent.redirectUrl, '_blank', 'noopener,noreferrer');
+      }
       const warn = json.warnings?.[0] ? ` · ${json.warnings[0]}` : '';
       onNotice(`${json.consent.message ?? `Consent ${json.consent.status}.`}${warn}`);
     } finally {
@@ -369,11 +405,19 @@ export function PostValidatePanel({
       const json = (await res.json()) as {
         ok?: boolean;
         message?: string;
-        upload?: { acknowledgementNumber?: string; status: string; message?: string };
+        upload?: {
+          acknowledgementNumber?: string;
+          status: string;
+          message?: string;
+          verificationRedirectUrl?: string;
+        };
       };
       if (!json.ok || !json.upload) {
         onNotice(json.message ?? 'Upload failed.');
         return;
+      }
+      if (json.upload.verificationRedirectUrl && typeof window !== 'undefined') {
+        window.open(json.upload.verificationRedirectUrl, '_blank', 'noopener,noreferrer');
       }
       if (json.upload.acknowledgementNumber) setAck(json.upload.acknowledgementNumber);
       onNotice(
@@ -664,39 +708,22 @@ export function PostValidatePanel({
       ) : null}
 
       <div className="space-y-3 border-t border-[var(--rule)] pt-4">
-        <h3 className="text-[var(--label)] font-semibold text-[var(--ink)]">Submit</h3>
+        <h3 className="text-[var(--label)] font-semibold text-[var(--ink)]">
+          Finish on the Income Tax portal
+        </h3>
+        <p className="text-[var(--body-sm)] text-[var(--text-muted)]">
+          NRITAX prepares the return. Download JSON above, then upload it yourself on the
+          department site. Live ERI submit is deferred — we do not hand users to Quicko or
+          another filing platform.
+        </p>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="ntx-btn ntx-btn-secondary"
-            disabled={eriBusy}
-            onClick={() => void eriConsent()}
-          >
-            {eriBusy ? '…' : 'ERI consent'}
-          </button>
-          <button
-            type="button"
-            className="ntx-btn ntx-btn-secondary"
-            disabled={eriBusy || !consentId}
-            onClick={() => void eriUpload()}
-          >
-            Submit via ERI
-          </button>
-          <button
-            type="button"
-            className="ntx-btn ntx-btn-secondary"
-            disabled={eriBusy || !ack}
-            onClick={() => void eriStatus()}
-          >
-            ERI status
-          </button>
           <a
-            className="ntx-btn ntx-btn-secondary"
+            className="ntx-btn ntx-btn-primary"
             href={ITD_PORTAL_HOME}
             target="_blank"
             rel="noopener noreferrer"
           >
-            Manual portal upload
+            Open e-Filing portal
           </a>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -708,7 +735,7 @@ export function PostValidatePanel({
               className="ntx-input mt-1 w-full"
               value={ackInput}
               onChange={(e) => setAckInput(e.target.value)}
-              placeholder="Optional · after upload"
+              placeholder="Optional · after you upload"
             />
           </label>
           <button
@@ -721,16 +748,48 @@ export function PostValidatePanel({
           </button>
         </div>
         <p className="text-[var(--caption)] text-[var(--text-muted)]">
-          Manual transport records digest + acknowledgement into filing history. ERI uses the
-          configured provider (default mock). Paid plan required for ERI submit; JSON download above
-          stays free. Never enter an Income Tax portal password here.
+          Prefill can come from browser automation (Fetch prefill) or a JSON file you download
+          yourself. After mapping and validate, Download JSON is the filing artifact.
         </p>
-        {consentId ? (
-          <p className="text-[var(--caption)] text-[var(--text-muted)]">Consent: {consentId}</p>
-        ) : null}
-        {ack ? (
-          <p className="text-[var(--caption)] text-[var(--text-muted)]">Ack: {ack}</p>
-        ) : null}
+        <details className="text-[var(--caption)] text-[var(--text-muted)]">
+          <summary className="cursor-pointer select-none font-semibold text-[var(--primary)]">
+            Deferred · ERI submit (not used in production yet)
+          </summary>
+          <p className="mt-2">
+            {eriReady?.summary ??
+              'ERI stays on mock until ITD intermediary credentials exist. No third-party filing platform.'}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="ntx-btn ntx-btn-secondary ntx-btn-compact"
+              disabled={eriBusy}
+              onClick={() => void eriConsent()}
+            >
+              {eriBusy ? '…' : 'ERI consent (mock)'}
+            </button>
+            <button
+              type="button"
+              className="ntx-btn ntx-btn-secondary ntx-btn-compact"
+              disabled={eriBusy || !consentId}
+              onClick={() => void eriUpload()}
+            >
+              Submit via ERI (mock)
+            </button>
+            <button
+              type="button"
+              className="ntx-btn ntx-btn-secondary ntx-btn-compact"
+              disabled={eriBusy || !ack}
+              onClick={() => void eriStatus()}
+            >
+              ERI status
+            </button>
+          </div>
+          {consentId ? (
+            <p className="mt-2">Consent: {consentId}</p>
+          ) : null}
+          {ack ? <p className="mt-1">Ack: {ack}</p> : null}
+        </details>
       </div>
     </div>
   );

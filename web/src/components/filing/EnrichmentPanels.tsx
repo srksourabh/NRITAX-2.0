@@ -477,7 +477,7 @@ export function EnrichmentPanels({
       if (!json.ok || typeof json.oauthUrl !== 'string') {
         setNotice(
           json.message ??
-            'Could not start Gmail connect. Set CASPARSER_API_KEY, or upload a CAS PDF by hand.',
+            'Could not start Gmail connect. Try again later, or upload a CAS PDF by hand.',
         );
         return;
       }
@@ -873,8 +873,8 @@ export function EnrichmentPanels({
         <p className="mt-1 max-w-3xl text-[var(--body-sm)] text-[var(--text-muted)]">
           Enter the minimum we need when Part A is empty: PAN, name as on the PAN
           card, and date of birth. Optional Aadhaar and IFSC fill link status and
-          the first bank row. Uses your Sandbox test key with response cache.
-          Never asks for the Income Tax portal password.
+          the first bank row. Identity helpers never need your Income Tax portal
+          password.
         </p>
         <div className="ntx-field-grid mt-4">
           <div className="ntx-field" style={{ gridColumn: 'span 4' }}>
@@ -1297,8 +1297,8 @@ export function EnrichmentPanels({
         {digiMockPrompt ? (
           <div className="mt-4 space-y-2 border-t border-[var(--rule)] pt-4">
             <p className="text-[var(--body-sm)] text-[var(--text-muted)]">
-              Local mock consent (DIGILOCKER_MOCK). Live DigiLocker needs the product
-              enabled on Sandbox plus an HTTPS redirect.
+              Practice consent for local testing. Live DigiLocker needs the product
+              enabled on your Sandbox account plus a public HTTPS redirect.
             </p>
             <div className="flex flex-wrap gap-2">
               <button

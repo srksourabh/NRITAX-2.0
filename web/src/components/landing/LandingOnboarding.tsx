@@ -100,7 +100,7 @@ export function LandingOnboarding({
         <div className="ntx-landing-rise">
           <p className="ntx-landing-kicker">Start securely</p>
           <h2 id="start-heading" className="ntx-display-lg mt-3 text-[var(--ink)]">
-            Begin a filing profile without sharing passwords
+            Begin a filing profile with clear security choices
           </h2>
           <p className="ntx-landing-section-lede">
             Four short questions. We keep the draft in this browser (local storage), then take
@@ -109,9 +109,9 @@ export function LandingOnboarding({
           <div className="ntx-landing-security">
             <h3>Security note</h3>
             <p>
-              NRITAX 2.0 never asks for or stores your Income Tax Department password. We only ask
-              whether you can reach the portal, so we know whether to aim for JSON download or
-              a later ERI path.
+              Prefer downloading prefill JSON yourself on the Income Tax portal. If you later
+              use optional automated fetch, the password is used only for that job over an
+              encrypted connection and is wiped when the job ends — not stored for reuse.
             </p>
           </div>
         </div>
@@ -276,7 +276,8 @@ export function LandingOnboarding({
                   </label>
                 ))}
                 <p className="text-[var(--body-sm)] text-[var(--text-muted)]">
-                  This is not a password field. We never ask for the portal password.
+                  This only records whether you can reach the portal yourself. It is not a
+                  password field.
                 </p>
                 {errors.credentialStatus ? (
                   <p className="ntx-field-error">{errors.credentialStatus}</p>

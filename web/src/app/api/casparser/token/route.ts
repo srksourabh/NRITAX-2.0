@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: false,
       message:
-        'Could not mint a CAS Parser access token. Set CASPARSER_API_KEY in web/.env.local.',
+        'Could not mint a Portfolio Connect token. Try again later, or upload a CAS PDF.',
     });
   }
 }

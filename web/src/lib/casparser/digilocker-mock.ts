@@ -21,7 +21,7 @@ interface MockSession {
 const sessions = new Map<string, MockSession>();
 
 const UNAVAILABLE_KEY =
-  'CASPARSER_API_KEY is not set. Paste your Pro key in web/.env.local, or enter details by hand.';
+  'Statement import is not configured. Enter details by hand, or upload a CAS PDF.';
 
 export function casparserKeyMissingMessage(): string {
   return UNAVAILABLE_KEY;

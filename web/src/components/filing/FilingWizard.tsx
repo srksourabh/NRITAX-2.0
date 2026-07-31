@@ -430,7 +430,7 @@ export function FilingWizard() {
         </>
       }
     >
-      <main className="ntx-page pb-24 sm:pb-8">
+      <main className="ntx-page pb-8">
         <div className="flex flex-col gap-3 border-b border-[var(--rule)] pb-4 sm:gap-4 sm:pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="text-[var(--caption)] font-semibold tracking-[0.18em] text-[var(--text-muted)] uppercase">
@@ -458,7 +458,7 @@ export function FilingWizard() {
               </button>
               <button
                 type="button"
-                className="ntx-btn ntx-btn-primary hidden sm:inline-flex"
+                className="ntx-btn ntx-btn-primary"
                 onClick={downloadJson}
               >
                 Download JSON
@@ -611,12 +611,6 @@ export function FilingWizard() {
 
             <PostValidatePanel data={data} onNotice={setNotice} />
           </div>
-        </div>
-
-        <div className="ntx-sticky-action-bar sm:hidden">
-          <button type="button" className="ntx-btn ntx-btn-primary w-full" onClick={downloadJson}>
-            Download JSON
-          </button>
         </div>
       </main>
     </AppShell>

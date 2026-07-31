@@ -150,21 +150,24 @@ that are not one of their fixtures returns HTTP 404 with the message
 "Request does not match any saved example". That is a success as far as
 transport and auth are concerned, and integration tests must treat it as such.
 
-### Sandbox has no ERI endpoints
+### Sandbox ERI compliance (added 2026-07-31)
 
-The full catalogue was retrieved. Sandbox offers KYC, GST, TDS, Banking, and an
-Income Tax product that is calculators, reports and OCR. There is no client
-registration, no taxpayer consent, no prefill download, no ITR upload, no
-ITR-V, no AIS. Sandbox cannot file a return.
+Sandbox now documents Income Tax Compliance APIs under `/it/compliance/eri/*`
+that proxy ITD ERI (login, clients, validate, submit). That is **not** the same
+as KYC. Filing still requires **your** ITD ERI user/password and Software ID,
+plus the Compliance product enabled on the Sandbox account.
 
-So `sandbox.ts` is not an `EriProvider`. It implements `authenticate` for real,
-plus the enrichment calls below, and throws
-`EriError('NOT_AN_ERI', …)` from `requestConsent`, `fetchPrefill` and
-`uploadReturn`, with a comment saying why. The mock provider remains the
-default and remains complete: it is what the product runs on until a real ERI
-is contracted.
+`ERI_PROVIDER=sandbox` uses `web/src/lib/eri/sandbox-compliance.ts`.
+`ERI_PROVIDER=quicko` uses Quicko Refer handoff (`QUICKO_AFFILIATE_ID`) — fastest
+third-party path; taxpayer files on Quicko, NRITAX does not upload JSON.
 
-### Sandbox endpoints we do want
+KYC / DigiLocker / OCR remain on the soft-fail Sandbox client and are separate
+from `EriProvider` upload.
+
+So `sandbox.ts` (legacy REST stub routes) is no longer selected by
+`getEriProvider`. Prefer Compliance or Quicko Refer.
+
+### Sandbox endpoints we do want (KYC / OCR — unchanged)
 
 These automate real work and are worth wiring behind their own client, separate
 from the ERI interface.

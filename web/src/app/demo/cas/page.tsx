@@ -17,9 +17,8 @@ export default async function CasDemoPage() {
         <main className="ntx-page py-16">
           <h1 className="ntx-display-lg text-[var(--ink)]">CAS fetch demo</h1>
           <p className="mt-4 max-w-xl text-[var(--text-secondary)]">
-            Sign in to try DigiLocker auto-fill and specimen CAS fetch. Live Pro
-            DigiLocker / CDSL uses <span className="ntx-figure">CASPARSER_API_KEY</span> in
-            the filing wizard.
+            Sign in to try DigiLocker auto-fill and specimen CAS fetch. Live DigiLocker
+            and CDSL helpers are available from Auto-fill in the filing wizard.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/login?callbackUrl=/filing" className="ntx-btn ntx-btn-primary">

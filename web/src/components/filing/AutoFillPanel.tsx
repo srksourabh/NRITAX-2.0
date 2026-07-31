@@ -290,10 +290,9 @@ export function AutoFillPanel({
         Auto-fill · DigiLocker &amp; CDSL (Pro)
       </h2>
       <p className="mt-1 max-w-3xl text-[var(--body-sm)] text-[var(--text-muted)]">
-        Ask for a mobile (optional), open DigiLocker, then we fill Part A and check
-        PAN KYC status. Or use Portfolio Connect to import CAS / CDSL in one widget.
-        Uses <code className="ntx-figure">CASPARSER_API_KEY</code>.
-        Local mock DigiLocker works without HTTPS when <code className="ntx-figure">DIGILOCKER_MOCK=1</code>.
+        Optionally share a mobile number, open DigiLocker, then we fill Part A and
+        check PAN KYC status. Or use Portfolio Connect to import CAS / CDSL in one
+        step. You can still enter everything by hand.
       </p>
 
       <div className="mt-4">
@@ -399,8 +398,8 @@ export function AutoFillPanel({
 
       <h3 className="mt-4 text-[var(--h3)] font-semibold">Optional · CDSL CAS via OTP</h3>
       <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
-        Needs PAN + DOB already in Part A, your 16-digit BO ID, and a real{' '}
-        <code className="ntx-figure">CASPARSER_API_KEY</code>. Or upload a PDF below.
+        Needs PAN and date of birth already in Part A, plus your 16-digit BO ID.
+        If the helper is unavailable, upload a CAS PDF below or enter gains by hand.
       </p>
       <div className="ntx-field-grid mt-3">
         <div className="ntx-field" style={{ gridColumn: 'span 6' }}>

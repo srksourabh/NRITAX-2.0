@@ -9,8 +9,8 @@ const FEATURES = [
     photo: BRAND_PHOTOS.calculating,
   },
   {
-    title: 'No portal password, ever',
-    text: 'We never ask for or store your Income Tax Department password. Phase 1 ends with a departmental JSON you upload yourself.',
+    title: 'Passwords stay ephemeral',
+    text: 'Optional portal fetch uses your password only for that job, over encrypted connections, then discards it. Prefer downloading the JSON yourself on the department site when you can.',
     photo: BRAND_PHOTOS.typedMoney,
   },
   {

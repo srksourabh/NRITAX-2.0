@@ -152,7 +152,7 @@ describe('validateReturn', () => {
     expect(placeholder.canUpload).toBe(false);
     expect(placeholder.blocking).toHaveLength(1);
     expect(placeholder.blocking[0].schedule).toBe('CreationInfo');
-    expect(placeholder.blocking[0].message).toContain('blacklisting attaches to that identifier');
+    expect(placeholder.blocking[0].message).toContain('Software ID registered');
 
     const registered = validateReturn(blank(), {
       schedules: [],

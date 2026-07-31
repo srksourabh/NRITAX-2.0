@@ -252,11 +252,11 @@ export function validateReturn(
       schedule: 'CreationInfo',
       text: 'The software identifier written into CreationInfo.',
       message:
-        `The software identifier is still the placeholder ${PLACEHOLDER_SOFTWARE_ID}. Set ` +
-        'ERI_SOFTWARE_ID to the number registered with the Directorate of Income Tax (Systems) ' +
-        'before any return is filed, because Category-A blacklisting attaches to that identifier: ' +
-        'a defect in one return filed under the placeholder is held against every return filed ' +
-        'under it.',
+        `The software identifier is still the placeholder ${PLACEHOLDER_SOFTWARE_ID}. ` +
+        'NRITAX needs a Software ID registered with the Directorate of Income Tax (Systems) ' +
+        '(or your ERI / Sandbox partner) before a return is filed under that ID. Until then, ' +
+        'use demo validation only — Category-A defects on a shared placeholder can blacklist ' +
+        'every return filed under it.',
     });
   }
 

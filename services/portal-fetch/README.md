@@ -5,6 +5,28 @@ Downloads Income Tax Department pre-filled JSON via Browserbase + Playwright
 on CAPTCHA or hard failure. Credentials stay in process memory and are wiped on
 terminal status.
 
+## Production (Cloud Run + Browserbase)
+
+Live worker (GCP `experiments-1c2fe`, `asia-south1`):
+
+`https://nritax-portal-fetch-567224747439.asia-south1.run.app`
+
+Health: `GET /health` → `{"status":"ok","mock":false}` when Browserbase keys are set.
+
+Redeploy image:
+
+```bash
+docker build -t asia-south1-docker.pkg.dev/experiments-1c2fe/cloud-run-source-deploy/nritax-portal-fetch:latest .
+docker push asia-south1-docker.pkg.dev/experiments-1c2fe/cloud-run-source-deploy/nritax-portal-fetch:latest
+gcloud run deploy nritax-portal-fetch --image asia-south1-docker.pkg.dev/experiments-1c2fe/cloud-run-source-deploy/nritax-portal-fetch:latest --region asia-south1 --project experiments-1c2fe
+```
+
+Vercel Production must have matching `PORTAL_FETCH_URL` + `PORTAL_FETCH_SECRET`.
+
+Alt: repo-root `render.yaml` Blueprint if you prefer Render instead of Cloud Run.
+
+Soft-fail: if the worker is down, the filing wizard still accepts manual prefill JSON upload.
+
 ## Run locally
 
 ```bash

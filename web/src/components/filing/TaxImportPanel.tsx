@@ -51,7 +51,7 @@ export function TaxImportPanel({
       <h2 className="text-[var(--h3)] font-semibold">AIS / Form 26AS import</h2>
       <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
         Paste structured JSON exported from the Income Tax portal. We store a normalized extract for
-        mismatch checks — we never ask for your portal password.
+        mismatch checks. Prefer exporting the file on the department site yourself.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button
