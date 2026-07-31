@@ -1,19 +1,27 @@
+import Image from 'next/image';
+
+import { BRAND_PHOTOS } from '@/lib/brand-imagery';
+
 const FEATURES = [
   {
     title: 'AI review on the finished return',
     text: 'A second pass flags missing schedules, inconsistent heads and residency traps before you download the JSON.',
+    photo: BRAND_PHOTOS.calculating,
   },
   {
     title: 'No portal password, ever',
     text: 'We never ask for or store your Income Tax Department password. Phase 1 ends with a departmental JSON you upload yourself.',
+    photo: BRAND_PHOTOS.typedMoney,
   },
   {
     title: 'CA review when you need it',
     text: 'Complex NRI cases can route to a CA without restarting the return: foreign income, capital gains, or a notice to answer.',
+    photo: BRAND_PHOTOS.financesOrder,
   },
   {
     title: 'Helpers that stay optional',
     text: 'Prefill JSON, DigiLocker, Form 16 OCR and mutual-fund CAS fill schedules when available. Hand entry always works.',
+    photo: BRAND_PHOTOS.markets,
   },
 ] as const;
 
@@ -38,6 +46,15 @@ export function LandingFeatures() {
               className="ntx-landing-feature ntx-landing-rise"
               style={{ animationDelay: `${index * 80}ms` }}
             >
+              <div className="ntx-landing-feature-media">
+                <Image
+                  src={feature.photo.src}
+                  alt={feature.photo.alt}
+                  width={640}
+                  height={224}
+                  sizes="(max-width: 768px) 100vw, 25vw"
+                />
+              </div>
               <h3>{feature.title}</h3>
               <p>{feature.text}</p>
             </article>
