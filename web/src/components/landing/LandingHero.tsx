@@ -1,6 +1,9 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
+
+import { BRAND_PHOTOS } from '@/lib/brand-imagery';
 
 const ACTIONS = [
   ['Import', 'Portal prefill JSON'],
@@ -54,6 +57,15 @@ export function LandingHero({
           className="ntx-landing-sheet ntx-landing-rise"
           style={{ animationDelay: '120ms' }}
         >
+          <div className="ntx-landing-sheet-photo">
+            <Image
+              src={BRAND_PHOTOS.paperwork.src}
+              alt={BRAND_PHOTOS.paperwork.alt}
+              fill
+              sizes="(max-width: 1024px) 100vw, 32rem"
+              priority
+            />
+          </div>
           <div className="ntx-landing-sheet-panel">
             <header>
               <span className="ntx-landing-sheet-idx">01</span>

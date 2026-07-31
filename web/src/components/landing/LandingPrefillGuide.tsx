@@ -1,3 +1,6 @@
+import Image from 'next/image';
+
+import { BRAND_PHOTOS } from '@/lib/brand-imagery';
 import {
   ITD_PORTAL_HOME,
   ITD_PORTAL_LABEL,
@@ -31,45 +34,56 @@ export function LandingPrefillGuide() {
       aria-labelledby="prefill-heading"
     >
       <div className="ntx-shell">
-        <div className="max-w-2xl">
-          <p className="ntx-landing-kicker">Prefill from the department</p>
-          <h2 id="prefill-heading" className="ntx-display-lg mt-3 text-[var(--ink)]">
-            How to download the ITD JSON
-          </h2>
-          <p className="ntx-landing-section-lede">
-            If you can sign in to the Income Tax portal, pull their pre-filled JSON and drop it
-            into NRITAX 2.0. No portal password is ever collected here.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <a
-              href={ITD_PORTAL_HOME}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ntx-btn ntx-btn-primary"
-            >
-              Open e-Filing portal
-            </a>
-            <a
-              href={ITD_PORTAL_LOGIN}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ntx-btn ntx-btn-secondary"
-            >
-              Portal login
-            </a>
+        <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+          <div>
+            <p className="ntx-landing-kicker">Prefill from the department</p>
+            <h2 id="prefill-heading" className="ntx-display-lg mt-3 text-[var(--ink)]">
+              How to download the ITD JSON
+            </h2>
+            <p className="ntx-landing-section-lede">
+              If you can sign in to the Income Tax portal, pull their pre-filled JSON and drop it
+              into NRITAX 2.0. No portal password is ever collected here.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <a
+                href={ITD_PORTAL_HOME}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ntx-btn ntx-btn-primary"
+              >
+                Open e-Filing portal
+              </a>
+              <a
+                href={ITD_PORTAL_LOGIN}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ntx-btn ntx-btn-secondary"
+              >
+                Portal login
+              </a>
+            </div>
+            <figure className="ntx-landing-side-photo">
+              <Image
+                src={BRAND_PHOTOS.billsReceipts.src}
+                alt={BRAND_PHOTOS.billsReceipts.alt}
+                width={720}
+                height={540}
+                sizes="(max-width: 768px) 100vw, 28rem"
+              />
+            </figure>
           </div>
+          <ol className="ntx-landing-steps">
+            {STEPS.map((step, index) => (
+              <li key={step.title}>
+                <span className="ntx-landing-step-no" aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
+              </li>
+            ))}
+          </ol>
         </div>
-        <ol className="ntx-landing-steps mt-8">
-          {STEPS.map((step, index) => (
-            <li key={step.title}>
-              <span className="ntx-landing-step-no" aria-hidden="true">
-                {String(index + 1).padStart(2, '0')}
-              </span>
-              <h3>{step.title}</h3>
-              <p>{step.text}</p>
-            </li>
-          ))}
-        </ol>
       </div>
     </section>
   );
