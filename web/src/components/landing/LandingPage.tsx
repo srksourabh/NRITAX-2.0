@@ -22,7 +22,10 @@ export function LandingPage({ signedIn }: { signedIn: boolean }) {
         <LandingHowItWorks />
         <LandingPrefillGuide />
         <LandingTrust />
-        {!signedIn ? <LandingOnboarding primaryHref={primaryHref} /> : null}
+        <LandingOnboarding
+          primaryHref={primaryHref}
+          continueLabel={signedIn ? 'Continue to filing' : 'Continue to sign in'}
+        />
         <LandingCta primaryHref={primaryHref} primaryLabel={primaryLabel} />
       </main>
       <LandingFooter />

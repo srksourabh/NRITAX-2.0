@@ -1318,14 +1318,41 @@ a:hover {
 }
 
 .ntx-landing-progress li {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: var(--caption);
-  color: var(--text-muted);
+  min-width: 0;
 }
 
-.ntx-landing-progress li span {
+.ntx-landing-progress-node {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--caption);
+  color: var(--text-muted);
+  text-align: left;
+  cursor: default;
+}
+
+.ntx-landing-progress-node:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.ntx-landing-progress li.is-done .ntx-landing-progress-node:not(:disabled) {
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.ntx-landing-progress li.is-done .ntx-landing-progress-node:not(:disabled):hover {
+  color: var(--primary);
+}
+
+.ntx-landing-progress-node span {
   display: inline-flex;
   width: 28px;
   height: 28px;
@@ -1337,16 +1364,25 @@ a:hover {
   font-size: var(--statute);
 }
 
-.ntx-landing-progress li.is-current {
+.ntx-landing-progress li.is-current .ntx-landing-progress-node {
   color: var(--primary);
   font-weight: var(--weight-semibold);
 }
 
-.ntx-landing-progress li.is-current span,
-.ntx-landing-progress li.is-done span {
+.ntx-landing-progress li.is-current .ntx-landing-progress-node span,
+.ntx-landing-progress li.is-done .ntx-landing-progress-node span {
   background: var(--primary);
   border-color: var(--primary);
   color: var(--surface);
+}
+
+.ntx-landing-anchor,
+#features,
+#how-it-works,
+#trust,
+#start,
+#top {
+  scroll-margin-top: 5rem;
 }
 
 .ntx-landing-form-body {

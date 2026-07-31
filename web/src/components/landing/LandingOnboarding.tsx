@@ -53,8 +53,10 @@ function validateStep(step: number, data: Draft): Errors {
 
 export function LandingOnboarding({
   primaryHref,
+  continueLabel = 'Continue to sign in',
 }: {
   primaryHref: string;
+  continueLabel?: string;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -68,6 +70,12 @@ export function LandingOnboarding({
       delete next[field];
       return next;
     });
+  };
+
+  const goToStep = (index: number) => {
+    if (index < 0 || index > step) return;
+    setErrors({});
+    setStep(index);
   };
 
   const goNext = () => {
@@ -95,7 +103,7 @@ export function LandingOnboarding({
   };
 
   return (
-    <section id="start" className="ntx-section" aria-labelledby="start-heading">
+    <section id="start" className="ntx-section ntx-landing-anchor" aria-labelledby="start-heading">
       <div className="ntx-shell ntx-landing-onboard">
         <div className="ntx-landing-rise">
           <p className="ntx-landing-kicker">Start securely</p>
@@ -132,17 +140,35 @@ export function LandingOnboarding({
           </div>
 
           <ol className="ntx-landing-progress" aria-label="Onboarding progress">
-            {STEPS.map((label, index) => (
-              <li
-                key={label}
-                className={
-                  index === step ? 'is-current' : index < step ? 'is-done' : undefined
-                }
-              >
-                <span aria-hidden="true">{index + 1}</span>
-                {label}
-              </li>
-            ))}
+            {STEPS.map((label, index) => {
+              const done = index < step;
+              const current = index === step;
+              const canJumpBack = index < step;
+              return (
+                <li
+                  key={label}
+                  className={current ? 'is-current' : done ? 'is-done' : undefined}
+                >
+                  <button
+                    type="button"
+                    className="ntx-landing-progress-node"
+                    disabled={!canJumpBack}
+                    aria-current={current ? 'step' : undefined}
+                    aria-label={
+                      canJumpBack
+                        ? `Go back to ${label}`
+                        : current
+                          ? `${label}, current step`
+                          : `${label}, not reached yet`
+                    }
+                    onClick={() => goToStep(index)}
+                  >
+                    <span aria-hidden="true">{index + 1}</span>
+                    {label}
+                  </button>
+                </li>
+              );
+            })}
           </ol>
 
           <div className="ntx-landing-form-body">
@@ -291,12 +317,12 @@ export function LandingOnboarding({
               type="button"
               className="ntx-btn ntx-btn-secondary"
               disabled={step === 0}
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              onClick={() => goToStep(step - 1)}
             >
               Back
             </button>
             <button type="button" className="ntx-btn ntx-btn-primary" onClick={goNext}>
-              {step === STEPS.length - 1 ? 'Continue to sign in' : 'Next'}
+              {step === STEPS.length - 1 ? continueLabel : 'Next'}
             </button>
           </div>
         </div>
