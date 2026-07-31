@@ -37,6 +37,8 @@ export type ApplyCasPipelineSuccess = CasApplication & {
   ok: true;
   cas: CasParseResult;
   source: CasPipelineSource;
+  /** True when no realised CG figures / 112A rows were written. */
+  emptyGains: boolean;
 };
 
 export type ApplyCasPipelineFailure = {
@@ -46,6 +48,18 @@ export type ApplyCasPipelineFailure = {
 };
 
 export type ApplyCasPipelineResult = ApplyCasPipelineSuccess | ApplyCasPipelineFailure;
+
+function casHasGainFigures(cas: CasParseResult): boolean {
+  if (cas.gains.length > 0) return true;
+  const s = cas.summary;
+  return (
+    s.shortTerm111A !== 0 ||
+    s.shortTermOther !== 0 ||
+    s.longTerm112A !== 0 ||
+    s.longTermOther !== 0 ||
+    s.schedule112A.length > 0
+  );
+}
 
 function resolveCasResult(input: ApplyCasPipelineInput): CasParseResult | null {
   const fy = input.financialYear ?? '2025-26';
@@ -80,6 +94,26 @@ export function applyCasPipeline(input: ApplyCasPipelineInput): ApplyCasPipeline
   }
 
   const applied = applyCasToReturn(input.data, cas);
+  const emptyGains = !casHasGainFigures(cas);
+  const hasIdentity = Boolean(cas.investor.pan || cas.investor.name);
+  const wroteNothing = applied.fieldsApplied === 0 && applied.rowsApplied === 0;
+
+  if (wroteNothing && !hasIdentity) {
+    return {
+      ok: false,
+      message:
+        'Portfolio import returned no usable investor or capital-gain data. Upload a Detailed CAS PDF, or enter gains by hand.',
+      warnings: [...cas.warnings, ...applied.warnings],
+    };
+  }
+
+  const warnings = [...cas.warnings, ...applied.warnings];
+  if (emptyGains) {
+    const hard =
+      'No realised capital gains were applied to Schedule CG. Upload a Detailed CAS PDF with transactions, or enter gains by hand.';
+    if (!warnings.includes(hard)) warnings.push(hard);
+  }
+
   return {
     ok: true,
     cas,
@@ -87,6 +121,7 @@ export function applyCasPipeline(input: ApplyCasPipelineInput): ApplyCasPipeline
     data: applied.data,
     fieldsApplied: applied.fieldsApplied,
     rowsApplied: applied.rowsApplied,
-    warnings: [...cas.warnings, ...applied.warnings],
+    warnings,
+    emptyGains,
   };
 }

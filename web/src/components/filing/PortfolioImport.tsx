@@ -17,7 +17,7 @@ type SoftJson = {
  * casparser import modal (upload / CDSL OTP / MF generator).
  */
 export function PortfolioImport({
-  data,
+  data: _data,
   setData,
   setActiveId,
   setNotice,
@@ -65,25 +65,40 @@ export function PortfolioImport({
   }, [mintToken]);
 
   function onSuccess(result: ParsedData) {
-    const applied = applyCasPipeline({
-      data,
-      source: 'portfolio-connect',
-      portfolio: result,
-      financialYear: '2025-26',
+    setData((prev) => {
+      const applied = applyCasPipeline({
+        data: prev,
+        source: 'portfolio-connect',
+        portfolio: result,
+        financialYear: '2025-26',
+      });
+      if (!applied.ok) {
+        setNotice(
+          applied.message ||
+            'Portfolio Connect returned no usable investor data. Try another statement, or enter gains by hand.',
+        );
+        return prev;
+      }
+
+      const pan = applied.cas.investor.pan ? ` · PAN ${applied.cas.investor.pan}` : '';
+      const warn =
+        applied.warnings.length > 0
+          ? ` · ${applied.warnings.slice(0, 2).join(' · ')}`
+          : '';
+
+      if (applied.emptyGains) {
+        setActiveId('GEN');
+        setNotice(
+          `Portfolio Connect applied investor details${pan}, but no realised capital gains were found for Schedule CG. Upload a Detailed CAS PDF with buy/sell transactions, or enter gains by hand.${warn}`,
+        );
+      } else {
+        setActiveId('CG');
+        setNotice(
+          `Portfolio Connect · ${applied.cas.source}${pan} · ${applied.fieldsApplied} CG fields · ${applied.rowsApplied} Schedule 112A rows. Review carefully.${warn}`,
+        );
+      }
+      return applied.data;
     });
-    if (!applied.ok) {
-      setNotice(
-        applied.message ||
-          'Portfolio Connect returned no usable investor data. Try another statement, or enter gains by hand.',
-      );
-      return;
-    }
-    setData(applied.data);
-    setActiveId('CG');
-    const pan = applied.cas.investor.pan ? ` · PAN ${applied.cas.investor.pan}` : '';
-    setNotice(
-      `Portfolio Connect · ${applied.cas.source}${pan} · ${applied.fieldsApplied} CG fields · ${applied.rowsApplied} Schedule 112A rows. Review carefully.`,
-    );
   }
 
   function onError(error: PortfolioConnectError) {

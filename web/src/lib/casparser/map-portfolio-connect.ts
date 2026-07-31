@@ -37,8 +37,29 @@ export interface PortfolioParsedLike {
     address?: string;
   };
   raw_response?: unknown;
+  /** SDK may place smart-parse / holdings data at the top level. */
+  folios?: unknown;
+  holdings?: unknown;
+  summary?: unknown;
+  mutual_funds?: unknown;
+  demat_accounts?: unknown;
+  investor?: unknown;
+  meta?: unknown;
 }
 
+function hasSmartParseShape(raw: Record<string, unknown>): boolean {
+  return Boolean(
+    raw.mutual_funds ||
+      raw.demat_accounts ||
+      raw.investor ||
+      raw.meta ||
+      raw.summary,
+  );
+}
+
+/**
+ * Fallback order: raw_response → whole payload as smart-parse → investor-only.
+ */
 export function mapPortfolioConnectToCasResult(
   data: PortfolioParsedLike,
   financialYear = '2025-26',
@@ -47,6 +68,30 @@ export function mapPortfolioConnectToCasResult(
   if (raw) {
     const fromSmart = mapSmartParseToCasResult(raw, financialYear);
     if (fromSmart) return fromSmart;
+  }
+
+  const topLevel = asRecord(data);
+  if (topLevel && hasSmartParseShape(topLevel)) {
+    const fromTop = mapSmartParseToCasResult(topLevel, financialYear);
+    if (fromTop) {
+      // Prefer widget investor_info when smart-parse investor is thin.
+      const info = data.investor_info;
+      const pan = asString(info?.pan).toUpperCase();
+      const name = asString(info?.name);
+      if (pan || name) {
+        return {
+          ...fromTop,
+          investor: {
+            ...fromTop.investor,
+            pan: pan || fromTop.investor.pan,
+            name: name || fromTop.investor.name,
+            email: asString(info?.email) || fromTop.investor.email,
+            address: asString(info?.address) || fromTop.investor.address,
+          },
+        };
+      }
+      return fromTop;
+    }
   }
 
   const info = data.investor_info;
@@ -82,7 +127,7 @@ export function mapPortfolioConnectToCasResult(
       },
     },
     warnings: [
-      'Portfolio Connect import applied. Realised capital gains may be incomplete — review Schedule CG or upload a Detailed CAS PDF for FIFO gains.',
+      'Portfolio Connect returned investor details but no realised capital gains. Upload a Detailed CAS PDF with buy/sell transactions, or enter Schedule CG by hand.',
     ],
   };
 }

@@ -1,9 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { EnrichmentPanels } from '@/components/filing/EnrichmentPanels';
 import { FieldHelp } from '@/components/filing/FieldHelp';
+import {
+  deriveFilingJourneyIndex,
+  FilingJourneyMap,
+  journeyTargetSchedule,
+} from '@/components/filing/FilingJourneyMap';
 import { FormSelectionStep } from '@/components/filing/FormSelectionStep';
 import { PostValidatePanel } from '@/components/filing/PostValidatePanel';
 import { RegimeComparePanel } from '@/components/filing/RegimeComparePanel';
@@ -37,6 +42,12 @@ import { validateReturnStaged, type StagedValidationReport } from '@/lib/itr/val
 type Step = 'choose' | 'residency' | 'file' | 'regime';
 
 type DraftStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+function scrollToId(id: string) {
+  window.setTimeout(() => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -127,6 +138,7 @@ export function FilingWizard() {
   const [notice, setNotice] = useState<string | null>(null);
   const [report, setReport] = useState<ValidationReport | null>(null);
   const [staged, setStaged] = useState<StagedValidationReport | null>(null);
+  const [jsonDownloaded, setJsonDownloaded] = useState(false);
   const [draftStatus, setDraftStatus] = useState<DraftStatus>('idle');
   const [draftMessage, setDraftMessage] = useState<string | null>(null);
   const [draftBusy, setDraftBusy] = useState(false);
@@ -135,6 +147,55 @@ export function FilingWizard() {
   const schedules = useMemo(() => schedulesFor(form), [form]);
   const visibleSchedules = schedules.filter((s) => isVisible(s.showIf, data));
   const active = visibleSchedules.find((s) => s.id === activeId) ?? visibleSchedules[0];
+
+  const journeyIndex = useMemo(
+    () =>
+      deriveFilingJourneyIndex({
+        step,
+        activeScheduleId: active?.id ?? activeId,
+        hasValidationReport: Boolean(report),
+        canUpload: Boolean(staged?.canUpload),
+        jsonDownloaded,
+      }),
+    [step, active?.id, activeId, report, staged?.canUpload, jsonDownloaded],
+  );
+
+  function goToJourneyStep(index: number) {
+    if (index > journeyIndex) return;
+
+    if (index <= 0) {
+      if (step === 'choose') return;
+      if (step === 'file' || step === 'regime') {
+        setActiveId('GEN');
+        setStep('file');
+        return;
+      }
+      setStep('residency');
+      return;
+    }
+
+    if (index >= 1 && index <= 3) {
+      setStep('file');
+      const target = journeyTargetSchedule(index);
+      if (target) setActiveId(target);
+      return;
+    }
+
+    if (index === 4) {
+      setStep('file');
+      runValidation();
+      return;
+    }
+
+    if (index === 5) {
+      setStep('file');
+      scrollToId('post-validate-panel');
+      return;
+    }
+
+    setStep('file');
+    scrollToId('post-validate-panel');
+  }
 
   async function loadDraftFor(
     next: FormType,
@@ -349,88 +410,90 @@ export function FilingWizard() {
   function downloadJson() {
     const built = buildReturnJson(data);
     downloadText(JSON.stringify(built.json, null, 2), built.fileName);
+    setJsonDownloaded(true);
     setNotice(
       `Downloaded ${built.fileName}. Upload at https://www.incometax.gov.in/iec/foportal/ → e-File → Upload JSON.`,
     );
   }
 
-  if (step === 'choose') {
+  function journeyChrome(right: ReactNode, body: ReactNode) {
     return (
-      <AppShell right={<span className="ntx-badge ntx-badge-draft">AY {ASSESSMENT_YEAR}</span>}>
-        <FormSelectionStep busy={draftBusy} onOpenForm={(next) => void openForm(next)} />
+      <AppShell right={right}>
+        <div className="ntx-page pb-8">
+          <FilingJourneyMap compact current={journeyIndex} />
+          <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8">
+            <FilingJourneyMap current={journeyIndex} onStep={goToJourneyStep} />
+            <div className="min-w-0">{body}</div>
+          </div>
+        </div>
       </AppShell>
+    );
+  }
+
+  if (step === 'choose') {
+    return journeyChrome(
+      <span className="ntx-badge ntx-badge-draft">AY {ASSESSMENT_YEAR}</span>,
+      <FormSelectionStep busy={draftBusy} onOpenForm={(next) => void openForm(next)} />,
     );
   }
 
   if (step === 'residency') {
-    return (
-      <AppShell
-        right={
-          <>
-            <span className="ntx-badge ntx-badge-draft">{picked ?? '—'}</span>
-            <button
-              type="button"
-              className="ntx-btn ntx-btn-secondary"
-              onClick={() => setStep('choose')}
-            >
-              Back
-            </button>
-          </>
-        }
-      >
-        <ResidencyStep
-          busy={draftBusy}
-          onBack={() => setStep('choose')}
-          onConfirm={(status, facts) => void confirmResidency(status, facts)}
-        />
-      </AppShell>
+    return journeyChrome(
+      <>
+        <span className="ntx-badge ntx-badge-draft">{picked ?? '—'}</span>
+        <button
+          type="button"
+          className="ntx-btn ntx-btn-secondary"
+          onClick={() => setStep('choose')}
+        >
+          Back
+        </button>
+      </>,
+      <ResidencyStep
+        busy={draftBusy}
+        onBack={() => setStep('choose')}
+        onConfirm={(status, facts) => void confirmResidency(status, facts)}
+      />,
     );
   }
 
   if (step === 'regime') {
-    return (
-      <AppShell
-        right={
-          <>
-            <span className="ntx-badge ntx-badge-draft">{form}</span>
-            <button type="button" className="ntx-btn ntx-btn-secondary" onClick={() => setStep('file')}>
-              Back to form
-            </button>
-          </>
-        }
-      >
-        <RegimeComparePanel
-          data={data}
-          onBack={() => setStep('file')}
-          onChooseRegime={(regime: Regime) => {
-            setData((prev) => ({
-              ...prev,
-              meta: { ...prev.meta, regime },
-              fields: { ...prev.fields, 'GEN.regime': regime === 'new' ? 'N' : 'O' },
-            }));
-            setNotice(
-              regime === 'new'
-                ? 'Filing under the new regime (115BAC).'
-                : 'Filing under the old regime.',
-            );
-          }}
-        />
-      </AppShell>
+    return journeyChrome(
+      <>
+        <span className="ntx-badge ntx-badge-draft">{form}</span>
+        <button type="button" className="ntx-btn ntx-btn-secondary" onClick={() => setStep('file')}>
+          Back to form
+        </button>
+      </>,
+      <RegimeComparePanel
+        data={data}
+        onBack={() => setStep('file')}
+        onChooseRegime={(regime: Regime) => {
+          setData((prev) => ({
+            ...prev,
+            meta: { ...prev.meta, regime },
+            fields: { ...prev.fields, 'GEN.regime': regime === 'new' ? 'N' : 'O' },
+          }));
+          setNotice(
+            regime === 'new'
+              ? 'Filing under the new regime (115BAC).'
+              : 'Filing under the old regime.',
+          );
+        }}
+      />,
     );
   }
 
-  return (
-    <AppShell
-      right={
-        <>
-          <span className="ntx-badge ntx-badge-draft">{form} · AY {ASSESSMENT_YEAR}</span>
-          <button type="button" className="ntx-btn ntx-btn-secondary" onClick={() => setStep('choose')}>
-            Change form
-          </button>
-        </>
-      }
-    >
-      <main className="ntx-page pb-8">
+  return journeyChrome(
+    <>
+      <span className="ntx-badge ntx-badge-draft">
+        {form} · AY {ASSESSMENT_YEAR}
+      </span>
+      <button type="button" className="ntx-btn ntx-btn-secondary" onClick={() => setStep('choose')}>
+        Change form
+      </button>
+    </>,
+    <>
         <div className="flex flex-col gap-3 border-b border-[var(--rule)] pb-4 sm:gap-4 sm:pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="text-[var(--caption)] font-semibold tracking-[0.18em] text-[var(--text-muted)] uppercase">
@@ -440,7 +503,8 @@ export function FilingWizard() {
               {form} for AY {ASSESSMENT_YEAR}
             </h1>
             <p className="mt-1 max-w-2xl text-[var(--body-sm)] text-[var(--text-muted)] sm:mt-2 sm:text-[length:var(--body)]">
-              Helpers are optional. Tap ? on a field for what to enter.
+              Helpers are optional. Tap ? on a field for what to enter. Use the filing route on the
+              left to see where you are.
             </p>
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -609,11 +673,12 @@ export function FilingWizard() {
               </div>
             ) : null}
 
-            <PostValidatePanel data={data} onNotice={setNotice} />
+            <div id="post-validate-panel">
+              <PostValidatePanel data={data} onNotice={setNotice} />
+            </div>
           </div>
         </div>
-      </main>
-    </AppShell>
+    </>,
   );
 }
 

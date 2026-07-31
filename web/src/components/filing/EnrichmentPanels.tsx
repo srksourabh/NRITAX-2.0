@@ -365,14 +365,21 @@ export function EnrichmentPanels({
         return;
       }
       setData(applied.data);
-      setActiveId('CG');
       const warn =
         applied.warnings.length > 0
           ? ` · ${applied.warnings.slice(0, 2).join(' · ')}`
           : '';
-      setNotice(
-        `CAS applied to Schedule CG · ${applied.fieldsApplied} fields · ${applied.rowsApplied} Schedule 112A rows${warn}. Review and edit by hand if needed.`,
-      );
+      if (applied.emptyGains) {
+        setActiveId('GEN');
+        setNotice(
+          `CAS import applied investor details but no realised capital gains for Schedule CG.${warn} Upload a Detailed CAS PDF with transactions, or enter gains by hand.`,
+        );
+      } else {
+        setActiveId('CG');
+        setNotice(
+          `CAS applied to Schedule CG · ${applied.fieldsApplied} fields · ${applied.rowsApplied} Schedule 112A rows${warn}. Review and edit by hand if needed.`,
+        );
+      }
     } catch {
       setNotice(casFailureMessage('SERVICE_UNAVAILABLE'));
     } finally {
