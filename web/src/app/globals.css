@@ -540,11 +540,9 @@ a:hover {
   color: var(--surface);
 }
 
-/* ─── Marketing landing (Mirudula header + NRITAX tokens) ─── */
+/* ─── Marketing landing (ledger register + NRITAX tokens) ─── */
 
 .ntx-landing {
-  --landing-shadow-soft: 0 14px 40px rgba(20, 28, 41, 0.08);
-  --landing-shadow-lift: 0 24px 80px rgba(20, 28, 41, 0.12);
   background: var(--paper);
   color: var(--ink);
 }
@@ -553,15 +551,8 @@ a:hover {
   max-width: 72rem;
 }
 
-.ntx-landing .ntx-btn {
-  border-radius: var(--radius-full);
-  min-height: 2.75rem;
-  padding-inline: 1.75rem;
-  font-weight: var(--weight-semibold);
-}
-
 .ntx-landing .ntx-panel {
-  border-radius: 1.5rem;
+  border-radius: var(--radius-lg);
 }
 
 .ntx-brand-version {
@@ -576,9 +567,8 @@ a:hover {
   position: sticky;
   top: 0;
   z-index: 40;
-  border-bottom: 1px solid color-mix(in srgb, var(--neutral-200) 80%, transparent);
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface);
 }
 
 .ntx-landing-header-inner {
@@ -624,7 +614,6 @@ a:hover {
   font-family: var(--font-figure);
   font-size: var(--caption);
   font-weight: var(--weight-bold);
-  box-shadow: var(--landing-shadow-soft);
 }
 
 .ntx-landing-brand-name {
@@ -659,22 +648,21 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.75rem;
+  min-height: var(--control-height);
   padding: 0 1.25rem;
-  border-radius: var(--radius-full);
-  background: var(--primary);
+  border-radius: var(--radius-control);
+  background: var(--seal);
   color: var(--surface);
   font-size: var(--body-sm);
   font-weight: var(--weight-semibold);
   text-decoration: none;
-  box-shadow: var(--landing-shadow-soft);
   transition: background-color var(--motion-instant);
   white-space: nowrap;
   flex: none;
 }
 
 .ntx-landing-nav-cta:hover {
-  background: var(--primary-600);
+  background: var(--seal-2);
   color: var(--surface);
 }
 
@@ -912,7 +900,7 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  border-radius: 1.5rem;
+  border-radius: var(--radius-lg);
 }
 
 .ntx-landing-calc-head {
@@ -967,9 +955,8 @@ a:hover {
   gap: 12px;
   padding: 14px;
   border: 1px solid var(--border-default);
-  border-radius: 1.25rem;
+  border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: var(--landing-shadow-soft);
 }
 
 .ntx-landing-regime-card.is-winner {
@@ -1044,10 +1031,9 @@ a:hover {
 .ntx-landing-sheet {
   background: var(--surface);
   color: var(--ink);
-  border-radius: 1.5rem;
+  border-radius: var(--radius-lg);
   padding: 1.25rem;
   border: 1px solid var(--neutral-200);
-  box-shadow: var(--landing-shadow-soft);
 }
 
 .ntx-landing-sheet-caption {
@@ -1113,18 +1099,17 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  border-radius: 1.5rem;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-default);
   background: var(--surface);
-  box-shadow: var(--landing-shadow-soft);
   transition:
-    transform 160ms ease,
-    border-color var(--motion-instant);
+    border-color var(--motion-instant),
+    background-color var(--motion-instant);
 }
 
 .ntx-landing-feature:hover {
-  transform: translateY(-4px);
-  border-color: color-mix(in srgb, var(--primary) 28%, var(--border-default));
+  border-color: var(--primary-200);
+  background: var(--neutral-50);
 }
 
 .ntx-landing-icon-well {
@@ -1141,7 +1126,7 @@ a:hover {
 .ntx-landing-feature-media {
   margin: -1.5rem -1.5rem 0.25rem;
   height: 7rem;
-  border-radius: 1.5rem 1.5rem 0 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   overflow: hidden;
   background: var(--neutral-100);
 }
@@ -1156,12 +1141,11 @@ a:hover {
 
 .ntx-landing-side-photo {
   margin-top: 1.5rem;
-  border-radius: 1.5rem;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   border: 1px solid var(--border-default);
   aspect-ratio: 4 / 3;
   max-width: 28rem;
-  box-shadow: var(--landing-shadow-soft);
 }
 
 .ntx-landing-side-photo img {
@@ -1217,9 +1201,8 @@ a:hover {
   padding: 2rem 1.5rem;
   background: var(--ink);
   color: var(--surface);
-  border-radius: 2rem;
+  border-radius: 0;
   border: 1px solid var(--border-default);
-  box-shadow: var(--landing-shadow-lift);
 }
 
 @media (min-width: 640px) {
@@ -1273,7 +1256,7 @@ a:hover {
 .ntx-landing-trust-grid article {
   padding: 1.25rem;
   border: 1px solid rgba(252, 253, 252, 0.1);
-  border-radius: 1.5rem;
+  border-radius: var(--radius-lg);
   background: rgba(252, 253, 252, 0.08);
 }
 
@@ -1299,10 +1282,9 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-radius: 1rem;
+  border-radius: var(--radius-lg);
   border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border-default));
   background: var(--surface);
-  box-shadow: var(--landing-shadow-soft);
 }
 
 .ntx-landing-form {
@@ -1310,10 +1292,9 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  border-radius: 1.5rem;
+  border-radius: var(--radius-xl);
   border: 1px solid var(--border-default);
   background: var(--surface);
-  box-shadow: var(--landing-shadow-lift);
 }
 
 @media (min-width: 640px) {
@@ -1430,11 +1411,10 @@ a:hover {
   isolation: isolate;
   overflow: hidden;
   padding: 3rem 1.5rem;
-  border-radius: 2rem;
-  background: var(--primary);
+  border-radius: 0;
+  background: var(--ink);
   color: var(--surface);
   text-align: center;
-  box-shadow: var(--landing-shadow-lift);
 }
 
 @media (min-width: 640px) {
@@ -1457,7 +1437,7 @@ a:hover {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: color-mix(in srgb, var(--primary) 82%, transparent);
+  background: color-mix(in srgb, var(--ink) 82%, transparent);
 }
 
 .ntx-landing-cta-band > * {
