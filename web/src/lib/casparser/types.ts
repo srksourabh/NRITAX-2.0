@@ -110,6 +110,50 @@ export interface GenerateCasSuccess {
 
 export type GenerateCasResult = GenerateCasSuccess | CasparserError;
 
+export interface InboxConnectSuccess {
+  ok: true;
+  oauthUrl: string;
+  expiresIn?: number;
+}
+
+export type InboxConnectResult = InboxConnectSuccess | CasparserError;
+
+export interface InboxCasFile {
+  messageId: string;
+  filename: string;
+  originalFilename?: string;
+  messageDate?: string;
+  casType?: string;
+  senderEmail?: string;
+  size?: number;
+  url: string;
+  expiresIn?: number;
+}
+
+export interface InboxListSuccess {
+  ok: true;
+  files: InboxCasFile[];
+  message: string;
+}
+
+export type InboxListResult = InboxListSuccess | CasparserError;
+
+export interface InboxStatusSuccess {
+  ok: true;
+  connected: boolean;
+  email?: string;
+  message: string;
+}
+
+export type InboxStatusResult = InboxStatusSuccess | CasparserError;
+
+export interface InboxDisconnectSuccess {
+  ok: true;
+  message: string;
+}
+
+export type InboxDisconnectResult = InboxDisconnectSuccess | CasparserError;
+
 export interface CasparserClient {
   readonly available: boolean;
   createAccessToken(expiryMinutes?: number): Promise<AccessTokenResult>;
@@ -150,4 +194,15 @@ export interface CasparserClient {
     password: string;
     pan?: string;
   }): Promise<GenerateCasResult>;
+  inboxConnect(input: {
+    redirectUri: string;
+    state?: string;
+  }): Promise<InboxConnectResult>;
+  inboxListCas(input: {
+    inboxToken: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<InboxListResult>;
+  inboxStatus(inboxToken: string): Promise<InboxStatusResult>;
+  inboxDisconnect(inboxToken: string): Promise<InboxDisconnectResult>;
 }

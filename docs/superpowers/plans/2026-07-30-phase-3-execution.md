@@ -227,10 +227,10 @@ Work one sprint at a time. Each sprint ends with tests green and a conventional 
 - Modify: `web/src/lib/billing/entitlements.ts`
 - Env: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`
 
-- [ ] **Step 1:** Verify webhook signature; on `payment.captured` call `grantEntitlement`
-- [ ] **Step 2:** Client verify endpoint: confirm payment id against Razorpay API, then grant (idempotent)
-- [ ] **Step 3:** Keep `/api/pay/mock-complete` when `keyId` absent
-- [ ] **Step 4:** Tests with fixture signatures / mocked fetch
+- [x] **Step 1:** Verify webhook signature; on `payment.captured` call `grantEntitlement`
+- [x] **Step 2:** Client verify endpoint: confirm payment id against Razorpay API, then grant (idempotent)
+- [x] **Step 3:** Keep `/api/pay/mock-complete` when `keyId` absent
+- [x] **Step 4:** Tests with fixture signatures / mocked fetch
 - [ ] **Step 5:** Commit `feat(pay): Razorpay webhook and payment verify`
 
 ### Task 3.2: Checkout.js in PostValidatePanel
@@ -238,9 +238,9 @@ Work one sprint at a time. Each sprint ends with tests green and a conventional 
 **Files:**
 - Modify: `web/src/components/filing/PostValidatePanel.tsx`
 
-- [ ] **Step 1:** When checkout `mode === 'razorpay'`, load Checkout.js and open modal with `order_id` + `key`
-- [ ] **Step 2:** On success → `/api/pay/verify` → refresh entitlement UI
-- [ ] **Step 3:** Gate CA book + ERI submit on `hasCaAccess` / active entitlement (match product rules already in entitlements)
+- [x] **Step 1:** When checkout `mode === 'razorpay'`, load Checkout.js and open modal with `order_id` + `key`
+- [x] **Step 2:** On success → `/api/pay/verify` → refresh entitlement UI
+- [x] **Step 3:** Gate CA book + ERI submit on `hasCaAccess` / active entitlement (match product rules already in entitlements)
 - [ ] **Step 4:** Commit `feat(pay): live Razorpay Checkout.js widget`
 
 ### Task 3.3: Gmail inbox connect + list + apply
@@ -253,18 +253,18 @@ Work one sprint at a time. Each sprint ends with tests green and a conventional 
 - Modify: `EnrichmentPanels.tsx`
 - Docs: [Gmail Inbox Import](https://casparser.in/docs/guides/gmail-inbox)
 
-- [ ] **Step 1:** `POST /v4/inbox/connect` with redirect to callback
-- [ ] **Step 2:** Store `inbox_token` server-side keyed by user (Supabase table or encrypted column — prefer new `cas_inbox_token` table; never expose long-lived token to client)
-- [ ] **Step 3:** List files → smart-parse URL with PAN password → `applyCasPipeline`
-- [ ] **Step 4:** Disconnect / revoke endpoint
-- [ ] **Step 5:** Soft-fail entire path; manual upload remains
+- [x] **Step 1:** `POST /v4/inbox/connect` with redirect to callback
+- [x] **Step 2:** Store `inbox_token` server-side keyed by user (Supabase table or encrypted column — prefer new `cas_inbox_token` table; never expose long-lived token to client)
+- [x] **Step 3:** List files → smart-parse URL with PAN password → `applyCasPipeline`
+- [x] **Step 4:** Disconnect / revoke endpoint
+- [x] **Step 5:** Soft-fail entire path; manual upload remains
 - [ ] **Step 6:** Commit `feat(casparser): Gmail inbox CAS import`
 
 ### Sprint 3 exit checklist
 
-- [ ] Mock checkout still works without Razorpay keys
+- [x] Mock checkout still works without Razorpay keys
 - [ ] Staging Razorpay payment grants entitlement once (no double grant)
-- [ ] Gmail path optional; wizard usable without Google
+- [x] Gmail path optional; wizard usable without Google
 
 ---
 

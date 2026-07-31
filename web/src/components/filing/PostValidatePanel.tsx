@@ -19,6 +19,52 @@ type EntitlementState = {
   active: boolean;
 };
 
+type RazorpaySuccessResponse = {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayCheckoutOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  order_id: string;
+  name?: string;
+  description?: string;
+  handler: (response: RazorpaySuccessResponse) => void;
+  modal?: { ondismiss?: () => void };
+};
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayCheckoutOptions) => { open: () => void };
+  }
+}
+
+function loadRazorpayScript(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  if (window.Razorpay) return Promise.resolve();
+  const existing = document.querySelector<HTMLScriptElement>('script[data-nritax-razorpay]');
+  if (existing) {
+    return new Promise((resolve, reject) => {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Checkout.js failed to load.')), {
+        once: true,
+      });
+    });
+  }
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.dataset.nritaxRazorpay = '1';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Checkout.js failed to load.'));
+    document.body.appendChild(script);
+  });
+}
+
 export function PostValidatePanel({
   data,
   onNotice,
@@ -114,7 +160,14 @@ export function PostValidatePanel({
       const json = (await res.json()) as {
         ok?: boolean;
         message?: string;
-        checkout?: { mode: string; mockCompleteUrl?: string };
+        checkout?: {
+          mode: string;
+          mockCompleteUrl?: string;
+          orderId?: string;
+          amountPaise?: number;
+          currency?: string;
+          keyId?: string;
+        };
       };
       if (!json.ok || !json.checkout) {
         onNotice(json.message ?? 'Checkout failed.');
@@ -124,10 +177,81 @@ export function PostValidatePanel({
         window.location.href = json.checkout.mockCompleteUrl;
         return;
       }
-      onNotice('Razorpay order created. Complete payment in your Razorpay checkout integration.');
+      if (
+        json.checkout.mode === 'razorpay' &&
+        json.checkout.orderId &&
+        json.checkout.keyId &&
+        typeof json.checkout.amountPaise === 'number'
+      ) {
+        await openRazorpayCheckout({
+          keyId: json.checkout.keyId,
+          orderId: json.checkout.orderId,
+          amountPaise: json.checkout.amountPaise,
+          currency: json.checkout.currency ?? 'INR',
+        });
+        return;
+      }
+      onNotice('Checkout could not start. Try again, or use mock checkout without Razorpay keys.');
     } finally {
       setPayBusy(false);
     }
+  }
+
+  async function openRazorpayCheckout(input: {
+    keyId: string;
+    orderId: string;
+    amountPaise: number;
+    currency: string;
+  }) {
+    await loadRazorpayScript();
+    const RazorpayCtor = window.Razorpay;
+    if (!RazorpayCtor) {
+      onNotice('Razorpay Checkout.js failed to load. Check your network and try again.');
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      const rzp = new RazorpayCtor({
+        key: input.keyId,
+        amount: input.amountPaise,
+        currency: input.currency,
+        order_id: input.orderId,
+        name: 'NRITAX',
+        description: 'Filing plan',
+        handler: (response) => {
+          void (async () => {
+            try {
+              const verifyRes = await fetch('/api/pay/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(response),
+              });
+              const verifyJson = (await verifyRes.json()) as {
+                ok?: boolean;
+                message?: string;
+                plan?: PlanId;
+              };
+              if (!verifyJson.ok) {
+                onNotice(verifyJson.message ?? 'Payment verify failed.');
+                return;
+              }
+              onNotice(
+                verifyJson.plan === 'ca_assisted'
+                  ? 'Payment received. CA-assisted plan is active.'
+                  : 'Payment received. Self-serve plan is active.',
+              );
+              await refreshEntitlement();
+            } finally {
+              resolve();
+            }
+          })();
+        },
+        modal: {
+          ondismiss: () => resolve(),
+        },
+      });
+      rzp.open();
+    });
   }
 
   async function loadSlots() {
@@ -453,7 +577,8 @@ export function PostValidatePanel({
         </p>
       ) : (
         <p className="text-[var(--body-sm)] text-[var(--text-muted)]">
-          No paid plan yet. Mock checkout works without Razorpay keys.
+          No paid plan yet. Without Razorpay keys, checkout uses the mock grant path. With keys,
+          Checkout.js opens in this browser.
         </p>
       )}
 
