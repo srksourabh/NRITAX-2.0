@@ -81,7 +81,7 @@ export function LandingOnboarding({
     }
 
     try {
-      sessionStorage.setItem(
+      localStorage.setItem(
         'nritax.landingDraft',
         JSON.stringify({
           ...data,
@@ -103,8 +103,8 @@ export function LandingOnboarding({
             Begin a filing profile without sharing passwords
           </h2>
           <p className="ntx-landing-section-lede">
-            Four short questions. We keep the draft in this browser only, then take you to
-            sign-in so the filing wizard can open.
+            Four short questions. We keep the draft in this browser (local storage), then take
+            you to sign-in so the filing wizard can open.
           </p>
           <div className="ntx-landing-security">
             <h3>Security note</h3>
@@ -126,7 +126,7 @@ export function LandingOnboarding({
                 Start your filing journey
               </h3>
             </div>
-            <span className="rounded-full bg-[var(--primary-50)] px-3 py-1 text-xs font-bold text-[var(--primary)]">
+            <span className="ntx-badge ntx-badge-draft">
               Step {step + 1}/{STEPS.length}
             </span>
           </div>

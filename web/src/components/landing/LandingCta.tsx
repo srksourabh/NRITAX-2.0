@@ -13,7 +13,9 @@ export function LandingCta({
     <section className="ntx-section ntx-landing-alt" aria-labelledby="cta-heading">
       <div className="ntx-shell">
         <div className="ntx-landing-cta-band">
-          <p className="ntx-landing-kicker ntx-landing-kicker-on-primary">Ready when you are</p>
+          <p className="ntx-landing-kicker ntx-landing-kicker-on-primary">
+            AY 2026-27 · Due 31 July 2026
+          </p>
           <h2 id="cta-heading" className="ntx-display-lg mt-3">
             Import prefill, complete schedules, export JSON
           </h2>

@@ -1,9 +1,6 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
-
-import { BRAND_PHOTOS } from '@/lib/brand-imagery';
 
 const ACTIONS = [
   ['Import', 'Portal prefill JSON'],
@@ -35,11 +32,8 @@ export function LandingHero({
             <Link href={primaryHref} className="ntx-btn ntx-btn-primary">
               {primaryLabel}
             </Link>
-            <a href="#prefill" className="ntx-btn ntx-btn-secondary">
-              Import prefill
-            </a>
             <a href="#how-it-works" className="ntx-btn ntx-btn-secondary">
-              See export path
+              See how it works
             </a>
           </div>
           <p className="ntx-landing-meta">
@@ -60,15 +54,6 @@ export function LandingHero({
           className="ntx-landing-sheet ntx-landing-rise"
           style={{ animationDelay: '120ms' }}
         >
-          <div className="ntx-landing-sheet-photo">
-            <Image
-              src={BRAND_PHOTOS.deskLaptop.src}
-              alt={BRAND_PHOTOS.deskLaptop.alt}
-              fill
-              sizes="(max-width: 1024px) 100vw, 32rem"
-              priority
-            />
-          </div>
           <div className="ntx-landing-sheet-panel">
             <header>
               <span className="ntx-landing-sheet-idx">01</span>
@@ -80,19 +65,19 @@ export function LandingHero({
             <ul>
               <li>
                 <span>Import file</span>
-                <span>Prefill / draft JSON</span>
+                <span className="ntx-figure">Prefill / draft JSON</span>
               </li>
               <li>
                 <span>Import statement</span>
-                <span>CAS / Form 16 / AIS</span>
+                <span className="ntx-figure">CAS / Form 16 / AIS</span>
               </li>
               <li>
                 <span>Validate</span>
-                <span>Mandatory fields + totals</span>
+                <span className="ntx-figure">Mandatory fields + totals</span>
               </li>
               <li>
                 <span>Create JSON</span>
-                <span>ITR-2 / ITR-3 upload file</span>
+                <span className="ntx-figure">ITR-2 / ITR-3 upload file</span>
               </li>
             </ul>
           </div>
