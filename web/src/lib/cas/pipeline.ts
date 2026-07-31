@@ -18,6 +18,7 @@ export type CasPipelineSource =
   | 'portfolio-connect'
   | 'local-cas'
   | 'cdsl'
+  | 'gmail-inbox'
   | 'demo';
 
 export type ApplyCasPipelineInput = {

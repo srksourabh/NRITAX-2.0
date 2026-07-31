@@ -116,6 +116,15 @@ export interface EntitlementRow {
   createdAt: string;
 }
 
+export interface CasInboxTokenRow {
+  id: string;
+  userId: string;
+  inboxToken: string;
+  email: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+
 export interface CaSlotRow {
   id: string;
   startsAt: string;
@@ -213,6 +222,11 @@ export interface Database {
       filing_event: { Row: FilingEventRow; Insert: Omit<FilingEventRow, 'id' | 'createdAt'>; Update: never };
       return_snapshot: { Row: ReturnSnapshotRow; Insert: Omit<ReturnSnapshotRow, 'id' | 'createdAt'>; Update: Partial<ReturnSnapshotRow> };
       entitlement: { Row: EntitlementRow; Insert: Omit<EntitlementRow, 'id' | 'createdAt'>; Update: Partial<EntitlementRow> };
+      cas_inbox_token: {
+        Row: CasInboxTokenRow;
+        Insert: Omit<CasInboxTokenRow, 'id' | 'createdAt'>;
+        Update: Partial<CasInboxTokenRow>;
+      };
       ca_slot: { Row: CaSlotRow; Insert: Omit<CaSlotRow, 'id'>; Update: Partial<CaSlotRow> };
       ca_booking: { Row: CaBookingRow; Insert: Omit<CaBookingRow, 'id' | 'createdAt'>; Update: Partial<CaBookingRow> };
       consent: { Row: ConsentRow; Insert: Omit<ConsentRow, 'id'>; Update: Partial<ConsentRow> };

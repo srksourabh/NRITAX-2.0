@@ -221,12 +221,21 @@ are wired through `CASPARSER_API_KEY` → `https://api.casparser.in` (optional
 | `POST /api/casparser/cdsl/verify` | `/v4/cdsl/fetch/{id}/verify` then `/v4/smart/parse` |
 | `POST /api/casparser/token` | `/v1/token` → short-lived `at_` for Portfolio Connect |
 | `POST /api/casparser/generate` | `/v4/generate` → Detailed MF CAS mailback |
+| `POST /api/casparser/inbox/connect` | `/v4/inbox/connect` → Gmail OAuth URL |
+| `GET /api/casparser/inbox/callback` | Stores `inbox_token` server-side; redirects to `/filing` |
+| `GET|POST /api/casparser/inbox/list` | `/v4/inbox/cas` or `/v4/inbox/status` (token never to browser) |
+| `POST /api/casparser/inbox/apply` | `/v4/smart/parse` + shared CAS pipeline |
+| `POST /api/casparser/inbox/disconnect` | `/v4/inbox/disconnect` + clear DB row |
+| `POST /api/pay/verify` | Razorpay Checkout.js signature → entitlement |
+| `POST /api/pay/webhook` | `payment.captured` signature → entitlement |
 
 The filing wizard embeds `@cas-parser/connect` (`PortfolioImport`). The browser
-only receives the minted access token — never `CASPARSER_API_KEY`.
+only receives the minted access token — never `CASPARSER_API_KEY`. Gmail
+`inbox_token` is stored in `cas_inbox_token` and never returned to the client.
 
 Local: keep `DIGILOCKER_MOCK=1` so DigiLocker consent works on `http://localhost`.
 Live DigiLocker on your phone needs HTTPS (ngrok) + `DIGILOCKER_MOCK=0` and a
 redirect to `/filing/digilocker/callback`. CDSL needs a 16-digit BO ID + SMS OTP
-and a real API key. CAS Generator is wired via `/api/casparser/generate`. Gmail
-inbox import is not wired yet (Phase 3 Sprint 3).
+and a real API key. CAS Generator and Gmail inbox import soft-fail without
+`CASPARSER_API_KEY`. Apply the `cas_inbox_token` table from `web/supabase-schema.sql`
+before using Gmail connect in a Supabase project.

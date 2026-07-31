@@ -114,6 +114,17 @@ create table if not exists entitlement (
   unique ("userId")
 );
 
+-- CAS Parser Gmail inbox token (server-only; never expose to the browser)
+create table if not exists cas_inbox_token (
+  id text primary key default gen_random_uuid()::text,
+  "userId" text not null references "user"(id) on delete cascade,
+  "inboxToken" text not null,
+  email text,
+  "updatedAt" timestamptz default now() not null,
+  "createdAt" timestamptz default now() not null,
+  unique ("userId")
+);
+
 -- CA booking slots
 create table if not exists ca_slot (
   id text primary key default gen_random_uuid()::text,

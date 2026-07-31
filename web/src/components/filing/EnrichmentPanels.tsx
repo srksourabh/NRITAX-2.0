@@ -139,6 +139,13 @@ export function EnrichmentPanels({
   const [casGenBusy, setCasGenBusy] = useState(false);
   const [casGenEmail, setCasGenEmail] = useState('');
   const [casGenPassword, setCasGenPassword] = useState('');
+  const [gmailBusy, setGmailBusy] = useState(false);
+  const [gmailConnected, setGmailConnected] = useState(false);
+  const [gmailEmail, setGmailEmail] = useState<string | null>(null);
+  const [gmailFiles, setGmailFiles] = useState<
+    Array<{ messageId: string; filename: string; url: string; messageDate?: string; casType?: string }>
+  >([]);
+  const [gmailPassword, setGmailPassword] = useState('');
   const dataRef = useRef(data);
   dataRef.current = data;
   const appliedSessionRef = useRef<string | null>(null);
@@ -158,6 +165,35 @@ export function EnrichmentPanels({
     // Only hydrate empty prompt fields from the return.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const gmail = params.get('gmail');
+    if (gmail === 'connected') {
+      setGmailConnected(true);
+      const email = params.get('gmail_email');
+      if (email) setGmailEmail(email);
+      setNotice('Gmail connected. List inbox CAS files, then apply one with your PDF password.');
+    } else if (gmail === 'error') {
+      const msg = params.get('gmail_msg') ?? 'connect_failed';
+      setNotice(`Gmail connect failed (${msg}). Upload a CAS PDF by hand, or try again.`);
+    }
+  }, [setNotice]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/casparser/inbox/list', { method: 'POST' });
+        const json = await readSoftJson(res);
+        if (json.ok && json.connected) {
+          setGmailConnected(true);
+          if (typeof json.email === 'string') setGmailEmail(json.email);
+        }
+      } catch {
+        /* soft-fail */
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -422,7 +458,7 @@ export function EnrichmentPanels({
       }
       setNotice(
         json.message ??
-          'Detailed CAS requested for FY 2025-26. Check that email in a few minutes, then upload the PDF below. Gmail import comes in a later sprint.',
+          'Detailed CAS requested for FY 2025-26. Check that email in a few minutes, then upload the PDF below or import from Gmail.',
       );
     } catch {
       setNotice(
@@ -430,6 +466,128 @@ export function EnrichmentPanels({
       );
     } finally {
       setCasGenBusy(false);
+    }
+  }
+
+  async function connectGmail() {
+    setGmailBusy(true);
+    try {
+      const res = await fetch('/api/casparser/inbox/connect', { method: 'POST' });
+      const json = await readSoftJson(res);
+      if (!json.ok || typeof json.oauthUrl !== 'string') {
+        setNotice(
+          json.message ??
+            'Could not start Gmail connect. Set CASPARSER_API_KEY, or upload a CAS PDF by hand.',
+        );
+        return;
+      }
+      window.location.href = json.oauthUrl;
+    } catch {
+      setNotice('Could not start Gmail connect. Upload a CAS PDF by hand.');
+    } finally {
+      setGmailBusy(false);
+    }
+  }
+
+  async function listGmailCas() {
+    setGmailBusy(true);
+    try {
+      const res = await fetch('/api/casparser/inbox/list');
+      const json = await readSoftJson(res);
+      if (!json.ok) {
+        setNotice(json.message ?? 'Could not list Gmail CAS files.');
+        if (json.connected === false) setGmailConnected(false);
+        return;
+      }
+      setGmailConnected(true);
+      if (typeof json.email === 'string') setGmailEmail(json.email);
+      const files = Array.isArray(json.files) ? json.files : [];
+      setGmailFiles(
+        files
+          .filter(
+            (f): f is Record<string, unknown> =>
+              Boolean(f) && typeof f === 'object' && typeof (f as { url?: unknown }).url === 'string',
+          )
+          .map((f) => ({
+            messageId: String(f.messageId ?? f.message_id ?? f.url),
+            filename: String(f.filename ?? 'cas.pdf'),
+            url: String(f.url),
+            messageDate:
+              typeof f.messageDate === 'string'
+                ? f.messageDate
+                : typeof f.message_date === 'string'
+                  ? f.message_date
+                  : undefined,
+            casType:
+              typeof f.casType === 'string'
+                ? f.casType
+                : typeof f.cas_type === 'string'
+                  ? f.cas_type
+                  : undefined,
+          })),
+      );
+      setNotice(
+        json.message ??
+          (files.length
+            ? `Found ${files.length} CAS file(s) in Gmail.`
+            : 'No CAS files found. Request a Detailed CAS first, wait a few minutes, then list again.'),
+      );
+    } catch {
+      setNotice('Could not list Gmail CAS files. Upload a PDF by hand.');
+    } finally {
+      setGmailBusy(false);
+    }
+  }
+
+  async function applyGmailCas(pdfUrl: string) {
+    setGmailBusy(true);
+    try {
+      const { pan } = genIdentity(data);
+      const password = resolveCasPdfPassword(pan, gmailPassword);
+      const res = await fetch('/api/casparser/inbox/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pdfUrl,
+          password: password || undefined,
+          data: dataRef.current,
+          financialYear: '2025-26',
+        }),
+      });
+      const json = await readSoftJson(res);
+      if (!json.ok || !json.data) {
+        setNotice(
+          json.message ??
+            'Could not apply the Gmail CAS. Check the PDF password (usually PAN), or upload by hand.',
+        );
+        return;
+      }
+      setData(json.data as ReturnData);
+      setActiveId('CG');
+      setNotice(
+        json.message ??
+          `Applied Gmail CAS · ${String(json.fieldsApplied ?? 0)} fields · ${String(json.rowsApplied ?? 0)} Schedule 112A rows.`,
+      );
+    } catch {
+      setNotice('Could not apply the Gmail CAS. Upload a PDF by hand.');
+    } finally {
+      setGmailBusy(false);
+    }
+  }
+
+  async function disconnectGmail() {
+    setGmailBusy(true);
+    try {
+      const res = await fetch('/api/casparser/inbox/disconnect', { method: 'POST' });
+      const json = await readSoftJson(res);
+      setGmailConnected(false);
+      setGmailEmail(null);
+      setGmailFiles([]);
+      setNotice(json.message ?? 'Gmail disconnected.');
+    } catch {
+      setNotice('Could not disconnect Gmail. Try again.');
+    } finally {
+      setGmailBusy(false);
     }
   }
 
@@ -956,6 +1114,88 @@ export function EnrichmentPanels({
         >
           {casGenBusy ? 'Requesting…' : 'Request Detailed CAS'}
         </button>
+      </div>
+
+      <div className="ntx-panel p-5">
+        <h2 className="text-[var(--h3)] font-semibold">Optional · Gmail CAS import</h2>
+        <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
+          Connect read-only Gmail via CAS Parser Pro to find CAMS / KFintech / CDSL / NSDL
+          statements, then apply one into Schedule CG. Skip anytime and upload a PDF instead.
+        </p>
+        {gmailConnected ? (
+          <p className="mt-2 text-[var(--body-sm)] text-[var(--credit-text)]">
+            Connected{gmailEmail ? `: ${gmailEmail}` : ''}.
+          </p>
+        ) : (
+          <p className="mt-2 text-[var(--body-sm)] text-[var(--text-muted)]">
+            Not connected. Needs CAS Parser API key and the inbox token table in Supabase.
+          </p>
+        )}
+        <div className="mt-3">
+          <input
+            className="ntx-input"
+            type="password"
+            autoComplete="off"
+            placeholder="PDF password for apply (defaults to PAN)"
+            value={gmailPassword}
+            onChange={(e) => setGmailPassword(e.target.value)}
+          />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {!gmailConnected ? (
+            <button
+              type="button"
+              className="ntx-btn ntx-btn-secondary"
+              disabled={gmailBusy}
+              onClick={() => void connectGmail()}
+            >
+              {gmailBusy ? '…' : 'Connect Gmail'}
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="ntx-btn ntx-btn-secondary"
+                disabled={gmailBusy}
+                onClick={() => void listGmailCas()}
+              >
+                {gmailBusy ? '…' : 'List inbox CAS'}
+              </button>
+              <button
+                type="button"
+                className="ntx-btn ntx-btn-secondary"
+                disabled={gmailBusy}
+                onClick={() => void disconnectGmail()}
+              >
+                Disconnect
+              </button>
+            </>
+          )}
+        </div>
+        {gmailFiles.length > 0 ? (
+          <ul className="mt-4 space-y-2">
+            {gmailFiles.map((f) => (
+              <li
+                key={f.messageId}
+                className="flex flex-wrap items-center justify-between gap-2 border border-[var(--neutral-200)] p-3"
+              >
+                <span className="text-[var(--body-sm)] text-[var(--ink)]">
+                  {f.filename}
+                  {f.casType ? ` · ${f.casType}` : ''}
+                  {f.messageDate ? ` · ${f.messageDate}` : ''}
+                </span>
+                <button
+                  type="button"
+                  className="ntx-btn ntx-btn-primary"
+                  disabled={gmailBusy}
+                  onClick={() => void applyGmailCas(f.url)}
+                >
+                  Apply to Schedule CG
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
 
       <div className="ntx-panel p-5">

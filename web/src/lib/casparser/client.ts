@@ -18,6 +18,11 @@ import type {
   DigilockerResultOutcome,
   DigilockerSessionResult,
   GenerateCasResult,
+  InboxCasFile,
+  InboxConnectResult,
+  InboxDisconnectResult,
+  InboxListResult,
+  InboxStatusResult,
   PanKycStatusResult,
   SmartParseResult,
 } from '@/lib/casparser/types';
@@ -358,11 +363,134 @@ class HttpCasparserClient implements CasparserClient {
     };
   }
 
+  async inboxConnect(input: {
+    redirectUri: string;
+    state?: string;
+  }): Promise<InboxConnectResult> {
+    if (!this.apiKey) return fail('UNAVAILABLE', NO_KEY);
+    const redirectUri = input.redirectUri.trim();
+    if (!redirectUri || !/^https?:\/\//i.test(redirectUri)) {
+      return fail('BAD_REQUEST', 'A valid http(s) redirect URI is required for Gmail connect.');
+    }
+    const body: Record<string, string> = { redirect_uri: redirectUri };
+    if (input.state?.trim()) body.state = input.state.trim();
+    const res = await this.request('POST', '/v4/inbox/connect', body);
+    if (!res.ok) return res.error;
+    const oauthUrl = asString(res.payload.oauth_url);
+    if (!oauthUrl) {
+      return fail('UPSTREAM', 'CAS Parser did not return an OAuth URL for Gmail connect.');
+    }
+    return {
+      ok: true,
+      oauthUrl,
+      expiresIn:
+        typeof res.payload.expires_in === 'number' ? res.payload.expires_in : undefined,
+    };
+  }
+
+  async inboxListCas(input: {
+    inboxToken: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<InboxListResult> {
+    if (!this.apiKey) return fail('UNAVAILABLE', NO_KEY);
+    const inboxToken = input.inboxToken.trim();
+    if (!inboxToken) return fail('BAD_REQUEST', 'Gmail inbox is not connected.');
+    const body: Record<string, string> = {};
+    if (input.startDate?.trim()) body.start_date = input.startDate.trim();
+    if (input.endDate?.trim()) body.end_date = input.endDate.trim();
+    const res = await this.request('POST', '/v4/inbox/cas', body, this.timeoutMs, {
+      'x-inbox-token': inboxToken,
+    });
+    if (!res.ok) return res.error;
+    const filesRaw = Array.isArray(res.payload.files) ? res.payload.files : [];
+    const files: InboxCasFile[] = [];
+    for (const item of filesRaw) {
+      if (!item || typeof item !== 'object') continue;
+      const row = item as Record<string, unknown>;
+      const url = asString(row.url);
+      if (!url) continue;
+      files.push({
+        messageId: asString(row.message_id) || url,
+        filename: asString(row.filename) || 'cas.pdf',
+        originalFilename: asString(row.original_filename) || undefined,
+        messageDate: asString(row.message_date) || undefined,
+        casType: asString(row.cas_type) || undefined,
+        senderEmail: asString(row.sender_email) || undefined,
+        size: typeof row.size === 'number' ? row.size : undefined,
+        url,
+        expiresIn: typeof row.expires_in === 'number' ? row.expires_in : undefined,
+      });
+    }
+    return {
+      ok: true,
+      files,
+      message:
+        asString(res.payload.msg) ||
+        asString(res.payload.message) ||
+        (files.length
+          ? `Found ${files.length} CAS file(s) in Gmail.`
+          : 'No CAS files found in Gmail for the selected dates.'),
+    };
+  }
+
+  async inboxStatus(inboxToken: string): Promise<InboxStatusResult> {
+    if (!this.apiKey) return fail('UNAVAILABLE', NO_KEY);
+    const token = inboxToken.trim();
+    if (!token) {
+      return { ok: true, connected: false, message: 'Gmail inbox is not connected.' };
+    }
+    const res = await this.request('POST', '/v4/inbox/status', {}, this.timeoutMs, {
+      'x-inbox-token': token,
+    });
+    if (!res.ok) {
+      if (res.error.code === 'AUTH_FAILED') {
+        return {
+          ok: true,
+          connected: false,
+          message: 'Gmail access expired. Connect again to import CAS from inbox.',
+        };
+      }
+      return res.error;
+    }
+    const connected =
+      res.payload.connected === true ||
+      asString(res.payload.status).toLowerCase() === 'connected' ||
+      asString(res.payload.status).toLowerCase() === 'active';
+    return {
+      ok: true,
+      connected,
+      email: asString(res.payload.email) || undefined,
+      message:
+        asString(res.payload.msg) ||
+        asString(res.payload.message) ||
+        (connected ? 'Gmail inbox connected.' : 'Gmail inbox is not connected.'),
+    };
+  }
+
+  async inboxDisconnect(inboxToken: string): Promise<InboxDisconnectResult> {
+    if (!this.apiKey) return fail('UNAVAILABLE', NO_KEY);
+    const token = inboxToken.trim();
+    if (!token) return fail('BAD_REQUEST', 'Gmail inbox is not connected.');
+    const res = await this.request('POST', '/v4/inbox/disconnect', {}, this.timeoutMs, {
+      'x-inbox-token': token,
+    });
+    if (!res.ok) return res.error;
+    return {
+      ok: true,
+      message:
+        asString(res.payload.msg) ||
+        asString(res.payload.message) ||
+        'Gmail inbox disconnected.',
+    };
+  }
+
   private async request(
     method: string,
     path: string,
     body?: Record<string, unknown>,
     timeoutMs = this.timeoutMs,
+    extraHeaders?: Record<string, string>,
   ): Promise<
     | { ok: true; payload: Record<string, unknown>; status: number }
     | { ok: false; error: CasparserError }
@@ -375,6 +503,7 @@ class HttpCasparserClient implements CasparserClient {
           'x-api-key': this.apiKey,
           accept: 'application/json',
           ...(body ? { 'Content-Type': 'application/json' } : {}),
+          ...(extraHeaders ?? {}),
         },
         body: body ? JSON.stringify(body) : undefined,
         signal: AbortSignal.timeout(timeoutMs),
