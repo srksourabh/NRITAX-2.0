@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 
+import { NritaxSeal } from '@/components/brand/NritaxSeal';
+
 const NAV = [
   { href: '#features', label: 'Features' },
   { href: '#how-it-works', label: 'How it works' },
@@ -20,7 +22,7 @@ export function LandingNav({
     <header className="ntx-landing-header">
       <nav className="ntx-landing-header-inner" aria-label="Landing">
         <a href="#top" className="ntx-landing-brand" aria-label="NRITAX 2.0 home">
-          <span className="ntx-landing-badge">N2</span>
+          <NritaxSeal size={32} className="ntx-landing-brand-seal" />
           <span className="ntx-landing-brand-name">NRITAX 2.0</span>
         </a>
         <div className="ntx-landing-nav">

@@ -4,7 +4,7 @@ type NritaxSealProps = {
   title?: string;
 };
 
-/** Circular seal mark — same grammar as ITR filing-sheet masthead emblems. */
+/** Circular seal mark — ink disc, seal ring, mono NT / 2.0. No gradients. */
 export function NritaxSeal({
   className,
   size = 44,
@@ -28,7 +28,6 @@ export function NritaxSeal({
         stroke="var(--seal)"
         strokeWidth="2.5"
       />
-      <circle cx="32" cy="30" r="22" fill="url(#ntxSealGlow)" />
       <text
         x="32"
         y="36"
@@ -53,12 +52,6 @@ export function NritaxSeal({
       >
         2.0
       </text>
-      <defs>
-        <radialGradient id="ntxSealGlow" cx="50%" cy="42%" r="55%">
-          <stop offset="0%" stopColor="#0D6B5B" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#0D6B5B" stopOpacity="0.06" />
-        </radialGradient>
-      </defs>
     </svg>
   );
 }

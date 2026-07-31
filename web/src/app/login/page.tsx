@@ -84,10 +84,9 @@ export default async function LoginPage({
         <p className="text-[var(--caption)] font-semibold tracking-[0.18em] text-[var(--text-muted)] uppercase">
           Sign in
         </p>
-        <h1 className="ntx-display-sm mt-3 text-[var(--ink)]">No Indian mobile needed</h1>
+        <h1 className="ntx-display-sm mt-3 text-[var(--ink)]">Sign in to open your filing sheet</h1>
         <p className="mt-3 text-[var(--text-muted)]">
-          Sign in with email or Google when those providers are configured. No Indian mobile
-          number is required.
+          Email or Google sign-in — no OTP to a number you may no longer hold.
         </p>
         <hr className="ntx-double-rule mt-6 max-w-xs" />
 
@@ -99,9 +98,8 @@ export default async function LoginPage({
 
         {!emailEnabled && !googleEnabled ? (
           <p className="ntx-panel mt-8 px-4 py-3 text-[var(--body-sm)] text-[var(--text-muted)]">
-            Sign-in providers are not configured yet. Set email (AUTH_EMAIL_SERVER + Supabase)
-            and/or Google (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET) in{' '}
-            <span className="font-mono">.env.local</span>.
+            Sign-in is not available on this deployment yet. Ask the operator to enable email
+            or Google sign-in, then try again.
           </p>
         ) : null}
 

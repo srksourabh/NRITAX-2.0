@@ -7,6 +7,7 @@ import { FieldHelp } from '@/components/filing/FieldHelp';
 import { FormSelectionStep } from '@/components/filing/FormSelectionStep';
 import { PostValidatePanel } from '@/components/filing/PostValidatePanel';
 import { RegimeComparePanel } from '@/components/filing/RegimeComparePanel';
+import { RegimeStatusBanner } from '@/components/filing/RegimeStatusBanner';
 import { ResidencyStep } from '@/components/filing/ResidencyStep';
 import { AppShell } from '@/components/shell/AppShell';
 import { cn } from '@/lib/cn';
@@ -90,6 +91,31 @@ function formatSavedAt(iso: string | undefined): string {
   } catch {
     return iso;
   }
+}
+
+function fieldFilled(value: FieldValue | undefined): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  if (typeof value === 'number') return Number.isFinite(value);
+  return false;
+}
+
+function scheduleHasData(schedule: ScheduleDef, data: ReturnData): boolean {
+  for (const section of schedule.sections) {
+    for (const field of section.fields ?? []) {
+      if (fieldFilled(data.fields[`${schedule.id}.${field.key}`])) return true;
+    }
+    for (const table of section.tables ?? []) {
+      const rows = data.tables[table.key] ?? data.tables[`${schedule.id}.${table.key}`];
+      if (rows && rows.length > 0) {
+        const hasCell = rows.some((row) =>
+          Object.values(row).some((cell) => fieldFilled(cell)),
+        );
+        if (hasCell) return true;
+      }
+    }
+  }
+  return false;
 }
 
 export function FilingWizard() {
@@ -404,7 +430,7 @@ export function FilingWizard() {
         </>
       }
     >
-      <main className="ntx-page">
+      <main className="ntx-page pb-24 sm:pb-8">
         <div className="flex flex-col gap-3 border-b border-[var(--rule)] pb-4 sm:gap-4 sm:pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <p className="text-[var(--caption)] font-semibold tracking-[0.18em] text-[var(--text-muted)] uppercase">
@@ -421,26 +447,20 @@ export function FilingWizard() {
             <div className="flex flex-wrap gap-2 sm:justify-end">
               <button
                 type="button"
-                className="ntx-btn ntx-btn-credit"
-                onClick={loadSampleData}
-              >
-                Load Sample Data
-              </button>
-              <button
-                type="button"
-                className="ntx-btn ntx-btn-secondary"
+                className="ntx-btn ntx-btn-quiet"
                 disabled={draftBusy}
                 onClick={() => void saveDraftNow()}
               >
                 {draftBusy ? 'Saving…' : 'Save draft'}
               </button>
-              <button type="button" className="ntx-btn ntx-btn-secondary" onClick={() => setStep('regime')}>
-                Regime
-              </button>
               <button type="button" className="ntx-btn ntx-btn-secondary" onClick={runValidation}>
                 Validate
               </button>
-              <button type="button" className="ntx-btn ntx-btn-primary" onClick={downloadJson}>
+              <button
+                type="button"
+                className="ntx-btn ntx-btn-primary hidden sm:inline-flex"
+                onClick={downloadJson}
+              >
                 Download JSON
               </button>
             </div>
@@ -456,8 +476,22 @@ export function FilingWizard() {
                 {draftMessage}
               </p>
             ) : null}
+            <details className="text-[var(--caption)] text-[var(--text-muted)] sm:text-right">
+              <summary className="cursor-pointer select-none font-semibold text-[var(--primary)]">
+                Developer tools
+              </summary>
+              <button
+                type="button"
+                className="ntx-btn ntx-btn-secondary ntx-btn-compact mt-2"
+                onClick={loadSampleData}
+              >
+                Load sample data
+              </button>
+            </details>
           </div>
         </div>
+
+        <RegimeStatusBanner data={data} onReview={() => setStep('regime')} />
 
         <EnrichmentPanels
           form={form}
@@ -476,20 +510,35 @@ export function FilingWizard() {
         <div className="mt-6 grid gap-4 lg:mt-8 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
           <nav className="ntx-panel p-2 lg:sticky lg:top-4 lg:max-h-[70vh] lg:overflow-auto">
             <div className="ntx-schedule-nav-scroll">
-              {visibleSchedules.map((schedule) => (
-                <button
-                  key={schedule.id}
-                  type="button"
-                  className="ntx-nav-item"
-                  aria-current={active?.id === schedule.id ? 'page' : undefined}
-                  onClick={() => setActiveId(schedule.id)}
-                >
-                  <span className="block text-[10px] tracking-wide text-[var(--text-muted)]">
-                    {schedule.no}
-                  </span>
-                  <span className="line-clamp-1">{schedule.name}</span>
-                </button>
-              ))}
+              {visibleSchedules.map((schedule) => {
+                const filled = scheduleHasData(schedule, data);
+                return (
+                  <button
+                    key={schedule.id}
+                    type="button"
+                    className="ntx-nav-item"
+                    aria-current={active?.id === schedule.id ? 'page' : undefined}
+                    onClick={() => setActiveId(schedule.id)}
+                  >
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="min-w-0">
+                        <span className="block text-[10px] tracking-wide text-[var(--text-muted)]">
+                          {schedule.no}
+                        </span>
+                        <span className="line-clamp-1">{schedule.name}</span>
+                      </span>
+                      <span
+                        className={cn(
+                          'ntx-schedule-dot mt-1 shrink-0',
+                          filled ? 'ntx-schedule-dot-filled' : 'ntx-schedule-dot-empty',
+                        )}
+                        title={filled ? 'Has data' : 'Not started'}
+                        aria-hidden="true"
+                      />
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </nav>
 
@@ -562,6 +611,12 @@ export function FilingWizard() {
 
             <PostValidatePanel data={data} onNotice={setNotice} />
           </div>
+        </div>
+
+        <div className="ntx-sticky-action-bar sm:hidden">
+          <button type="button" className="ntx-btn ntx-btn-primary w-full" onClick={downloadJson}>
+            Download JSON
+          </button>
         </div>
       </main>
     </AppShell>
