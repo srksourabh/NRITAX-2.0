@@ -136,6 +136,9 @@ export function EnrichmentPanels({
   const [casFetchBusy, setCasFetchBusy] = useState(false);
   const [casFetchPan, setCasFetchPan] = useState('');
   const [casFetchDob, setCasFetchDob] = useState('');
+  const [casGenBusy, setCasGenBusy] = useState(false);
+  const [casGenEmail, setCasGenEmail] = useState('');
+  const [casGenPassword, setCasGenPassword] = useState('');
   const dataRef = useRef(data);
   dataRef.current = data;
   const appliedSessionRef = useRef<string | null>(null);
@@ -147,6 +150,8 @@ export function EnrichmentPanels({
     if (!enrichDob && id.dob) setEnrichDob(id.dob);
     if (!casFetchPan && id.pan) setCasFetchPan(id.pan);
     if (!casFetchDob && id.dob) setCasFetchDob(id.dob);
+    const email = fieldStr(data, 'GEN.email', 'GEN.EmailAddress');
+    if (!casGenEmail && email) setCasGenEmail(email);
     const bankIfsc = firstBankIfsc(data);
     if (!enrichIfsc && bankIfsc) setEnrichIfsc(bankIfsc);
     if (!ifscInput && bankIfsc) setIfscInput(bankIfsc);
@@ -385,6 +390,46 @@ export function EnrichmentPanels({
       setNotice('Demo CAS fetch unavailable. Upload a PDF or enter gains by hand.');
     } finally {
       setCasFetchBusy(false);
+    }
+  }
+
+  async function requestDetailedCas() {
+    setCasGenBusy(true);
+    try {
+      const { pan } = genIdentity(data);
+      const email = casGenEmail.trim();
+      const password = resolveCasPdfPassword(pan, casGenPassword);
+      if (!email || !email.includes('@')) {
+        setNotice('Enter the email registered with CAMS / KFintech.');
+        return;
+      }
+      if (!password) {
+        setNotice('Enter a PDF password (usually your PAN in Part A).');
+        return;
+      }
+      const res = await fetch('/api/casparser/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, pan: pan || undefined }),
+      });
+      const json = await readSoftJson(res);
+      if (!json.ok) {
+        setNotice(
+          json.message ??
+            'Could not request a Detailed CAS. Upload a PDF from CAMS / KFintech, or enter gains by hand.',
+        );
+        return;
+      }
+      setNotice(
+        json.message ??
+          'Detailed CAS requested for FY 2025-26. Check that email in a few minutes, then upload the PDF below. Gmail import comes in a later sprint.',
+      );
+    } catch {
+      setNotice(
+        'Could not request a Detailed CAS. Upload a PDF from CAMS / KFintech, or enter gains by hand.',
+      );
+    } finally {
+      setCasGenBusy(false);
     }
   }
 
@@ -876,6 +921,41 @@ export function EnrichmentPanels({
             /demo/cas
           </a>
         </p>
+      </div>
+
+      <div className="ntx-panel p-5">
+        <h2 className="text-[var(--h3)] font-semibold">Optional · Request Detailed MF CAS</h2>
+        <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
+          Asks CAS Parser Pro to mail a Detailed CAMS / KFintech statement for FY 2025-26
+          (AY 2026-27) to the email registered with the RTA. The PDF usually arrives in a few
+          minutes — then upload it below. Skip anytime and type gains in Schedule CG.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <input
+            className="ntx-input"
+            type="email"
+            autoComplete="email"
+            placeholder="RTA email (CAMS / KFintech)"
+            value={casGenEmail}
+            onChange={(e) => setCasGenEmail(e.target.value)}
+          />
+          <input
+            className="ntx-input"
+            type="password"
+            autoComplete="off"
+            placeholder="PDF password (defaults to PAN)"
+            value={casGenPassword}
+            onChange={(e) => setCasGenPassword(e.target.value)}
+          />
+        </div>
+        <button
+          type="button"
+          className="ntx-btn ntx-btn-secondary mt-4"
+          disabled={casGenBusy}
+          onClick={() => void requestDetailedCas()}
+        >
+          {casGenBusy ? 'Requesting…' : 'Request Detailed CAS'}
+        </button>
       </div>
 
       <div className="ntx-panel p-5">

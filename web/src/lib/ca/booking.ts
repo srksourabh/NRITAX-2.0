@@ -3,6 +3,7 @@
  */
 
 import { getServiceClient } from '@/lib/db/client';
+import { sendCaIcsInvite } from '@/lib/ca/email-invite';
 
 export type CaBookingStatus =
   | 'requested'
@@ -94,7 +95,13 @@ export async function bookSlot(input: {
   slotId: string;
   attendeeEmail: string;
   caBrief?: string;
-}): Promise<{ bookingId: string; ics: string; startsAt: Date; endsAt: Date }> {
+}): Promise<{
+  bookingId: string;
+  ics: string;
+  startsAt: Date;
+  endsAt: Date;
+  emailSent: boolean;
+}> {
   const db = getServiceClient();
 
   const { data: slots } = await db.from('ca_slot').select('*').eq('id', input.slotId).limit(1);
@@ -127,19 +134,35 @@ export async function bookSlot(input: {
   }
 
   const organizer = process.env.AUTH_EMAIL_FROM?.trim() || 'ca@nritax.app';
+  const startsAt = new Date(slot.startsAt);
+  const endsAt = new Date(slot.endsAt);
   const ics = buildIcsInvite({
     uid: `${bookingId}@nritax.app`,
     title: 'NRITAX 2.0 CA review call',
     description:
       input.caBrief?.slice(0, 1500) ||
       'CA review of your NRITAX 2.0 draft return. Bring Form 16 / 26AS / AIS if asked.',
-    startsAt: new Date(slot.startsAt),
-    endsAt: new Date(slot.endsAt),
+    startsAt,
+    endsAt,
     organizerEmail: organizer.replace(/.*<|>.*/g, '') || 'ca@nritax.app',
     attendeeEmail: input.attendeeEmail,
   });
 
-  return { bookingId, ics, startsAt: new Date(slot.startsAt), endsAt: new Date(slot.endsAt) };
+  const mail = await sendCaIcsInvite({
+    to: input.attendeeEmail,
+    ics,
+    startsAt,
+    endsAt,
+    caBrief: input.caBrief,
+  });
+
+  return {
+    bookingId,
+    ics,
+    startsAt,
+    endsAt,
+    emailSent: mail.sent,
+  };
 }
 
 export async function setCaFilingStatus(

@@ -165,6 +165,7 @@ export function PostValidatePanel({
         message?: string;
         ics?: string;
         startsAt?: string;
+        emailSent?: boolean;
       };
       if (!json.ok) {
         onNotice(json.message ?? 'Booking failed.');
@@ -179,11 +180,13 @@ export function PostValidatePanel({
         a.click();
         URL.revokeObjectURL(url);
       }
-      onNotice(
-        json.startsAt
-          ? `CA call scheduled for ${new Date(json.startsAt).toLocaleString()}. Calendar invite downloaded.`
-          : 'CA call scheduled.',
-      );
+      const when = json.startsAt
+        ? `CA call scheduled for ${new Date(json.startsAt).toLocaleString()}.`
+        : 'CA call scheduled.';
+      const mail = json.emailSent
+        ? ' Calendar invite emailed and downloaded.'
+        : ' Calendar invite downloaded (email invite needs AUTH_EMAIL_SERVER).';
+      onNotice(`${when}${mail}`);
       await loadSlots();
     } finally {
       setCaBusy(false);

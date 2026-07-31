@@ -220,6 +220,7 @@ are wired through `CASPARSER_API_KEY` → `https://api.casparser.in` (optional
 | `POST /api/casparser/cdsl/otp` | `/v4/cdsl/fetch` |
 | `POST /api/casparser/cdsl/verify` | `/v4/cdsl/fetch/{id}/verify` then `/v4/smart/parse` |
 | `POST /api/casparser/token` | `/v1/token` → short-lived `at_` for Portfolio Connect |
+| `POST /api/casparser/generate` | `/v4/generate` → Detailed MF CAS mailback |
 
 The filing wizard embeds `@cas-parser/connect` (`PortfolioImport`). The browser
 only receives the minted access token — never `CASPARSER_API_KEY`.
@@ -227,4 +228,5 @@ only receives the minted access token — never `CASPARSER_API_KEY`.
 Local: keep `DIGILOCKER_MOCK=1` so DigiLocker consent works on `http://localhost`.
 Live DigiLocker on your phone needs HTTPS (ngrok) + `DIGILOCKER_MOCK=0` and a
 redirect to `/filing/digilocker/callback`. CDSL needs a 16-digit BO ID + SMS OTP
-and a real API key. Gmail inbox and CAS Generator are not wired yet.
+and a real API key. CAS Generator is wired via `/api/casparser/generate`. Gmail
+inbox import is not wired yet (Phase 3 Sprint 3).
