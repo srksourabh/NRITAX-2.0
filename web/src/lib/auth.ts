@@ -7,6 +7,8 @@
  * and even demo sign-in fails.
  */
 
+import { SupabaseAdapter } from '@auth/supabase-adapter';
+import type { Adapter } from 'next-auth/adapters';
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Nodemailer from 'next-auth/providers/nodemailer';
@@ -97,13 +99,21 @@ const demoProvider = Credentials({
   },
 });
 
-function buildProviders(): Provider[] {
+function buildAuthAdapter(): Adapter | undefined {
+  if (!supabaseReady()) return undefined;
+  return SupabaseAdapter({
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
+    secret: process.env.SUPABASE_SERVICE_ROLE_KEY!.trim(),
+  });
+}
+
+function buildProviders(adapterReady: boolean): Provider[] {
   const providers: Provider[] = [...authConfig.providers, demoProvider];
 
   // Email magic-link needs an Auth.js adapter for verification tokens.
-  // Without it, Auth.js throws MissingAdapter and blocks every provider —
-  // including demo credentials. Skip email until Supabase + SMTP are both set.
-  if (emailServer && supabaseReady()) {
+  // Without it, Auth.js throws MissingAdapter. Skip email until Supabase + SMTP
+  // are both set and the adapter is wired.
+  if (emailServer && adapterReady) {
     providers.push(
       Nodemailer({
         server: emailServer,
@@ -121,11 +131,13 @@ let instance: AuthInstance | null = null;
 
 function authInstance(): AuthInstance {
   if (instance) return instance;
+  const adapter = buildAuthAdapter();
   instance = NextAuth({
     ...authConfig,
     trustHost: true,
+    adapter,
     session: { strategy: 'jwt' },
-    providers: buildProviders(),
+    providers: buildProviders(Boolean(adapter)),
     callbacks: {
       ...authConfig.callbacks,
       async jwt({ token, user }) {
