@@ -2,8 +2,9 @@ import Link from 'next/link';
 import { AuthError } from 'next-auth';
 import { redirect } from 'next/navigation';
 
+import { TestLoginButton } from '@/components/auth/TestLoginButton';
 import { AppShell } from '@/components/shell/AppShell';
-import { signIn } from '@/lib/auth';
+import { readDemoAuth, signIn } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +66,7 @@ export default async function LoginPage({
       process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
       process.env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
   );
+  const demoEnabled = readDemoAuth().enabled;
   const params = searchParams ? await searchParams : {};
   const rawError = params.error;
   const errorCode = Array.isArray(rawError) ? rawError[0] : rawError;
@@ -96,11 +98,28 @@ export default async function LoginPage({
           </p>
         ) : null}
 
-        {!emailEnabled && !googleEnabled ? (
+        {!emailEnabled && !googleEnabled && !demoEnabled ? (
           <p className="ntx-panel mt-8 px-4 py-3 text-[var(--body-sm)] text-[var(--text-muted)]">
             Sign-in is not available on this deployment yet. Ask the operator to enable email
             or Google sign-in, then try again.
           </p>
+        ) : null}
+
+        {!emailEnabled && !googleEnabled && demoEnabled ? (
+          <p className="ntx-panel mt-8 px-4 py-3 text-[var(--body-sm)] text-[var(--text-muted)]">
+            Email and Google are not configured on this deployment yet. Use the test sign-in
+            below to open the filing sheet. Magic-link email also needs Supabase URL and
+            service role key.
+          </p>
+        ) : null}
+
+        {demoEnabled ? (
+          <div className="mt-8">
+            <TestLoginButton callbackUrl={callbackUrl} label="Enter for testing" />
+            <p className="mt-2 text-[var(--caption)] text-[var(--text-muted)]">
+              Opens the wizard as the demo taxpayer. For product demos and operator checks.
+            </p>
+          </div>
         ) : null}
 
         {emailEnabled ? (
