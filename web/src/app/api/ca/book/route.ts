@@ -88,6 +88,7 @@ export async function POST(req: Request) {
       startsAt: booked.startsAt.toISOString(),
       endsAt: booked.endsAt.toISOString(),
       ics: booked.ics,
+      emailSent: booked.emailSent,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Booking failed.';

@@ -181,9 +181,9 @@ Work one sprint at a time. Each sprint ends with tests green and a conventional 
 - Create: `web/src/app/api/casparser/generate/route.ts`
 - Create: `web/src/lib/casparser/client.generate.test.ts`
 
-- [ ] **Step 1:** Add `generateMutualFundCas({ email, fromDate, toDate, password, pan? })` → `POST /v4/generate`
-- [ ] **Step 2:** Route: auth required; soft JSON; never block wizard
-- [ ] **Step 3:** Default FY window for AY 2026-27: `2025-04-01` … `2026-03-31`
+- [x] **Step 1:** Add `generateMutualFundCas({ email, fromDate, toDate, password, pan? })` → `POST /v4/generate`
+- [x] **Step 2:** Route: auth required; soft JSON; never block wizard
+- [x] **Step 3:** Default FY window for AY 2026-27: `2025-04-01` … `2026-03-31`
 - [ ] **Step 4:** Commit `feat(casparser): request Detailed MF CAS via generator API`
 
 ### Task 2.2: Enrichment UI — Request Detailed CAS
@@ -191,8 +191,8 @@ Work one sprint at a time. Each sprint ends with tests green and a conventional 
 **Files:**
 - Modify: `web/src/components/filing/EnrichmentPanels.tsx`
 
-- [ ] **Step 1:** CTA: email (prefill from Part A) + password (default PAN) + “Request Detailed CAS”
-- [ ] **Step 2:** Copy: statement arrives by email in a few minutes; then upload or use Gmail import (Sprint 3)
+- [x] **Step 1:** CTA: email (prefill from Part A) + password (default PAN) + “Request Detailed CAS”
+- [x] **Step 2:** Copy: statement arrives by email in a few minutes; then upload or use Gmail import (Sprint 3)
 - [ ] **Step 3:** Commit `feat(ui): Detailed CAS request in enrichment panel`
 
 ### Task 2.3: Email ICS on CA book
@@ -202,14 +202,14 @@ Work one sprint at a time. Each sprint ends with tests green and a conventional 
 - Modify: `web/src/lib/ca/booking.ts`
 - Test: `web/src/lib/ca/email-invite.test.ts` (mock transport)
 
-- [ ] **Step 1:** If `AUTH_EMAIL_SERVER` unset → no-op, download path unchanged
-- [ ] **Step 2:** If set → send multipart email with `text/calendar` ICS + `caBrief` in body
-- [ ] **Step 3:** Soft-fail send errors; booking still succeeds
+- [x] **Step 1:** If `AUTH_EMAIL_SERVER` unset → no-op, download path unchanged
+- [x] **Step 2:** If set → send multipart email with `text/calendar` ICS + `caBrief` in body
+- [x] **Step 3:** Soft-fail send errors; booking still succeeds
 - [ ] **Step 4:** Commit `feat(ca): email ICS invite when AUTH_EMAIL_SERVER is set`
 
 ### Sprint 2 exit checklist
 
-- [ ] Generate route returns clear message without API key
+- [x] Generate route returns clear message without API key
 - [ ] With key (staging): request accepted; user receives CAS email from RTA
 - [ ] Book CA with mail configured → invite in inbox; without mail → ICS download only
 
