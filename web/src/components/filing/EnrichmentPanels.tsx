@@ -131,6 +131,7 @@ export function EnrichmentPanels({
   layout = 'grid',
   sessionSeed,
   autoPrefill = false,
+  hidePortalFetch = false,
 }: {
   form: FormType;
   data: ReturnData;
@@ -148,6 +149,8 @@ export function EnrichmentPanels({
     consent?: boolean;
   };
   autoPrefill?: boolean;
+  /** When the main PortalAutomationCard is shown, hide the duplicate. */
+  hidePortalFetch?: boolean;
 }) {
   const [casBusy, setCasBusy] = useState(false);
   const [casPassword, setCasPassword] = useState('');
@@ -1039,17 +1042,19 @@ export function EnrichmentPanels({
       </div>
       </RailWrap>
 
-      <RailWrap layout={layout} title="Portal fetch" defaultOpen={Boolean(sessionSeed?.password)}>
-        <PortalFetchPanel
-          form={form}
-          data={data}
-          setData={setData}
-          setActiveId={setActiveId}
-          setNotice={setNotice}
-          sessionSeed={sessionSeed}
-          autoStart={autoPrefill}
-        />
-      </RailWrap>
+      {!hidePortalFetch ? (
+        <RailWrap layout={layout} title="Portal fetch" defaultOpen={Boolean(sessionSeed?.password)}>
+          <PortalFetchPanel
+            form={form}
+            data={data}
+            setData={setData}
+            setActiveId={setActiveId}
+            setNotice={setNotice}
+            sessionSeed={sessionSeed}
+            autoStart={autoPrefill}
+          />
+        </RailWrap>
+      ) : null}
 
       <RailWrap layout={layout} title="ITD prefill JSON">
       <div className="ntx-panel p-5 md:col-span-2 xl:col-span-1">

@@ -53,8 +53,9 @@ function validateStep(step: number, data: Draft): Errors {
       errors.accessMode = 'Choose whether you already have an e-Filing password.';
     } else if (data.accessMode === 'has_password') {
       if (!data.password) errors.password = 'Enter your Income Tax e-Filing password.';
-      if (data.mobile && !/^\d{10}$/.test(data.mobile.replace(/\D/g, ''))) {
-        errors.mobile = 'Mobile must be 10 digits if provided (for OTP).';
+      if (!/^\d{10}$/.test(data.mobile.replace(/\D/g, ''))) {
+        errors.mobile =
+          'Enter the 10-digit mobile registered on the Income Tax portal (needed for OTP).';
       }
       if (!data.consentAutomation) {
         errors.consentAutomation =
@@ -318,7 +319,7 @@ export function LandingOnboarding({
                     </div>
                     <div>
                       <label className="ntx-label" htmlFor="landing-mobile">
-                        Registered mobile (for OTP, optional)
+                        Registered mobile (for OTP)
                       </label>
                       <input
                         id="landing-mobile"

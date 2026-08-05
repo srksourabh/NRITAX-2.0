@@ -11,6 +11,7 @@ import {
 } from '@/components/filing/FilingJourneyMap';
 import { FormSelectionStep } from '@/components/filing/FormSelectionStep';
 import { JuktiYuktiPanel } from '@/components/filing/JuktiYuktiPanel';
+import { PortalAutomationCard } from '@/components/filing/PortalAutomationCard';
 import { PortalUploadPanel } from '@/components/filing/PortalUploadPanel';
 import { PostValidatePanel } from '@/components/filing/PostValidatePanel';
 import { RegimeComparePanel } from '@/components/filing/RegimeComparePanel';
@@ -574,6 +575,17 @@ export function FilingWizard() {
     );
   }
 
+  const sessionSeed = filingSession
+    ? {
+        pan: filingSession.pan,
+        name: filingSession.fullName,
+        dob: filingSession.dob,
+        password: filingSession.password,
+        mobile: filingSession.mobile,
+        consent: filingSession.consentAutomation,
+      }
+    : undefined;
+
   return journeyChrome(
     <>
       <span className="ntx-badge ntx-badge-draft">
@@ -584,106 +596,85 @@ export function FilingWizard() {
       </button>
     </>,
     <>
-        <div className="flex flex-col gap-3 border-b border-[var(--rule)] pb-4 sm:flex-row sm:items-end sm:justify-between sm:pb-5">
-          <div className="min-w-0">
-            <p className="text-[var(--caption)] font-semibold tracking-[0.18em] text-[var(--text-muted)] uppercase">
-              Filing workspace
-            </p>
-            <h1 className="ntx-display-sm mt-1 text-[var(--ink)]">
-              {form} for AY {ASSESSMENT_YEAR}
-            </h1>
-            <p className="mt-1 max-w-xl text-[var(--body-sm)] text-[var(--text-muted)]">
-              Schedules on the left. Helpers on the right. The form stays in the centre.
-            </p>
-          </div>
-          <div className="flex flex-col items-stretch gap-2 sm:items-end">
-            <div className="flex flex-wrap gap-2 sm:justify-end">
-              <button
-                type="button"
-                className="ntx-btn ntx-btn-quiet"
-                disabled={draftBusy}
-                onClick={() => void saveDraftNow()}
-              >
-                {draftBusy ? 'Saving…' : 'Save draft'}
-              </button>
-              <button type="button" className="ntx-btn ntx-btn-secondary" onClick={runValidation}>
-                Validate
-              </button>
-              <button
-                type="button"
-                className="ntx-btn ntx-btn-primary"
-                onClick={downloadJson}
-              >
-                Download JSON
-              </button>
-            </div>
-            {draftMessage ? (
-              <p
-                className={cn(
-                  'text-[var(--caption)] sm:text-right',
-                  draftStatus === 'error'
-                    ? 'text-[var(--notice)]'
-                    : 'text-[var(--text-muted)]',
-                )}
-              >
-                {draftMessage}
-              </p>
-            ) : null}
-            <details className="text-[var(--caption)] text-[var(--text-muted)] sm:text-right">
-              <summary className="cursor-pointer select-none font-semibold text-[var(--primary)]">
-                Developer tools
-              </summary>
-              <button
-                type="button"
-                className="ntx-btn ntx-btn-secondary ntx-btn-compact mt-2"
-                onClick={loadSampleData}
-              >
-                Load sample data
-              </button>
-            </details>
-          </div>
+      <div className="flex flex-col gap-3 border-b border-[var(--rule)] pb-4 sm:flex-row sm:items-end sm:justify-between sm:pb-5">
+        <div className="min-w-0">
+          <p className="text-[var(--caption)] font-semibold tracking-[0.18em] text-[var(--text-muted)] uppercase">
+            Your return
+          </p>
+          <h1 className="ntx-display-sm mt-1 text-[var(--ink)]">
+            {form} · AY {ASSESSMENT_YEAR}
+          </h1>
+          <p className="mt-1 max-w-lg text-[var(--body-sm)] text-[var(--text-muted)]">
+            Prefill first, then one schedule at a time. You only file when you are ready.
+          </p>
         </div>
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <button
+              type="button"
+              className="ntx-btn ntx-btn-quiet"
+              disabled={draftBusy}
+              onClick={() => void saveDraftNow()}
+            >
+              {draftBusy ? 'Saving…' : 'Save draft'}
+            </button>
+            <button type="button" className="ntx-btn ntx-btn-secondary" onClick={runValidation}>
+              Validate
+            </button>
+            <button type="button" className="ntx-btn ntx-btn-primary" onClick={downloadJson}>
+              Download JSON
+            </button>
+          </div>
+          {draftMessage ? (
+            <p
+              className={cn(
+                'text-[var(--caption)] sm:text-right',
+                draftStatus === 'error' ? 'text-[var(--notice)]' : 'text-[var(--text-muted)]',
+              )}
+            >
+              {draftMessage}
+            </p>
+          ) : null}
+          <details className="text-[var(--caption)] text-[var(--text-muted)] sm:text-right">
+            <summary className="cursor-pointer select-none font-semibold text-[var(--primary)]">
+              Developer tools
+            </summary>
+            <button
+              type="button"
+              className="ntx-btn ntx-btn-secondary ntx-btn-compact mt-2"
+              onClick={loadSampleData}
+            >
+              Load sample data
+            </button>
+          </details>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
+        <PortalAutomationCard
+          form={form}
+          data={data}
+          setData={setData}
+          setActiveId={setActiveId}
+          onStatus={setNotice}
+          sessionSeed={sessionSeed}
+          autoStart={autoPrefill && Boolean(filingSession?.password)}
+        />
 
         {notice ? (
-          <p className="ntx-panel mt-4 px-3 py-2.5 text-[var(--body-sm)] text-[var(--info-text)] sm:px-4 sm:py-3">
+          <p
+            className="ntx-panel px-3 py-2.5 text-[var(--body-sm)] text-[var(--ink)] sm:px-4 sm:py-3"
+            role="status"
+          >
             {notice}
           </p>
         ) : null}
 
-        {/* Mobile: helpers collapse above the form */}
-        <details className="ntx-rail-item mt-4 lg:hidden">
-          <summary className="ntx-rail-summary">Jukti Yukti and import helpers</summary>
-          <div className="ntx-rail-body space-y-3">
-            <JuktiYuktiPanel form={form} data={data} schedule={active} />
-            <RegimeStatusBanner data={data} onReview={() => setStep('regime')} compact />
-            <EnrichmentPanels
-              form={form}
-              data={data}
-              setData={setData}
-              setActiveId={setActiveId}
-              setNotice={setNotice}
-              layout="rail"
-              autoPrefill={autoPrefill && Boolean(filingSession?.password)}
-              sessionSeed={
-                filingSession
-                  ? {
-                      pan: filingSession.pan,
-                      name: filingSession.fullName,
-                      dob: filingSession.dob,
-                      password: filingSession.password,
-                      mobile: filingSession.mobile,
-                      consent: filingSession.consentAutomation,
-                    }
-                  : undefined
-              }
-            />
-          </div>
-        </details>
+        <RegimeStatusBanner data={data} onReview={() => setStep('regime')} compact />
 
-        <div className="ntx-filing-sandwich mt-4 lg:mt-6">
-          <aside className="ntx-filing-rail order-2 lg:order-1">
-            <FilingJourneyMap current={journeyIndex} onStep={goToJourneyStep} />
-            <nav className="ntx-panel p-2">
+        <div className="ntx-filing-calm">
+          <aside className="ntx-filing-rail">
+            <nav className="ntx-panel p-2" aria-label="Schedules">
               <p className="px-2 pb-2 text-[var(--caption)] font-semibold tracking-[0.14em] text-[var(--text-muted)] uppercase">
                 Schedules
               </p>
@@ -719,9 +710,16 @@ export function FilingWizard() {
                 })}
               </div>
             </nav>
+            <div className="hidden lg:block">
+              <JuktiYuktiPanel form={form} data={data} schedule={active} />
+            </div>
           </aside>
 
-          <div className="order-1 min-w-0 space-y-6 lg:order-2 lg:space-y-8">
+          <div className="min-w-0 space-y-5 lg:space-y-6">
+            <div className="lg:hidden">
+              <JuktiYuktiPanel form={form} data={data} schedule={active} />
+            </div>
+
             {active ? (
               <SchedulePanel
                 schedule={active}
@@ -799,37 +797,27 @@ export function FilingWizard() {
               />
               <PostValidatePanel data={data} onNotice={setNotice} />
             </div>
-          </div>
 
-          <aside className="ntx-filing-rail order-3 hidden lg:flex">
-            <p className="px-1 text-[var(--caption)] font-semibold tracking-[0.14em] text-[var(--text-muted)] uppercase">
-              Helpers
-            </p>
-            <JuktiYuktiPanel form={form} data={data} schedule={active} />
-            <RegimeStatusBanner data={data} onReview={() => setStep('regime')} compact />
-            <EnrichmentPanels
-              form={form}
-              data={data}
-              setData={setData}
-              setActiveId={setActiveId}
-              setNotice={setNotice}
-              layout="rail"
-              autoPrefill={autoPrefill && Boolean(filingSession?.password)}
-              sessionSeed={
-                filingSession
-                  ? {
-                      pan: filingSession.pan,
-                      name: filingSession.fullName,
-                      dob: filingSession.dob,
-                      password: filingSession.password,
-                      mobile: filingSession.mobile,
-                      consent: filingSession.consentAutomation,
-                    }
-                  : undefined
-              }
-            />
-          </aside>
+            <details className="ntx-panel p-3 sm:p-4">
+              <summary className="cursor-pointer select-none text-[var(--body-sm)] font-semibold text-[var(--primary)]">
+                More ways to import (AIS, Form 26AS, Excel)
+              </summary>
+              <div className="mt-3">
+                <EnrichmentPanels
+                  form={form}
+                  data={data}
+                  setData={setData}
+                  setActiveId={setActiveId}
+                  setNotice={setNotice}
+                  layout="grid"
+                  autoPrefill={false}
+                  hidePortalFetch
+                />
+              </div>
+            </details>
+          </div>
         </div>
+      </div>
     </>,
     { bare: true },
   );

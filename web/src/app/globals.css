@@ -1903,9 +1903,20 @@ a:hover {
   gap: 1rem;
 }
 
+.ntx-filing-calm {
+  display: grid;
+  gap: 1rem;
+}
+
 @media (min-width: 1024px) {
   .ntx-filing-sandwich {
     grid-template-columns: 200px minmax(0, 1fr) 260px;
+    gap: 1.25rem 1.5rem;
+    align-items: start;
+  }
+
+  .ntx-filing-calm {
+    grid-template-columns: 200px minmax(0, 1fr);
     gap: 1.25rem 1.5rem;
     align-items: start;
   }
@@ -1914,6 +1925,10 @@ a:hover {
 @media (min-width: 1280px) {
   .ntx-filing-sandwich {
     grid-template-columns: 220px minmax(0, 1fr) 280px;
+  }
+
+  .ntx-filing-calm {
+    grid-template-columns: 220px minmax(0, 1fr);
   }
 }
 
