@@ -3,57 +3,72 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-type RegimePref = 'new' | 'old' | '';
-type CredentialStatus = 'yes' | 'no' | 'not-sure' | '';
+import { ITD_PORTAL_HOME, ITD_PORTAL_LABEL, ITD_PORTAL_LOGIN } from '@/lib/itd/portal';
+import type { FormType } from '@/lib/itr/types';
+import {
+  isValidPan,
+  normalizePan,
+  writeFilingSession,
+  type FilingAccessMode,
+} from '@/lib/session/filing-session';
 
 type Draft = {
   fullName: string;
-  country: string;
+  dob: string;
   pan: string;
-  taxRegime: RegimePref;
-  credentialStatus: CredentialStatus;
+  password: string;
+  mobile: string;
+  accessMode: FilingAccessMode | '';
+  form: FormType | '';
+  consentAutomation: boolean;
 };
 
-type Errors = Partial<Record<keyof Draft, string>>;
+type Errors = Partial<Record<keyof Draft | 'base', string>>;
 
-const STEPS = ['Personal', 'PAN', 'Regime', 'ITD access'] as const;
+const STEPS = ['Identity', 'Portal access', 'ITR form'] as const;
 
 const empty: Draft = {
   fullName: '',
-  country: '',
+  dob: '',
   pan: '',
-  taxRegime: '',
-  credentialStatus: '',
+  password: '',
+  mobile: '',
+  accessMode: '',
+  form: '',
+  consentAutomation: false,
 };
-
-const panPattern = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-
-function normalizePan(value: string) {
-  return value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
-}
 
 function validateStep(step: number, data: Draft): Errors {
   const errors: Errors = {};
   if (step === 0) {
-    if (data.fullName.trim().length < 2) errors.fullName = 'Enter your full name.';
-    if (data.country.trim().length < 2) errors.country = 'Enter your country of residence.';
-  }
-  if (step === 1) {
+    if (data.fullName.trim().length < 2) errors.fullName = 'Enter your full name as on PAN.';
+    if (!data.dob) errors.dob = 'Enter your date of birth.';
     if (!data.pan.trim()) errors.pan = 'Enter your PAN.';
-    else if (!panPattern.test(data.pan)) {
+    else if (!isValidPan(data.pan)) {
       errors.pan = 'PAN must be 10 characters, for example ABCDE1234F.';
     }
   }
-  if (step === 2 && !data.taxRegime) errors.taxRegime = 'Select a regime preference.';
-  if (step === 3 && !data.credentialStatus) {
-    errors.credentialStatus = 'Tell us whether you can sign in to the Income Tax portal.';
+  if (step === 1) {
+    if (!data.accessMode) {
+      errors.accessMode = 'Choose whether you already have an e-Filing password.';
+    } else if (data.accessMode === 'has_password') {
+      if (!data.password) errors.password = 'Enter your Income Tax e-Filing password.';
+      if (data.mobile && !/^\d{10}$/.test(data.mobile.replace(/\D/g, ''))) {
+        errors.mobile = 'Mobile must be 10 digits if provided (for OTP).';
+      }
+      if (!data.consentAutomation) {
+        errors.consentAutomation =
+          'Confirm we may use browser automation with this password for this session only.';
+      }
+    }
   }
+  if (step === 2 && !data.form) errors.form = 'Select ITR-2 or ITR-3.';
   return errors;
 }
 
 export function LandingOnboarding({
   primaryHref,
-  continueLabel = 'Continue to sign in',
+  continueLabel = 'Continue to filing',
 }: {
   primaryHref: string;
   continueLabel?: string;
@@ -64,7 +79,13 @@ export function LandingOnboarding({
   const [errors, setErrors] = useState<Errors>({});
 
   const update = <K extends keyof Draft>(field: K, value: Draft[K]) => {
-    setData((prev) => ({ ...prev, [field]: value }));
+    setData((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === 'pan' && typeof value === 'string') {
+        /* user ID is always PAN */
+      }
+      return next;
+    });
     setErrors((prev) => {
       const next = { ...prev };
       delete next[field];
@@ -83,43 +104,62 @@ export function LandingOnboarding({
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
+    if (step === 1 && data.accessMode === 'create_account') {
+      document.getElementById('create-account')?.scrollIntoView({ behavior: 'smooth' });
+      setStep(2);
+      return;
+    }
+
     if (step < STEPS.length - 1) {
       setStep((s) => s + 1);
       return;
     }
 
+    const pan = normalizePan(data.pan);
     try {
-      localStorage.setItem(
-        'nritax.landingDraft',
-        JSON.stringify({
-          ...data,
-          savedAt: new Date().toISOString(),
-        }),
-      );
+      writeFilingSession({
+        fullName: data.fullName.trim(),
+        dob: data.dob,
+        pan,
+        userId: pan,
+        password: data.accessMode === 'has_password' ? data.password : undefined,
+        mobile: data.mobile.replace(/\D/g, '') || undefined,
+        accessMode: data.accessMode as FilingAccessMode,
+        form: data.form as FormType,
+        consentAutomation: data.accessMode === 'has_password' ? data.consentAutomation : false,
+        savedAt: new Date().toISOString(),
+      });
     } catch {
-      /* ignore quota / private mode */
+      setErrors({ base: 'Could not save this session in the browser. Check private-mode settings.' });
+      return;
     }
-    router.push(primaryHref);
+
+    const href =
+      data.accessMode === 'create_account'
+        ? `${primaryHref}${primaryHref.includes('?') ? '&' : '?'}guide=create-account`
+        : `${primaryHref}${primaryHref.includes('?') ? '&' : '?'}autoPrefill=1`;
+    router.push(href);
   };
 
   return (
     <section id="start" className="ntx-section ntx-landing-anchor" aria-labelledby="start-heading">
       <div className="ntx-shell ntx-landing-onboard">
         <div className="ntx-landing-rise">
-          <p className="ntx-landing-kicker">Start securely</p>
+          <p className="ntx-landing-kicker">Start filing</p>
           <h2 id="start-heading" className="ntx-display-lg mt-3 text-[var(--ink)]">
-            Begin a filing profile with clear security choices
+            Your Income Tax portal login drives the return
           </h2>
           <p className="ntx-landing-section-lede">
-            Four short questions. We keep the draft in this browser (local storage), then take
-            you to sign-in so the filing wizard can open.
+            We do not keep your Income Tax data. Your e-Filing user ID is your PAN. The password
+            stays in this browser tab for this session only, so browser automation can fetch
+            prefill and later push the JSON. You remain the account holder.
           </p>
           <div className="ntx-landing-security">
-            <h3>Security note</h3>
+            <h3>Your data stays yours</h3>
             <p>
-              Prefer downloading prefill JSON yourself on the Income Tax portal. If you later
-              use optional automated fetch, the password is used only for that job over an
-              encrypted connection and is wiped when the job ends — not stored for reuse.
+              NRITAX does not store your portal password on our servers. You need an Income Tax
+              Department user ID first — creating one is straightforward, and we guide you if you
+              do not have a password yet.
             </p>
           </div>
         </div>
@@ -128,10 +168,10 @@ export function LandingOnboarding({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[var(--body-sm)] font-semibold text-[var(--primary)]">
-                Basic onboarding
+                Session setup
               </p>
               <h3 id="onboarding-form-title" className="mt-1 text-[var(--h2)] font-semibold text-[var(--ink)]">
-                Start your filing journey
+                Name, PAN, and portal access
               </h3>
             </div>
             <span className="ntx-badge ntx-badge-draft">
@@ -154,13 +194,6 @@ export function LandingOnboarding({
                     className="ntx-landing-progress-node"
                     disabled={!canJumpBack}
                     aria-current={current ? 'step' : undefined}
-                    aria-label={
-                      canJumpBack
-                        ? `Go back to ${label}`
-                        : current
-                          ? `${label}, current step`
-                          : `${label}, not reached yet`
-                    }
                     onClick={() => goToStep(index)}
                   >
                     <span aria-hidden="true">{index + 1}</span>
@@ -176,7 +209,7 @@ export function LandingOnboarding({
               <>
                 <div>
                   <label className="ntx-label" htmlFor="landing-name">
-                    Full name
+                    Full name (as on PAN)
                   </label>
                   <input
                     id="landing-name"
@@ -185,77 +218,189 @@ export function LandingOnboarding({
                     value={data.fullName}
                     onChange={(e) => update('fullName', e.target.value)}
                   />
-                  {errors.fullName ? (
-                    <p className="ntx-field-error">{errors.fullName}</p>
-                  ) : null}
+                  {errors.fullName ? <p className="ntx-field-error">{errors.fullName}</p> : null}
                 </div>
                 <div>
-                  <label className="ntx-label" htmlFor="landing-country">
-                    Country of residence
+                  <label className="ntx-label" htmlFor="landing-dob">
+                    Date of birth
                   </label>
                   <input
-                    id="landing-country"
+                    id="landing-dob"
                     className="ntx-input"
-                    autoComplete="country-name"
-                    value={data.country}
-                    onChange={(e) => update('country', e.target.value)}
+                    type="date"
+                    value={data.dob}
+                    onChange={(e) => update('dob', e.target.value)}
                   />
-                  {errors.country ? (
-                    <p className="ntx-field-error">{errors.country}</p>
-                  ) : null}
+                  {errors.dob ? <p className="ntx-field-error">{errors.dob}</p> : null}
+                </div>
+                <div>
+                  <label className="ntx-label" htmlFor="landing-pan">
+                    PAN / e-Filing user ID
+                  </label>
+                  <input
+                    id="landing-pan"
+                    className="ntx-input ntx-figure"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={data.pan}
+                    onChange={(e) => update('pan', normalizePan(e.target.value))}
+                    placeholder="ABCDE1234F"
+                  />
+                  <p className="mt-1 text-[var(--caption)] text-[var(--text-muted)]">
+                    On the {ITD_PORTAL_LABEL}, the user ID is always your PAN.
+                  </p>
+                  {errors.pan ? <p className="ntx-field-error">{errors.pan}</p> : null}
                 </div>
               </>
             ) : null}
 
             {step === 1 ? (
-              <div>
-                <label className="ntx-label" htmlFor="landing-pan">
-                  PAN
-                </label>
-                <input
-                  id="landing-pan"
-                  className="ntx-input ntx-figure"
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={data.pan}
-                  onChange={(e) => update('pan', normalizePan(e.target.value))}
-                  placeholder="ABCDE1234F"
-                />
-                {errors.pan ? <p className="ntx-field-error">{errors.pan}</p> : null}
-              </div>
+              <>
+                <fieldset className="ntx-landing-radio-set">
+                  <legend className="ntx-label">Income Tax e-Filing password</legend>
+                  {(
+                    [
+                      {
+                        value: 'has_password' as const,
+                        label: 'I have my portal password',
+                        detail: 'We will open the portal with browser automation and fetch prefill.',
+                      },
+                      {
+                        value: 'create_account' as const,
+                        label: 'I do not have a password — I need to create one',
+                        detail: 'We guide you to register on the Income Tax Department site first.',
+                      },
+                    ] as const
+                  ).map((option) => (
+                    <label
+                      key={option.value}
+                      className={
+                        data.accessMode === option.value
+                          ? 'ntx-landing-radio is-selected'
+                          : 'ntx-landing-radio'
+                      }
+                    >
+                      <input
+                        type="radio"
+                        name="landing-access"
+                        value={option.value}
+                        checked={data.accessMode === option.value}
+                        onChange={() => update('accessMode', option.value)}
+                      />
+                      <span>
+                        <strong>{option.label}</strong>
+                        <span>{option.detail}</span>
+                      </span>
+                    </label>
+                  ))}
+                  {errors.accessMode ? (
+                    <p className="ntx-field-error">{errors.accessMode}</p>
+                  ) : null}
+                </fieldset>
+
+                {data.accessMode === 'has_password' ? (
+                  <>
+                    <div>
+                      <label className="ntx-label" htmlFor="landing-password">
+                        e-Filing password
+                      </label>
+                      <input
+                        id="landing-password"
+                        className="ntx-input"
+                        type="password"
+                        autoComplete="current-password"
+                        value={data.password}
+                        onChange={(e) => update('password', e.target.value)}
+                      />
+                      {errors.password ? (
+                        <p className="ntx-field-error">{errors.password}</p>
+                      ) : null}
+                    </div>
+                    <div>
+                      <label className="ntx-label" htmlFor="landing-mobile">
+                        Registered mobile (for OTP, optional)
+                      </label>
+                      <input
+                        id="landing-mobile"
+                        className="ntx-input ntx-figure"
+                        inputMode="numeric"
+                        maxLength={10}
+                        value={data.mobile}
+                        onChange={(e) =>
+                          update('mobile', e.target.value.replace(/\D/g, '').slice(0, 10))
+                        }
+                        placeholder="10 digits"
+                      />
+                      {errors.mobile ? <p className="ntx-field-error">{errors.mobile}</p> : null}
+                    </div>
+                    <label className="flex items-start gap-2 text-[var(--body-sm)] text-[var(--text-secondary)]">
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={data.consentAutomation}
+                        onChange={(e) => update('consentAutomation', e.target.checked)}
+                      />
+                      <span>
+                        I authorise NRITAX to use browser automation in this session to sign in
+                        with my PAN and password, download prefill, and later upload the return
+                        JSON. The password is not stored on NRITAX servers.
+                      </span>
+                    </label>
+                    {errors.consentAutomation ? (
+                      <p className="ntx-field-error">{errors.consentAutomation}</p>
+                    ) : null}
+                  </>
+                ) : null}
+
+                {data.accessMode === 'create_account' ? (
+                  <p className="text-[var(--body-sm)] text-[var(--text-muted)]">
+                    Next you will pick an ITR form, then we show the create-account guide. Official
+                    register link:{' '}
+                    <a
+                      className="underline underline-offset-2"
+                      href={ITD_PORTAL_LOGIN}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {ITD_PORTAL_HOME}
+                    </a>
+                    .
+                  </p>
+                ) : null}
+              </>
             ) : null}
 
             {step === 2 ? (
               <fieldset className="ntx-landing-radio-set">
-                <legend className="ntx-label">Regime preference</legend>
+                <legend className="ntx-label">Which return will you file?</legend>
                 {(
                   [
                     {
-                      value: 'new' as const,
-                      label: 'New regime',
-                      detail: 'Section 115BAC slabs. Standard deduction, fewer Chapter VI-A claims.',
+                      value: 'ITR2' as const,
+                      label: 'ITR-2',
+                      detail: 'Salary, house property, capital gains, other sources — no business P&L.',
                     },
                     {
-                      value: 'old' as const,
-                      label: 'Old regime',
-                      detail: 'Use deductions and exemptions where they still apply.',
+                      value: 'ITR3' as const,
+                      label: 'ITR-3',
+                      detail: 'Includes business or profession income and accounts schedules.',
                     },
                   ] as const
                 ).map((option) => (
                   <label
                     key={option.value}
                     className={
-                      data.taxRegime === option.value
+                      data.form === option.value
                         ? 'ntx-landing-radio is-selected'
                         : 'ntx-landing-radio'
                     }
                   >
                     <input
                       type="radio"
-                      name="landing-regime"
+                      name="landing-form"
                       value={option.value}
-                      checked={data.taxRegime === option.value}
-                      onChange={() => update('taxRegime', option.value)}
+                      checked={data.form === option.value}
+                      onChange={() => update('form', option.value)}
                     />
                     <span>
                       <strong>{option.label}</strong>
@@ -263,53 +408,11 @@ export function LandingOnboarding({
                     </span>
                   </label>
                 ))}
-                {errors.taxRegime ? (
-                  <p className="ntx-field-error">{errors.taxRegime}</p>
-                ) : null}
+                {errors.form ? <p className="ntx-field-error">{errors.form}</p> : null}
               </fieldset>
             ) : null}
 
-            {step === 3 ? (
-              <fieldset className="ntx-landing-radio-set">
-                <legend className="ntx-label">
-                  Can you sign in to the Income Tax portal?
-                </legend>
-                {(
-                  [
-                    { value: 'yes' as const, label: 'Yes' },
-                    { value: 'no' as const, label: 'No' },
-                    { value: 'not-sure' as const, label: 'Not sure' },
-                  ] as const
-                ).map((option) => (
-                  <label
-                    key={option.value}
-                    className={
-                      data.credentialStatus === option.value
-                        ? 'ntx-landing-radio is-selected'
-                        : 'ntx-landing-radio'
-                    }
-                  >
-                    <input
-                      type="radio"
-                      name="landing-credentials"
-                      value={option.value}
-                      checked={data.credentialStatus === option.value}
-                      onChange={() => update('credentialStatus', option.value)}
-                    />
-                    <span>
-                      <strong>{option.label}</strong>
-                    </span>
-                  </label>
-                ))}
-                <p className="text-[var(--body-sm)] text-[var(--text-muted)]">
-                  This only records whether you can reach the portal yourself. It is not a
-                  password field.
-                </p>
-                {errors.credentialStatus ? (
-                  <p className="ntx-field-error">{errors.credentialStatus}</p>
-                ) : null}
-              </fieldset>
-            ) : null}
+            {errors.base ? <p className="ntx-field-error">{errors.base}</p> : null}
           </div>
 
           <div className="ntx-landing-form-actions">

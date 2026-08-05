@@ -1,6 +1,7 @@
 'use client';
 
 import { LandingCta, LandingFooter } from './LandingCta';
+import { LandingCreateAccountGuide } from './LandingCreateAccountGuide';
 import { LandingFeatures } from './LandingFeatures';
 import { LandingHero } from './LandingHero';
 import { LandingHowItWorks } from './LandingHowItWorks';
@@ -20,12 +21,13 @@ export function LandingPage({ signedIn }: { signedIn: boolean }) {
         <LandingHero primaryHref={primaryHref} primaryLabel={primaryLabel} />
         <LandingFeatures />
         <LandingHowItWorks />
-        <LandingPrefillGuide />
-        <LandingTrust />
         <LandingOnboarding
           primaryHref={primaryHref}
           continueLabel={signedIn ? 'Continue to filing' : 'Continue to sign in'}
         />
+        <LandingCreateAccountGuide />
+        <LandingPrefillGuide />
+        <LandingTrust />
         <LandingCta primaryHref={primaryHref} primaryLabel={primaryLabel} />
       </main>
       <LandingFooter />

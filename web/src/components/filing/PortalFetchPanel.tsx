@@ -91,44 +91,66 @@ export function PortalFetchPanel({
   setData,
   setActiveId,
   setNotice,
+  sessionSeed,
+  autoStart = false,
 }: {
   form: FormType;
   data: ReturnData;
   setData: (next: ReturnData | ((prev: ReturnData) => ReturnData)) => void;
   setActiveId: (id: string) => void;
   setNotice: (message: string | null) => void;
+  sessionSeed?: {
+    pan?: string;
+    name?: string;
+    dob?: string;
+    password?: string;
+    mobile?: string;
+    consent?: boolean;
+  };
+  /** Start fetch once when seed + consents are ready (session automation path). */
+  autoStart?: boolean;
 }) {
   const identity = genIdentity(data);
-  const [panEdit, setPanEdit] = useState<string | null>(null);
-  const [nameEdit, setNameEdit] = useState<string | null>(null);
-  const [dobEdit, setDobEdit] = useState<string | null>(null);
+  const [panEdit, setPanEdit] = useState<string | null>(sessionSeed?.pan ?? null);
+  const [nameEdit, setNameEdit] = useState<string | null>(sessionSeed?.name ?? null);
+  const [dobEdit, setDobEdit] = useState<string | null>(sessionSeed?.dob ?? null);
   const pan = panEdit ?? identity.pan;
   const name = nameEdit ?? identity.name;
   const dob = dobEdit ?? identity.dob;
-  const [password, setPassword] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [consentFetch, setConsentFetch] = useState(false);
-  const [consentLiability, setConsentLiability] = useState(false);
+  const [password, setPassword] = useState(sessionSeed?.password ?? '');
+  const [mobile, setMobile] = useState(sessionSeed?.mobile ?? '');
+  const [consentFetch, setConsentFetch] = useState(Boolean(sessionSeed?.consent));
+  const [consentLiability, setConsentLiability] = useState(Boolean(sessionSeed?.consent));
   const [otp, setOtp] = useState('');
   const [busy, setBusy] = useState(false);
   const [job, setJob] = useState<PortalFetchPublicJob | null>(null);
   const appliedArtifactRef = useRef<string | null>(null);
   const lastNoticeStatusRef = useRef<string | null>(null);
+  const autoStartedRef = useRef(false);
   const dataRef = useRef(data);
 
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
 
-  const fieldsReady =
+  const canStart =
+    consentFetch &&
+    consentLiability &&
     /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.trim().toUpperCase()) &&
     name.trim().length > 0 &&
     dob.trim().length > 0 &&
     password.length > 0 &&
-    /^\d{10}$/.test(mobile.trim());
+    /^\d{10}$/.test(mobile.trim()) &&
+    !busy &&
+    (!job || isTerminalStatus(job.status));
 
-  const canStart =
-    consentFetch && consentLiability && fieldsReady && !busy && (!job || isTerminalStatus(job.status));
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current) return;
+    if (!canStart) return;
+    autoStartedRef.current = true;
+    void startFetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, canStart]);
 
   function applyArtifact(artifactJson: string, jobId: string) {
     if (appliedArtifactRef.current === jobId) return;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { AutoFillPanel } from '@/components/filing/AutoFillPanel';
 import { PortalFetchPanel } from '@/components/filing/PortalFetchPanel';
@@ -8,6 +8,7 @@ import { TaxImportPanel } from '@/components/filing/TaxImportPanel';
 import { applyCasPipeline } from '@/lib/cas/pipeline';
 import { casFailureMessage, resolveCasPdfPassword } from '@/lib/cas/password';
 import type { CasParseResult } from '@/lib/cas/types';
+import { cn } from '@/lib/cn';
 import { importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
 import {
   applyForm16ToReturn,
@@ -15,6 +16,26 @@ import {
 } from '@/lib/sandbox/apply-ocr';
 import type { Form16Result, Form26AsResult, OcrKind } from '@/lib/sandbox/ocr-types';
 import type { FormType, ReturnData } from '@/lib/itr/types';
+
+function RailWrap({
+  layout,
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  layout: 'grid' | 'rail';
+  title: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  if (layout === 'grid') return <>{children}</>;
+  return (
+    <details className="ntx-rail-item" open={defaultOpen}>
+      <summary className="ntx-rail-summary">{title}</summary>
+      <div className="ntx-rail-body">{children}</div>
+    </details>
+  );
+}
 
 const DIGI_SESSION_KEY = 'nritax.digilocker.sessionId';
 
@@ -107,12 +128,26 @@ export function EnrichmentPanels({
   setData,
   setActiveId,
   setNotice,
+  layout = 'grid',
+  sessionSeed,
+  autoPrefill = false,
 }: {
   form: FormType;
   data: ReturnData;
   setData: (next: ReturnData | ((prev: ReturnData) => ReturnData)) => void;
   setActiveId: (id: string) => void;
   setNotice: (message: string | null) => void;
+  /** `rail` collapses helpers into a right-margin sandwich list. */
+  layout?: 'grid' | 'rail';
+  sessionSeed?: {
+    pan?: string;
+    name?: string;
+    dob?: string;
+    password?: string;
+    mobile?: string;
+    consent?: boolean;
+  };
+  autoPrefill?: boolean;
 }) {
   const [casBusy, setCasBusy] = useState(false);
   const [casPassword, setCasPassword] = useState('');
@@ -845,34 +880,49 @@ export function EnrichmentPanels({
   const bankIfscHint = firstBankIfsc(data);
 
   return (
-    <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <AutoFillPanel
-        data={data}
-        setData={setData}
-        setActiveId={setActiveId}
-        setNotice={setNotice}
-      />
-
-      <div className="md:col-span-2 xl:col-span-3">
-        <TaxImportPanel
-          filingId={null}
-          onNotice={(m) => setNotice(m)}
-          ensureFilingId={async () => {
-            const res = await fetch('/api/filing', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ data }),
-            });
-            const json = (await res.json()) as { ok?: boolean; filingId?: string; message?: string };
-            if (!json.ok || !json.filingId) {
-              setNotice(json.message ?? 'Save a draft with PAN before importing AIS / 26AS.');
-              return null;
-            }
-            return json.filingId;
-          }}
+    <section
+      className={cn(
+        layout === 'rail'
+          ? 'ntx-helper-rail'
+          : 'mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3',
+      )}
+    >
+      <RailWrap layout={layout} title="Auto-fill" defaultOpen>
+        <AutoFillPanel
+          data={data}
+          setData={setData}
+          setActiveId={setActiveId}
+          setNotice={setNotice}
         />
-      </div>
+      </RailWrap>
 
+      <RailWrap layout={layout} title="AIS / Form 26AS">
+        <div className={layout === 'grid' ? 'md:col-span-2 xl:col-span-3' : undefined}>
+          <TaxImportPanel
+            filingId={null}
+            onNotice={(m) => setNotice(m)}
+            ensureFilingId={async () => {
+              const res = await fetch('/api/filing', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data }),
+              });
+              const json = (await res.json()) as {
+                ok?: boolean;
+                filingId?: string;
+                message?: string;
+              };
+              if (!json.ok || !json.filingId) {
+                setNotice(json.message ?? 'Save a draft with PAN before importing AIS / 26AS.');
+                return null;
+              }
+              return json.filingId;
+            }}
+          />
+        </div>
+      </RailWrap>
+
+      <RailWrap layout={layout} title="Identity (Sandbox)">
       <div className="ntx-panel p-5 md:col-span-2 xl:col-span-3">
         <h2 className="text-[var(--h3)] font-semibold">
           Fetch identity into the return (Sandbox)
@@ -987,15 +1037,21 @@ export function EnrichmentPanels({
           </button>
         </div>
       </div>
+      </RailWrap>
 
-      <PortalFetchPanel
-        form={form}
-        data={data}
-        setData={setData}
-        setActiveId={setActiveId}
-        setNotice={setNotice}
-      />
+      <RailWrap layout={layout} title="Portal fetch" defaultOpen={Boolean(sessionSeed?.password)}>
+        <PortalFetchPanel
+          form={form}
+          data={data}
+          setData={setData}
+          setActiveId={setActiveId}
+          setNotice={setNotice}
+          sessionSeed={sessionSeed}
+          autoStart={autoPrefill}
+        />
+      </RailWrap>
 
+      <RailWrap layout={layout} title="ITD prefill JSON">
       <div className="ntx-panel p-5 md:col-span-2 xl:col-span-1">
         <h2 className="text-[var(--h3)] font-semibold">Optional · ITD prefill JSON</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
@@ -1033,7 +1089,9 @@ export function EnrichmentPanels({
           onChange={(e) => onPrefillFile(e.target.files?.[0] ?? null)}
         />
       </div>
+      </RailWrap>
 
+      <RailWrap layout={layout} title="CAS · demo fetch">
       <div className="ntx-panel p-5 md:col-span-2">
         <h2 className="text-[var(--h3)] font-semibold">Demo · Fetch CAS by PAN &amp; DOB</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
@@ -1087,7 +1145,9 @@ export function EnrichmentPanels({
           </a>
         </p>
       </div>
+      </RailWrap>
 
+      <RailWrap layout={layout} title="CAS · request Detailed">
       <div className="ntx-panel p-5">
         <h2 className="text-[var(--h3)] font-semibold">Optional · Request Detailed MF CAS</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
@@ -1122,7 +1182,9 @@ export function EnrichmentPanels({
           {casGenBusy ? 'Requesting…' : 'Request Detailed CAS'}
         </button>
       </div>
+      </RailWrap>
 
+      <RailWrap layout={layout} title="CAS · Gmail">
       <div className="ntx-panel p-5">
         <h2 className="text-[var(--h3)] font-semibold">Optional · Gmail CAS import</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
@@ -1204,7 +1266,9 @@ export function EnrichmentPanels({
           </ul>
         ) : null}
       </div>
+      </RailWrap>
 
+      <RailWrap layout={layout} title="CAS · PDF upload">
       <div className="ntx-panel p-5">
         <h2 className="text-[var(--h3)] font-semibold">Optional · Mutual fund CAS PDF</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
@@ -1252,7 +1316,9 @@ export function EnrichmentPanels({
           onChange={(e) => void onCasFile(e.target.files?.[0] ?? null)}
         />
       </div>
+      </RailWrap>
 
+      <RailWrap layout={layout} title="IFSC check">
       <div className="ntx-panel p-5">
         <h2 className="text-[var(--h3)] font-semibold">Optional · IFSC check</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
@@ -1275,7 +1341,9 @@ export function EnrichmentPanels({
           {ifscBusy ? 'Looking up…' : 'Check IFSC and fill bank'}
         </button>
       </div>
+      </RailWrap>
 
+      <RailWrap layout={layout} title="DigiLocker">
       <div className="ntx-panel p-5">
         <h2 className="text-[var(--h3)] font-semibold">Optional · DigiLocker</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
@@ -1328,7 +1396,9 @@ export function EnrichmentPanels({
           </div>
         ) : null}
       </div>
+      </RailWrap>
 
+      <RailWrap layout={layout} title="Form 16 OCR">
       <div className="ntx-panel p-5">
         <h2 className="text-[var(--h3)] font-semibold">Optional · Form 16 OCR</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
@@ -1351,7 +1421,9 @@ export function EnrichmentPanels({
           }
         />
       </div>
+      </RailWrap>
 
+      <RailWrap layout={layout} title="Form 26AS OCR">
       <div className="ntx-panel p-5">
         <h2 className="text-[var(--h3)] font-semibold">Optional · Form 26AS OCR</h2>
         <p className="mt-1 text-[var(--body-sm)] text-[var(--text-muted)]">
@@ -1365,6 +1437,7 @@ export function EnrichmentPanels({
           onChange={(e) => void onOcrFile('form26as', e.target.files?.[0] ?? null)}
         />
       </div>
+      </RailWrap>
     </section>
   );
 }
