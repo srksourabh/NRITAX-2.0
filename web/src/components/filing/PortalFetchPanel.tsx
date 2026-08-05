@@ -140,7 +140,7 @@ export function PortalFetchPanel({
     name.trim().length > 0 &&
     dob.trim().length > 0 &&
     password.length > 0 &&
-    /^\d{10}$/.test(mobile.trim()) &&
+    (!mobile.trim() || /^\d{10}$/.test(mobile.trim())) &&
     !busy &&
     (!job || isTerminalStatus(job.status));
 
@@ -474,7 +474,7 @@ export function PortalFetchPanel({
         </div>
         <div className="ntx-field" style={{ gridColumn: 'span 6' }}>
           <label className="ntx-label" htmlFor="portal-fetch-mobile">
-            Registered mobile
+            Registered mobile (optional)
           </label>
           <input
             id="portal-fetch-mobile"
@@ -485,7 +485,7 @@ export function PortalFetchPanel({
             disabled={Boolean(inFlight)}
             value={mobile}
             onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-            placeholder="10-digit mobile"
+            placeholder="Leave blank if overseas"
           />
         </div>
       </div>

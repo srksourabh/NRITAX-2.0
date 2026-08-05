@@ -168,13 +168,15 @@ export function PortalAutomationCard({
 
   const blockers: string[] = [];
   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.trim().toUpperCase())) {
-    blockers.push('Enter a valid PAN.');
+    blockers.push('Enter a valid PAN (this is your e-Filing User ID).');
   }
   if (!name.trim()) blockers.push('Enter your name as on the e-Filing portal.');
   if (!dob.trim()) blockers.push('Enter your date of birth.');
   if (!password) blockers.push('Enter your e-Filing password.');
-  if (!/^\d{10}$/.test(mobile.trim())) {
-    blockers.push('Enter the 10-digit mobile registered on the Income Tax portal (needed for OTP).');
+  if (mobile.trim() && !/^\d{10}$/.test(mobile.trim())) {
+    blockers.push(
+      'If you enter a mobile, use 10 Indian digits. Leave blank for overseas numbers or email OTP.',
+    );
   }
   if (!consent) blockers.push('Confirm you authorise a one-time portal visit for this session.');
 
@@ -413,9 +415,10 @@ export function PortalAutomationCard({
           Fetch your data from the Income Tax portal
         </h2>
         <p className="mt-1 max-w-2xl text-[var(--body-sm)] text-[var(--text-muted)]">
-          We open the official {ITD_PORTAL_LABEL} in a secure browser, sign in with your PAN and
-          password for this session only, and bring back the pre-filled JSON. You always stay in
-          control — nothing is filed until you say so.
+          Sign in with your PAN as User ID and e-Filing password. We open the official{' '}
+          {ITD_PORTAL_LABEL} in a secure browser for this session only. Mobile is optional —
+          only needed if the portal asks for OTP on an Indian number. Overseas numbers can be
+          left blank; use email OTP or live assist when the portal asks.
         </p>
       </div>
 
@@ -467,7 +470,7 @@ export function PortalAutomationCard({
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="ntx-label" htmlFor="auto-pan">
-            PAN (user ID)
+            PAN (e-Filing User ID)
           </label>
           <input
             id="auto-pan"
@@ -507,7 +510,7 @@ export function PortalAutomationCard({
         </div>
         <div>
           <label className="ntx-label" htmlFor="auto-mobile">
-            Registered mobile (OTP)
+            Registered mobile (optional)
           </label>
           <input
             id="auto-mobile"
@@ -517,8 +520,12 @@ export function PortalAutomationCard({
             value={mobile}
             disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
             onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-            placeholder="10 digits"
+            placeholder="Indian 10 digits, or leave blank"
           />
+          <p className="mt-1 text-[var(--caption)] text-[var(--text-muted)]">
+            Leave blank if you use an overseas number. If the portal asks for OTP, enter it below
+            or open live assist.
+          </p>
         </div>
         <div className="sm:col-span-2">
           <label className="ntx-label" htmlFor="auto-password">

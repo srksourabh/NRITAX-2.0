@@ -8,6 +8,11 @@ import {
 } from '../config.js';
 import type { JobRecord } from '../store.js';
 import { store } from '../store.js';
+import {
+  extractPortalMessage,
+  formatPortalFailure,
+  isPortalAuthFailure,
+} from './portal-messages.js';
 
 const OTP_WAIT_MS = 5 * 60 * 1000;
 const LIVE_WAIT_MS = 8 * 60 * 1000;
@@ -41,7 +46,7 @@ export async function runBrowserbasePrefill(jobId: string): Promise<void> {
     sessionId = session.id;
     const liveViewUrl = debuggerUrl(session);
     store.patch(jobId, {
-      message: 'Signing in…',
+      message: 'Signing in with PAN as User ID…',
       liveViewUrl,
       browserbaseSessionId: sessionId,
     });
@@ -58,14 +63,25 @@ export async function runBrowserbasePrefill(jobId: string): Promise<void> {
     const page = context.pages()[0] ?? (await context.newPage());
 
     await page.goto(PORTAL_HOME, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    await openLoginIfNeeded(page);
 
     if (await looksLikeCaptcha(page)) {
       await escalateLive(jobId, liveViewUrl, 'CAPTCHA detected. Complete login in live assist.');
       return;
     }
 
-    const filled = await tryFillLogin(page, job);
-    if (!filled) {
+    const loginResult = await tryFillLogin(page, job);
+    if (loginResult === 'auth_failed') {
+      const portalText = await readPortalMessage(page);
+      store.apply(jobId, { type: 'FAIL' }, {
+        message: formatPortalFailure(
+          portalText,
+          'Login failed. Check your PAN (User ID) and e-Filing password, or upload JSON manually.',
+        ),
+      });
+      return;
+    }
+    if (loginResult === 'missing_fields') {
       await escalateLive(
         jobId,
         liveViewUrl,
@@ -74,23 +90,36 @@ export async function runBrowserbasePrefill(jobId: string): Promise<void> {
       return;
     }
 
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
 
     if (await looksLikeCaptcha(page) || (await looksLikeBotWall(page))) {
       await escalateLive(jobId, liveViewUrl, 'Bot check detected. Finish login in live assist.');
       return;
     }
 
-    if (await looksLikeBadPassword(page)) {
-      store.apply(jobId, { type: 'FAIL' }, {
-        message: 'Login failed. Check your portal password, or upload JSON manually.',
-      });
-      return;
+    {
+      const portalText = await readPortalMessage(page);
+      if (portalText && isPortalAuthFailure(portalText)) {
+        store.apply(jobId, { type: 'FAIL' }, {
+          message: formatPortalFailure(portalText, 'Login failed. Check your portal password.'),
+        });
+        return;
+      }
+      if (await looksLikeBadPassword(page)) {
+        store.apply(jobId, { type: 'FAIL' }, {
+          message: formatPortalFailure(
+            portalText,
+            'Income Tax portal rejected the password. Check your e-Filing password, or upload JSON manually.',
+          ),
+        });
+        return;
+      }
     }
 
     if (await looksLikeOtp(page)) {
       store.apply(jobId, { type: 'NEED_OTP' }, {
-        message: 'Enter the OTP sent to your registered mobile or email.',
+        message:
+          'Income Tax portal asked for OTP. Enter the code sent to your registered mobile or email (Aadhaar-linked numbers may apply).',
         liveViewUrl,
       });
       const otp = await waitForOtp(jobId, OTP_WAIT_MS);
@@ -113,6 +142,13 @@ export async function runBrowserbasePrefill(jobId: string): Promise<void> {
         return;
       }
       await page.waitForTimeout(2000);
+      const otpMsg = await readPortalMessage(page);
+      if (otpMsg && isPortalAuthFailure(otpMsg)) {
+        store.apply(jobId, { type: 'FAIL' }, {
+          message: formatPortalFailure(otpMsg, 'OTP was rejected by the Income Tax portal.'),
+        });
+        return;
+      }
     }
 
     if (!(await looksLoggedIn(page))) {
@@ -120,9 +156,12 @@ export async function runBrowserbasePrefill(jobId: string): Promise<void> {
         await escalateLive(jobId, liveViewUrl, 'Complete login in live assist, then click Done.');
         return;
       }
+      const portalText = await readPortalMessage(page);
       store.apply(jobId, { type: 'FAIL' }, {
-        message:
-          'Portal login did not complete. Portal UI may have changed — upload JSON manually.',
+        message: formatPortalFailure(
+          portalText,
+          'Portal login did not complete. Check PAN/password, or upload JSON manually.',
+        ),
       });
       return;
     }
@@ -140,8 +179,10 @@ export async function runBrowserbasePrefill(jobId: string): Promise<void> {
       return;
     }
     store.apply(jobId, { type: 'FAIL' }, {
-      message:
+      message: formatPortalFailure(
+        msg.length < 180 ? msg : null,
         'Portal changed or session failed. Upload the prefill JSON manually.',
+      ),
     });
   } finally {
     try {
@@ -271,52 +312,109 @@ function debuggerUrl(session: { id: string; debuggerFullscreenUrl?: string }): s
   return `https://www.browserbase.com/sessions/${session.id}`;
 }
 
-async function tryFillLogin(page: Page, job: JobRecord): Promise<boolean> {
+async function tryFillLogin(
+  page: Page,
+  job: JobRecord,
+): Promise<'ok' | 'missing_fields' | 'auth_failed'> {
   const password = job.secrets?.password;
-  if (!password) return false;
+  if (!password) return 'missing_fields';
 
   const userSelectors = [
     'input[name="userId"]',
-    'input[id*="user" i]',
-    'input[placeholder*="User" i]',
+    'input[name="userid"]',
+    'input[id*="userId" i]',
+    'input[id*="userid" i]',
+    'input[placeholder*="User ID" i]',
     'input[placeholder*="PAN" i]',
+    'input[aria-label*="User ID" i]',
+    'input[aria-label*="PAN" i]',
     'input[type="text"]',
   ];
   const passSelectors = [
     'input[type="password"]',
     'input[name="password"]',
     'input[id*="pass" i]',
+    'input[aria-label*="Password" i]',
   ];
 
   let userFilled = false;
   for (const sel of userSelectors) {
     const el = page.locator(sel).first();
-    if (await el.isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (await el.isVisible({ timeout: 2500 }).catch(() => false)) {
       await el.fill(job.pan);
       userFilled = true;
       break;
     }
   }
+  if (!userFilled) return 'missing_fields';
+
+  // ITD login is usually two-step: User ID (PAN) → Continue → Password.
+  await clickContinue(page);
+  await page.waitForTimeout(1200);
+
+  const afterUserId = await readPortalMessage(page);
+  if (afterUserId && isPortalAuthFailure(afterUserId)) {
+    return 'auth_failed';
+  }
+
   let passFilled = false;
   for (const sel of passSelectors) {
     const el = page.locator(sel).first();
-    if (await el.isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (await el.isVisible({ timeout: 4000 }).catch(() => false)) {
       await el.fill(password);
       passFilled = true;
       break;
     }
   }
-  if (!userFilled || !passFilled) return false;
+  if (!passFilled) return 'missing_fields';
 
-  const continueBtn = page.getByRole('button', {
-    name: /continue|login|sign in|submit/i,
-  }).first();
+  await clickContinue(page);
+  await page.waitForTimeout(1800);
+
+  const afterPassword = await readPortalMessage(page);
+  if (afterPassword && isPortalAuthFailure(afterPassword)) {
+    return 'auth_failed';
+  }
+  if (await looksLikeBadPassword(page)) {
+    return 'auth_failed';
+  }
+
+  return 'ok';
+}
+
+async function clickContinue(page: Page): Promise<void> {
+  const continueBtn = page
+    .getByRole('button', {
+      name: /continue|login|sign in|submit|proceed/i,
+    })
+    .first();
   if (await continueBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
     await continueBtn.click();
-  } else {
-    await page.keyboard.press('Enter');
+    return;
   }
-  return true;
+  await page.keyboard.press('Enter');
+}
+
+async function openLoginIfNeeded(page: Page): Promise<void> {
+  const loginLink = page.getByRole('link', { name: /^login$/i }).first();
+  if (await loginLink.isVisible({ timeout: 2500 }).catch(() => false)) {
+    await loginLink.click();
+    await page.waitForTimeout(800);
+    return;
+  }
+  const loginBtn = page.getByRole('button', { name: /^login$/i }).first();
+  if (await loginBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+    await loginBtn.click();
+    await page.waitForTimeout(800);
+  }
+}
+
+async function readPortalMessage(page: Page): Promise<string | null> {
+  const html = (await page.content().catch(() => '')) || '';
+  const fromHtml = extractPortalMessage(html);
+  if (fromHtml) return fromHtml;
+  const text = (await page.locator('body').innerText().catch(() => '')) || '';
+  return extractPortalMessage(text);
 }
 
 async function tryFillOtp(page: Page, otp: string): Promise<boolean> {
@@ -375,9 +473,7 @@ async function looksLikeBotWall(page: Page): Promise<boolean> {
 
 async function looksLikeBadPassword(page: Page): Promise<boolean> {
   const text = ((await page.content().catch(() => '')) || '').toLowerCase();
-  return /invalid (user|password|credentials)|incorrect password|login failed/.test(
-    text,
-  );
+  return isPortalAuthFailure(text);
 }
 
 async function looksLoggedIn(page: Page): Promise<boolean> {

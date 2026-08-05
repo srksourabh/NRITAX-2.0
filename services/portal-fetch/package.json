@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "test": "tsx --test src/machine.test.ts src/store.test.ts src/flows/mock-prefill.test.ts",
+    "test": "tsx --test src/machine.test.ts src/store.test.ts src/flows/mock-prefill.test.ts src/flows/portal-messages.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

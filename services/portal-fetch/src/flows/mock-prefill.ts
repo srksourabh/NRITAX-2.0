@@ -29,7 +29,8 @@ export async function runMockPrefill(jobId: string): Promise<void> {
 
   if (/^wrong/i.test(password)) {
     store.apply(jobId, { type: 'FAIL' }, {
-      message: 'Login failed. Check your portal password, or upload JSON manually.',
+      message:
+        'Income Tax portal: Invalid credentials. Please try again (wrong password in mock).',
     });
     return;
   }

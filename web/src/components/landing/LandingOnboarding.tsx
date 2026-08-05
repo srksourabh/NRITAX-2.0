@@ -53,9 +53,9 @@ function validateStep(step: number, data: Draft): Errors {
       errors.accessMode = 'Choose whether you already have an e-Filing password.';
     } else if (data.accessMode === 'has_password') {
       if (!data.password) errors.password = 'Enter your Income Tax e-Filing password.';
-      if (!/^\d{10}$/.test(data.mobile.replace(/\D/g, ''))) {
+      if (data.mobile && !/^\d{10}$/.test(data.mobile.replace(/\D/g, ''))) {
         errors.mobile =
-          'Enter the 10-digit mobile registered on the Income Tax portal (needed for OTP).';
+          'If provided, use a 10-digit Indian mobile registered on the portal. Leave blank for overseas numbers.';
       }
       if (!data.consentAutomation) {
         errors.consentAutomation =
@@ -319,7 +319,7 @@ export function LandingOnboarding({
                     </div>
                     <div>
                       <label className="ntx-label" htmlFor="landing-mobile">
-                        Registered mobile (for OTP)
+                        Registered mobile (optional)
                       </label>
                       <input
                         id="landing-mobile"
@@ -330,8 +330,12 @@ export function LandingOnboarding({
                         onChange={(e) =>
                           update('mobile', e.target.value.replace(/\D/g, '').slice(0, 10))
                         }
-                        placeholder="10 digits"
+                        placeholder="Optional Indian 10 digits"
                       />
+                      <p className="mt-1 text-[var(--caption)] text-[var(--text-muted)]">
+                        Leave blank for overseas numbers. OTP may come by email or Aadhaar-linked
+                        mobile when the portal asks.
+                      </p>
                       {errors.mobile ? <p className="ntx-field-error">{errors.mobile}</p> : null}
                     </div>
                     <label className="flex items-start gap-2 text-[var(--body-sm)] text-[var(--text-secondary)]">

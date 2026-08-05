@@ -10,14 +10,6 @@ export const dynamic = 'force-dynamic';
  * Password is forwarded to the worker only -- never logged or stored here.
  */
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json(
-      { ok: false, message: 'Sign in to fetch prefill.' },
-      { status: 401 },
-    );
-  }
-
   let body: {
     pan?: string;
     name?: string;
@@ -61,7 +53,7 @@ export async function POST(req: Request) {
 
   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) {
     return NextResponse.json(
-      { ok: false, message: 'Enter a valid PAN.' },
+      { ok: false, message: 'Enter a valid PAN (this is your e-Filing User ID).' },
       { status: 400 },
     );
   }
@@ -87,15 +79,22 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  if (!/^\d{10}$/.test(mobile)) {
+  if (mobile && !/^\d{10}$/.test(mobile)) {
     return NextResponse.json(
       {
         ok: false,
-        message: 'Enter the 10-digit mobile registered on the e-Filing portal.',
+        message:
+          'If you enter a mobile, use the 10-digit Indian number registered on the e-Filing portal. Leave it blank if you use an overseas number or email OTP.',
       },
       { status: 400 },
     );
   }
+
+  const session = await auth();
+  const userId =
+    session?.user?.id ??
+    session?.user?.email ??
+    `guest:${pan}`;
 
   const client = createPortalFetchClient();
   const result = await client.start({
@@ -103,11 +102,11 @@ export async function POST(req: Request) {
     name,
     dob,
     password,
-    mobile,
+    mobile: mobile || '0000000000',
     assessmentYear,
     consentFetch: true,
     consentLiability: true,
-    userId: session.user.id ?? session.user.email ?? 'unknown',
+    userId,
   });
 
   if (!result.ok) {

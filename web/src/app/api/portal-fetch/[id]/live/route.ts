@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth';
 import { createPortalFetchClient } from '@/lib/portal-fetch/client';
 
 export const dynamic = 'force-dynamic';
@@ -12,14 +11,6 @@ type Ctx = { params: Promise<{ id: string }> };
  * Body: { action?: 'open' | 'done' } — default open.
  */
 export async function POST(req: Request, ctx: Ctx) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json(
-      { ok: false, message: 'Sign in for live assist.' },
-      { status: 401 },
-    );
-  }
-
   const { id } = await ctx.params;
   let action: 'open' | 'done' = 'open';
   try {
