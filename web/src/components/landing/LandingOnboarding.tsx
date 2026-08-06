@@ -155,8 +155,12 @@ export function LandingOnboarding({
 
     const href =
       data.accessMode === 'create_account'
-        ? `${primaryHref}${primaryHref.includes('?') ? '&' : '?'}guide=create-account`
-        : `${primaryHref}${primaryHref.includes('?') ? '&' : '?'}autoPrefill=1`;
+        ? primaryHref === '/login'
+          ? `/login?callbackUrl=${encodeURIComponent('/filing?guide=create-account')}`
+          : `${primaryHref}${primaryHref.includes('?') ? '&' : '?'}guide=create-account`
+        : primaryHref === '/login'
+          ? `/login?callbackUrl=${encodeURIComponent('/filing?autoPrefill=1')}`
+          : `${primaryHref}${primaryHref.includes('?') ? '&' : '?'}autoPrefill=1`;
     router.push(href);
   };
 

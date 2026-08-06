@@ -103,7 +103,19 @@ export async function POST(req: Request) {
       signal: AbortSignal.timeout(30_000),
     });
 
-    const json = (await res.json()) as Record<string, unknown>;
+    if (res.status === 404 || res.status === 501) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: 'UPLOAD_UNSUPPORTED',
+          message:
+            'Upload automation is not available yet on this worker. Download JSON and upload manually — prefill fetch still works.',
+        },
+        { status: 501 },
+      );
+    }
+
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok || json.ok === false) {
       return NextResponse.json(
         {
@@ -118,15 +130,19 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true, ...json });
-  } catch {
+  } catch (error) {
+    const timedOut =
+      (error instanceof Error && error.name === 'TimeoutError') ||
+      (error instanceof DOMException && error.name === 'TimeoutError');
     return NextResponse.json(
       {
         ok: false,
-        code: 'UPLOAD_UNSUPPORTED',
-        message:
-          'Upload automation is not available yet on this worker. Download JSON and upload manually — prefill fetch still works.',
+        code: timedOut ? 'UPLOAD_TIMEOUT' : 'WORKER_DOWN',
+        message: timedOut
+          ? 'The upload job did not start in time. Try again, or download the JSON and upload it manually on the e-Filing portal.'
+          : 'Portal upload automation is unreachable. Download the JSON and upload it manually on the e-Filing portal.',
       },
-      { status: 501 },
+      { status: timedOut ? 504 : 503 },
     );
   }
 }

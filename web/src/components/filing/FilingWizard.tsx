@@ -656,6 +656,7 @@ export function FilingWizard() {
 
       <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
         <PortalAutomationCard
+          key={filingSession?.savedAt ?? 'no-session'}
           form={form}
           data={data}
           setData={setData}
@@ -798,10 +799,8 @@ export function FilingWizard() {
               <PortalUploadPanel
                 data={data}
                 canUpload={Boolean(staged?.canUpload)}
-                onNotice={(m) => {
-                  setNotice(m);
-                  setJsonDownloaded(true);
-                }}
+                onNotice={setNotice}
+                onDownloaded={() => setJsonDownloaded(true)}
               />
               <PostValidatePanel data={data} onNotice={setNotice} />
             </div>

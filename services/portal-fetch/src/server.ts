@@ -97,7 +97,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     const name = String(body.name ?? '').trim() || 'TAXPAYER';
     const dob = String(body.dob ?? '').trim();
     const password = String(body.password ?? '');
-    const mobile = String(body.mobile ?? '').replace(/\D/g, '') || '0000000000';
+    const mobile = String(body.mobile ?? '').replace(/\D/g, '');
     const assessmentYear = String(body.assessmentYear ?? '2026-27').trim();
     const formType = String(body.formType ?? 'ITR2').toUpperCase() === 'ITR3' ? 'ITR3' : 'ITR2';
     const politicallyExposed =

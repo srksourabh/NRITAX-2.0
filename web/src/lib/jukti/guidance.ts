@@ -17,7 +17,7 @@ export type JuktiTip = {
 
 export type JuktiSnapshot = {
   tips: JuktiTip[];
-  validation: { blocking: number; field: number; advisory: number };
+  validation: { blocking: number; field: number; advisory: number } | null;
   taxPayable: number | null;
   regimeNote: string | null;
 };
@@ -100,7 +100,7 @@ export function buildJuktiSnapshot(input: {
     body: 'Run validation when you leave a schedule. Fix Cat A blocks before downloading JSON.',
   });
 
-  let validation = { blocking: 0, field: 0, advisory: 0 };
+  let validation: JuktiSnapshot['validation'] = null;
   let taxPayable: number | null = null;
   let regimeNote: string | null = null;
 
@@ -112,7 +112,7 @@ export function buildJuktiSnapshot(input: {
       advisory: report.advisory.length,
     };
   } catch {
-    /* keep zeros */
+    validation = null;
   }
 
   try {

@@ -193,21 +193,20 @@ async function answerYesNo(
   question: RegExp,
   yes: boolean,
 ): Promise<void> {
-  const body = ((await page.locator('body').innerText().catch(() => '')) || '').toLowerCase();
-  if (!question.test(body)) {
-    // Still try generic Yes/No near PEP wording
-  }
-  const label = yes ? /^(yes|y)$/i : /^(no|n)$/i;
-  await clickTextOption(page, label);
-  // Radio near question
+  // Prefer the control scoped to the question.
   const q = page.getByText(question).first();
   if (await q.isVisible({ timeout: 1500 }).catch(() => false)) {
     const row = q.locator('xpath=ancestor::*[self::div or self::section or self::mat-form-field][1]');
     const opt = row.getByText(yes ? /^yes$/i : /^no$/i).first();
     if (await opt.isVisible({ timeout: 1500 }).catch(() => false)) {
       await opt.click();
+      return;
     }
   }
+
+  // Fallback: the question is not locatable, so try any Yes/No control.
+  const label = yes ? /^(yes|y)$/i : /^(no|n)$/i;
+  await clickTextOption(page, label);
 }
 
 async function selectOptionByLabel(
@@ -217,7 +216,14 @@ async function selectOptionByLabel(
 ): Promise<void> {
   const lab = page.getByText(label).first();
   if (!(await lab.isVisible({ timeout: 2000 }).catch(() => false))) return;
-  const select = page.locator('select').first();
+
+  const near = lab.locator(
+    'xpath=ancestor::*[self::div or self::section or self::mat-form-field or self::label][1]//select',
+  ).first();
+  const select = (await near.isVisible({ timeout: 800 }).catch(() => false))
+    ? near
+    : page.locator('select').first();
+
   if (await select.isVisible({ timeout: 1500 }).catch(() => false)) {
     await select.selectOption({ label: value }).catch(async () => {
       await select.selectOption({ value }).catch(() => undefined);

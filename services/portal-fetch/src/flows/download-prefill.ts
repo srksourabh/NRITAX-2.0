@@ -372,8 +372,19 @@ async function tryFillLogin(
   if (!userFilled) return 'missing_fields';
 
   // ITD login is usually two-step: User ID (PAN) → Continue → Password.
-  await clickContinue(page);
-  await page.waitForTimeout(1200);
+  // On a single-step form the password field is already visible — do not Continue yet.
+  let passwordAlreadyVisible = false;
+  for (const sel of passSelectors) {
+    const el = page.locator(sel).first();
+    if (await el.isVisible({ timeout: 400 }).catch(() => false)) {
+      passwordAlreadyVisible = true;
+      break;
+    }
+  }
+  if (!passwordAlreadyVisible) {
+    await clickContinue(page);
+    await page.waitForTimeout(1200);
+  }
 
   const afterUserId = await readPortalMessage(page);
   if (afterUserId && isPortalAuthFailure(afterUserId)) {
@@ -495,8 +506,8 @@ async function looksLikeBotWall(page: Page): Promise<boolean> {
 }
 
 async function looksLikeBadPassword(page: Page): Promise<boolean> {
-  const text = ((await page.content().catch(() => '')) || '').toLowerCase();
-  return isPortalAuthFailure(text);
+  const message = await readPortalMessage(page);
+  return Boolean(message && isPortalAuthFailure(message));
 }
 
 async function looksLoggedIn(page: Page): Promise<boolean> {

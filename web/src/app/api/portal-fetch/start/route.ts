@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     mobile?: string;
     assessmentYear?: string;
     formType?: string;
-    politicallyExposed?: boolean;
+    politicallyExposed?: boolean | string;
     filingType?: string;
     consentFetch?: boolean;
     consentLiability?: boolean;
@@ -55,7 +55,13 @@ export async function POST(req: Request) {
   const assessmentYear = String(body.assessmentYear ?? '2026-27').trim();
   const formType =
     String(body.formType ?? 'ITR2').toUpperCase() === 'ITR3' ? 'ITR3' : 'ITR2';
-  const politicallyExposed = Boolean(body.politicallyExposed);
+  const pepRaw = body.politicallyExposed;
+  const politicallyExposed =
+    pepRaw === true ||
+    pepRaw === 'true' ||
+    pepRaw === 'yes' ||
+    pepRaw === 'Y' ||
+    pepRaw === 'y';
   const filingRaw = String(body.filingType ?? 'original').toLowerCase();
   const filingType =
     filingRaw === 'revised' || filingRaw === 'belated' || filingRaw === 'updated'
@@ -113,7 +119,7 @@ export async function POST(req: Request) {
     name,
     dob,
     password,
-    mobile: mobile || '0000000000',
+    mobile: mobile || '',
     assessmentYear,
     formType,
     politicallyExposed,

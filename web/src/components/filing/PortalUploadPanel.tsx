@@ -15,10 +15,12 @@ export function PortalUploadPanel({
   data,
   canUpload,
   onNotice,
+  onDownloaded,
 }: {
   data: ReturnData;
   canUpload: boolean;
   onNotice: (message: string) => void;
+  onDownloaded?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
@@ -35,6 +37,7 @@ export function PortalUploadPanel({
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1500);
     setDownloaded(true);
+    onDownloaded?.();
     onNotice(
       `Downloaded ${built.fileName}. Next: file on the ${ITD_PORTAL_LABEL} via automation or manual upload.`,
     );
@@ -109,7 +112,7 @@ export function PortalUploadPanel({
         <button
           type="button"
           className="ntx-btn ntx-btn-primary"
-          disabled={busy || (!canUpload && !downloaded)}
+          disabled={busy || !canUpload || !downloaded}
           onClick={() => void startUploadAutomation()}
         >
           {busy ? 'Starting upload…' : 'Upload via browser automation'}

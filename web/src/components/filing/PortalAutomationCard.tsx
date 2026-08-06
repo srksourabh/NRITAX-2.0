@@ -10,6 +10,7 @@ import {
   type PortalFetchPublicJob,
   type PortalFetchStatus,
 } from '@/lib/portal-fetch/types';
+import { readFilingSession } from '@/lib/session/filing-session';
 import { cn } from '@/lib/cn';
 
 type SoftJson = {
@@ -180,8 +181,16 @@ export function PortalAutomationCard({
   const [manualFileNote, setManualFileNote] = useState<string | null>(null);
   const appliedRef = useRef<string | null>(null);
   const autoTriedRef = useRef(false);
+  const lastNoticeStatusRef = useRef<string | null>(null);
   const dataRef = useRef(data);
-  dataRef.current = data;
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  // Prefer in-memory password; fall back to session so retry works after a successful fetch.
+  const effectivePassword =
+    password || sessionSeed?.password || readFilingSession()?.password || '';
 
   const blockers: string[] = [];
   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.trim().toUpperCase())) {
@@ -189,7 +198,7 @@ export function PortalAutomationCard({
   }
   if (!name.trim()) blockers.push('Enter your name as on the e-Filing portal.');
   if (!dob.trim()) blockers.push('Enter your date of birth.');
-  if (!password) blockers.push('Enter your e-Filing password.');
+  if (!effectivePassword) blockers.push('Enter your e-Filing password.');
   if (mobile.trim() && !/^\d{10}$/.test(mobile.trim())) {
     blockers.push(
       'If you enter a mobile, use 10 Indian digits. Leave blank for overseas numbers or email OTP.',
@@ -226,6 +235,7 @@ export function PortalAutomationCard({
       setFormType(imported.form);
       setData((prev) => applyPrefillToReturn(prev, imported));
       appliedRef.current = jobId;
+      // Clear the in-memory field for display, but keep session password for retry/upload.
       setPassword('');
       setOtp('');
       setActiveId('GEN');
@@ -253,7 +263,11 @@ export function PortalAutomationCard({
       ? `${humanStatus(next.status)} ${next.message}`
       : humanStatus(next.status);
     setDetail(line);
-    onStatus(line);
+    const statusChanged = lastNoticeStatusRef.current !== next.status;
+    if (statusChanged || isTerminalStatus(next.status)) {
+      lastNoticeStatusRef.current = next.status;
+      onStatus(line);
+    }
     if (next.status === 'succeeded' && next.artifactJson) {
       applyArtifact(next.artifactJson, next.id);
     }
@@ -320,7 +334,7 @@ export function PortalAutomationCard({
           pan: pan.trim().toUpperCase(),
           name: name.trim(),
           dob: dob.trim(),
-          password,
+          password: effectivePassword,
           mobile: mobile.trim().replace(/\D/g, ''),
           assessmentYear,
           formType,
@@ -355,12 +369,17 @@ export function PortalAutomationCard({
     if (!autoStart || autoTriedRef.current) return;
     autoTriedRef.current = true;
     if (blockers.length > 0) {
-      setPhase('blocked');
-      setDetail(`Ready when you are — ${blockers[0]}`);
-      onStatus(`Portal fetch waiting: ${blockers[0]}`);
+      // Defer so we do not setState synchronously inside the effect body.
+      queueMicrotask(() => {
+        setPhase('blocked');
+        setDetail(`Ready when you are — ${blockers[0]}`);
+        onStatus(`Portal fetch waiting: ${blockers[0]}`);
+      });
       return;
     }
-    void startFetch();
+    queueMicrotask(() => {
+      void startFetch();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
@@ -388,6 +407,55 @@ export function PortalAutomationCard({
       ingestJob(next);
     } catch {
       announce('Could not submit OTP. Upload prefill JSON manually.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openLiveAssist() {
+    if (!job) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/portal-fetch/${encodeURIComponent(job.id)}/live`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'open' }),
+      });
+      const json = await readSoftJson(res);
+      const next = asJob(json);
+      if (!next) {
+        announce(json.message ?? 'Live assist unavailable. Upload JSON manually.', 'error');
+        return;
+      }
+      ingestJob(next);
+      if (next.liveViewUrl) {
+        window.open(next.liveViewUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch {
+      announce('Live assist unavailable. Upload the prefill JSON manually.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function signalLiveDone() {
+    if (!job) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/portal-fetch/${encodeURIComponent(job.id)}/live`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'done' }),
+      });
+      const json = await readSoftJson(res);
+      const next = asJob(json);
+      if (!next) {
+        announce(json.message ?? 'Could not resume download. Upload JSON manually.', 'error');
+        return;
+      }
+      ingestJob(next);
+    } catch {
+      announce('Could not resume download. Upload the prefill JSON manually.', 'error');
     } finally {
       setBusy(false);
     }
@@ -713,15 +781,38 @@ export function PortalAutomationCard({
         </div>
       ) : null}
 
-      {job?.liveViewUrl ? (
-        <a
-          className="ntx-btn ntx-btn-secondary"
-          href={job.liveViewUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Open live assist window
-        </a>
+      {job?.status === 'needs_live_assist' || job?.liveViewUrl ? (
+        <div className="flex flex-wrap gap-2 border-t border-[var(--rule)] pt-3">
+          {job.liveViewUrl ? (
+            <a
+              className="ntx-btn ntx-btn-secondary"
+              href={job.liveViewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open live assist window
+            </a>
+          ) : (
+            <button
+              type="button"
+              className="ntx-btn ntx-btn-secondary"
+              disabled={busy}
+              onClick={() => void openLiveAssist()}
+            >
+              Open live assist window
+            </button>
+          )}
+          {job.status === 'needs_live_assist' ? (
+            <button
+              type="button"
+              className="ntx-btn ntx-btn-primary"
+              disabled={busy}
+              onClick={() => void signalLiveDone()}
+            >
+              I finished login — continue
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="border-t border-[var(--rule)] pt-3">
