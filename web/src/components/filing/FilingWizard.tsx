@@ -583,6 +583,10 @@ export function FilingWizard() {
         password: filingSession.password,
         mobile: filingSession.mobile,
         consent: filingSession.consentAutomation,
+        assessmentYear: filingSession.assessmentYear,
+        formType: filingSession.form,
+        politicallyExposed: filingSession.politicallyExposed,
+        filingType: filingSession.filingType,
       }
     : undefined;
 

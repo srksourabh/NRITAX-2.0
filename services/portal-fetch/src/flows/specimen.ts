@@ -9,22 +9,32 @@ export function specimenPrefillJson(job: JobRecord): string {
   const parts = job.name.trim().split(/\s+/);
   const firstName = parts[0] ?? 'TAXPAYER';
   const surname = parts.length > 1 ? parts[parts.length - 1]! : 'NRITAX';
-  const payload = {
+  const personal = {
+    AssesseeName: {
+      FirstName: firstName,
+      SurNameOrOrgName: surname,
+    },
+    PAN: job.pan,
+    DOB: job.dob.replace(/-/g, ''),
+  };
+
+  if (job.formType === 'ITR3') {
+    return JSON.stringify({
+      Form_ITR3: {
+        FormName: 'ITR-3',
+        AssessmentYear: ay,
+        SchemaVer: 'Ver1.0',
+        PartA_GEN1: { PersonalInfo: personal },
+      },
+    });
+  }
+
+  return JSON.stringify({
     Form_ITR2: {
       FormName: 'ITR-2',
       AssessmentYear: ay,
       SchemaVer: 'Ver1.0',
-      PartA_GEN1: {
-        PersonalInfo: {
-          AssesseeName: {
-            FirstName: firstName,
-            SurNameOrOrgName: surname,
-          },
-          PAN: job.pan,
-          DOB: job.dob.replace(/-/g, ''),
-        },
-      },
+      PartA_GEN1: { PersonalInfo: personal },
     },
-  };
-  return JSON.stringify(payload);
+  });
 }

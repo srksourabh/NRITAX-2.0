@@ -22,6 +22,9 @@ export type FilingSession = {
   mobile?: string;
   accessMode: FilingAccessMode;
   form?: FormType;
+  assessmentYear?: string;
+  politicallyExposed?: boolean;
+  filingType?: 'original' | 'revised' | 'belated' | 'updated';
   /** User authorised session automation on the landing form. */
   consentAutomation: boolean;
   savedAt: string;

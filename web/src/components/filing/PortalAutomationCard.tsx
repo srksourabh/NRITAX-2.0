@@ -145,6 +145,10 @@ export function PortalAutomationCard({
     password?: string;
     mobile?: string;
     consent?: boolean;
+    assessmentYear?: string;
+    formType?: FormType;
+    politicallyExposed?: boolean;
+    filingType?: 'original' | 'revised' | 'belated' | 'updated';
   };
   autoStart?: boolean;
 }) {
@@ -155,6 +159,16 @@ export function PortalAutomationCard({
   const [password, setPassword] = useState(sessionSeed?.password ?? '');
   const [mobile, setMobile] = useState(sessionSeed?.mobile ?? '');
   const [consent, setConsent] = useState(Boolean(sessionSeed?.consent));
+  const [assessmentYear, setAssessmentYear] = useState(
+    sessionSeed?.assessmentYear || data.meta.assessmentYear || ASSESSMENT_YEAR,
+  );
+  const [formType, setFormType] = useState<FormType>(sessionSeed?.formType || form);
+  const [politicallyExposed, setPoliticallyExposed] = useState(
+    sessionSeed?.politicallyExposed === true ? 'yes' : 'no',
+  );
+  const [filingType, setFilingType] = useState<
+    'original' | 'revised' | 'belated' | 'updated'
+  >(sessionSeed?.filingType ?? 'original');
   const [otp, setOtp] = useState('');
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'blocked' | 'error' | PortalFetchStatus>('idle');
@@ -194,11 +208,18 @@ export function PortalAutomationCard({
     try {
       const parsed = JSON.parse(artifactJson) as unknown;
       const imported = importPrefillFile(parsed, {
-        form,
+        form: formType,
         expectPan: genIdentity(dataRef.current).pan || undefined,
       });
       setData((prev) => ({
         ...prev,
+        meta: {
+          ...prev.meta,
+          form: formType,
+          ...(assessmentYear === ASSESSMENT_YEAR
+            ? { assessmentYear: ASSESSMENT_YEAR }
+            : {}),
+        },
         fields: { ...imported.fields, ...prev.fields },
         tables: { ...imported.tables, ...prev.tables },
       }));
@@ -207,7 +228,7 @@ export function PortalAutomationCard({
       setOtp('');
       setActiveId('GEN');
       announce(
-        `Visited the Income Tax portal and applied ${imported.matched} prefill values. Review Part A, then continue schedule by schedule.`,
+        `Visited the Income Tax portal for ${formType} · AY ${assessmentYear} and applied ${imported.matched} prefill values. Review Part A, then continue schedule by schedule.`,
         'succeeded',
       );
     } catch (error) {
@@ -283,7 +304,10 @@ export function PortalAutomationCard({
     }
     setBusy(true);
     appliedRef.current = null;
-    announce('Starting a secure browser visit to the Income Tax e-Filing portal…', 'queued');
+    announce(
+      `Starting secure browser visit for ${formType} · AY ${assessmentYear}…`,
+      'queued',
+    );
     try {
       const res = await fetch('/api/portal-fetch/start', {
         method: 'POST',
@@ -294,7 +318,10 @@ export function PortalAutomationCard({
           dob: dob.trim(),
           password,
           mobile: mobile.trim().replace(/\D/g, ''),
-          assessmentYear: data.meta.assessmentYear || ASSESSMENT_YEAR,
+          assessmentYear,
+          formType,
+          politicallyExposed: politicallyExposed === 'yes',
+          filingType,
           consentFetch: true,
           consentLiability: true,
         }),
@@ -368,7 +395,7 @@ export function PortalAutomationCard({
       const text = await file.text();
       const parsed = JSON.parse(text) as unknown;
       const imported = importPrefillFile(parsed, {
-        form,
+        form: formType,
         expectPan: pan || undefined,
       });
       setData((prev) => ({
@@ -415,10 +442,10 @@ export function PortalAutomationCard({
           Fetch your data from the Income Tax portal
         </h2>
         <p className="mt-1 max-w-2xl text-[var(--body-sm)] text-[var(--text-muted)]">
-          Sign in with your PAN as User ID and e-Filing password. We open the official{' '}
-          {ITD_PORTAL_LABEL} in a secure browser for this session only. Mobile is optional —
-          only needed if the portal asks for OTP on an Indian number. Overseas numbers can be
-          left blank; use email OTP or live assist when the portal asks.
+          We open the official {ITD_PORTAL_LABEL}, sign in with your PAN as User ID and password,
+          then walk File ITR with the answers below (form, assessment year, filing type,
+          politically exposed). Prefill JSON is pulled into your {formType} schedules. Mobile is
+          optional for overseas numbers.
         </p>
       </div>
 
@@ -540,6 +567,71 @@ export function PortalAutomationCard({
             disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
             onChange={(e) => setPassword(e.target.value)}
           />
+        </div>
+        <div>
+          <label className="ntx-label" htmlFor="auto-form">
+            ITR form
+          </label>
+          <select
+            id="auto-form"
+            className="ntx-input"
+            value={formType}
+            disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
+            onChange={(e) => setFormType(e.target.value as FormType)}
+          >
+            <option value="ITR2">ITR-2</option>
+            <option value="ITR3">ITR-3</option>
+          </select>
+        </div>
+        <div>
+          <label className="ntx-label" htmlFor="auto-ay">
+            Assessment year
+          </label>
+          <select
+            id="auto-ay"
+            className="ntx-input"
+            value={assessmentYear}
+            disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
+            onChange={(e) => setAssessmentYear(e.target.value)}
+          >
+            <option value="2026-27">2026-27</option>
+            <option value="2025-26">2025-26</option>
+            <option value="2024-25">2024-25</option>
+          </select>
+        </div>
+        <div>
+          <label className="ntx-label" htmlFor="auto-filing-type">
+            Filing type
+          </label>
+          <select
+            id="auto-filing-type"
+            className="ntx-input"
+            value={filingType}
+            disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
+            onChange={(e) =>
+              setFilingType(e.target.value as typeof filingType)
+            }
+          >
+            <option value="original">Original</option>
+            <option value="belated">Belated</option>
+            <option value="revised">Revised</option>
+            <option value="updated">Updated</option>
+          </select>
+        </div>
+        <div>
+          <label className="ntx-label" htmlFor="auto-pep">
+            Politically exposed person?
+          </label>
+          <select
+            id="auto-pep"
+            className="ntx-input"
+            value={politicallyExposed}
+            disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
+            onChange={(e) => setPoliticallyExposed(e.target.value as 'yes' | 'no')}
+          >
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
         </div>
       </div>
 

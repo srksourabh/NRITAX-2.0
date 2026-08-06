@@ -99,6 +99,17 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     const password = String(body.password ?? '');
     const mobile = String(body.mobile ?? '').replace(/\D/g, '') || '0000000000';
     const assessmentYear = String(body.assessmentYear ?? '2026-27').trim();
+    const formType = String(body.formType ?? 'ITR2').toUpperCase() === 'ITR3' ? 'ITR3' : 'ITR2';
+    const politicallyExposed =
+      body.politicallyExposed === true ||
+      body.politicallyExposed === 'true' ||
+      body.politicallyExposed === 'yes' ||
+      body.politicallyExposed === 'Y';
+    const filingRaw = String(body.filingType ?? 'original').toLowerCase();
+    const filingType =
+      filingRaw === 'revised' || filingRaw === 'belated' || filingRaw === 'updated'
+        ? filingRaw
+        : 'original';
     const userId = String(body.userId ?? 'unknown');
 
     if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) {
@@ -121,6 +132,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       mobile,
       password,
       assessmentYear,
+      formType,
+      politicallyExposed,
+      filingType,
     });
     startPrefetch(job.id);
     json(res, 200, store.toPublic(job));

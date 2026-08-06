@@ -13,6 +13,8 @@ import {
   formatPortalFailure,
   isPortalAuthFailure,
 } from './portal-messages.js';
+import { runFileItrPrefillDownload } from './file-itr-prefill.js';
+import { formTypeLabel } from './prefill-answers.js';
 
 const OTP_WAIT_MS = 5 * 60 * 1000;
 const LIVE_WAIT_MS = 8 * 60 * 1000;
@@ -251,12 +253,26 @@ async function downloadPrefill(
   page: Page,
   job: JobRecord,
 ): Promise<void> {
+  const formLabel = formTypeLabel(job.formType ?? 'ITR2');
   store.apply(jobId, { type: 'START_DOWNLOAD' }, {
-    message: 'Downloading pre-filled JSON…',
+    message: `Opening File ITR for ${formLabel} · AY ${job.assessmentYear}…`,
   });
 
   try {
-    // Best-effort navigation; portals differ by season.
+    const result = await runFileItrPrefillDownload(page, job);
+    if (result?.artifactJson) {
+      store.apply(jobId, { type: 'SUCCESS' }, {
+        message: `Prefill downloaded (${result.source}) for ${formLabel}. Review every field before filing.`,
+        artifactJson: result.artifactJson,
+      });
+      return;
+    }
+  } catch {
+    /* fall through */
+  }
+
+  // Legacy: any visible prefill download link on the current page.
+  try {
     const link = page
       .getByRole('link', { name: /pre-?fill|prefill|download.*json/i })
       .first();
@@ -279,16 +295,23 @@ async function downloadPrefill(
       }
     }
   } catch {
-    /* fall through to specimen fallback only if mock-like; else fail */
+    /* fall through */
   }
 
-  // Without a reliable download path, fail clearly rather than inventing data
-  // when Browserbase is configured (real Mode A).
+  const live = store.get(jobId)?.liveViewUrl;
+  if (live) {
+    await escalateLive(
+      jobId,
+      live,
+      `Could not finish ${formLabel} prefill automatically. Complete File ITR → download prefill in live assist, then click Done.`,
+    );
+    return;
+  }
+
   store.apply(jobId, { type: 'FAIL' }, {
     message:
       'Could not download prefill JSON from the portal. Upload the file manually.',
   });
-  void job;
 }
 
 async function escalateLive(

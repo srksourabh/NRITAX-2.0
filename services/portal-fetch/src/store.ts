@@ -22,6 +22,9 @@ export interface JobRecord {
   dob: string;
   mobile: string;
   assessmentYear: string;
+  formType: 'ITR2' | 'ITR3';
+  politicallyExposed: boolean;
+  filingType: 'original' | 'revised' | 'belated' | 'updated';
   status: PortalFetchStatus;
   message?: string;
   liveViewUrl?: string;
@@ -36,6 +39,7 @@ export interface PublicJob {
   id: string;
   status: PortalFetchStatus;
   assessmentYear: string;
+  formType: 'ITR2' | 'ITR3';
   panMasked: string;
   message?: string;
   liveViewUrl?: string;
@@ -59,6 +63,9 @@ export class JobStore {
     mobile: string;
     password: string;
     assessmentYear: string;
+    formType?: 'ITR2' | 'ITR3';
+    politicallyExposed?: boolean;
+    filingType?: 'original' | 'revised' | 'belated' | 'updated';
   }): JobRecord {
     this.sweep();
     const now = Date.now();
@@ -70,6 +77,9 @@ export class JobStore {
       dob: input.dob,
       mobile: input.mobile,
       assessmentYear: input.assessmentYear,
+      formType: input.formType === 'ITR3' ? 'ITR3' : 'ITR2',
+      politicallyExposed: Boolean(input.politicallyExposed),
+      filingType: input.filingType ?? 'original',
       status: 'queued',
       secrets: { password: input.password },
       createdAt: now,
@@ -138,6 +148,7 @@ export class JobStore {
       id: job.id,
       status: job.status,
       assessmentYear: job.assessmentYear,
+      formType: job.formType,
       panMasked: maskPan(job.pan),
     };
     if (job.message) pub.message = job.message;

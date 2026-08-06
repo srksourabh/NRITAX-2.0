@@ -20,12 +20,15 @@ type Draft = {
   mobile: string;
   accessMode: FilingAccessMode | '';
   form: FormType | '';
+  assessmentYear: string;
+  politicallyExposed: 'yes' | 'no' | '';
+  filingType: 'original' | 'revised' | 'belated' | 'updated';
   consentAutomation: boolean;
 };
 
 type Errors = Partial<Record<keyof Draft | 'base', string>>;
 
-const STEPS = ['Identity', 'Portal access', 'ITR form'] as const;
+const STEPS = ['Identity', 'Portal access', 'Return details'] as const;
 
 const empty: Draft = {
   fullName: '',
@@ -35,6 +38,9 @@ const empty: Draft = {
   mobile: '',
   accessMode: '',
   form: '',
+  assessmentYear: '2026-27',
+  politicallyExposed: '',
+  filingType: 'original',
   consentAutomation: false,
 };
 
@@ -63,7 +69,16 @@ function validateStep(step: number, data: Draft): Errors {
       }
     }
   }
-  if (step === 2 && !data.form) errors.form = 'Select ITR-2 or ITR-3.';
+  if (step === 2) {
+    if (!data.form) errors.form = 'Select ITR-2 or ITR-3.';
+    if (!/^\d{4}-\d{2}$/.test(data.assessmentYear)) {
+      errors.assessmentYear = 'Select assessment year (for example 2026-27).';
+    }
+    if (!data.politicallyExposed) {
+      errors.politicallyExposed =
+        'Say whether you are a politically exposed person (portal asks this).';
+    }
+  }
   return errors;
 }
 
@@ -127,6 +142,9 @@ export function LandingOnboarding({
         mobile: data.mobile.replace(/\D/g, '') || undefined,
         accessMode: data.accessMode as FilingAccessMode,
         form: data.form as FormType,
+        assessmentYear: data.assessmentYear,
+        politicallyExposed: data.politicallyExposed === 'yes',
+        filingType: data.filingType,
         consentAutomation: data.accessMode === 'has_password' ? data.consentAutomation : false,
         savedAt: new Date().toISOString(),
       });
@@ -376,45 +394,128 @@ export function LandingOnboarding({
             ) : null}
 
             {step === 2 ? (
-              <fieldset className="ntx-landing-radio-set">
-                <legend className="ntx-label">Which return will you file?</legend>
-                {(
-                  [
-                    {
-                      value: 'ITR2' as const,
-                      label: 'ITR-2',
-                      detail: 'Salary, house property, capital gains, other sources — no business P&L.',
-                    },
-                    {
-                      value: 'ITR3' as const,
-                      label: 'ITR-3',
-                      detail: 'Includes business or profession income and accounts schedules.',
-                    },
-                  ] as const
-                ).map((option) => (
-                  <label
-                    key={option.value}
-                    className={
-                      data.form === option.value
-                        ? 'ntx-landing-radio is-selected'
-                        : 'ntx-landing-radio'
+              <div className="space-y-5">
+                <fieldset className="ntx-landing-radio-set">
+                  <legend className="ntx-label">Which return will you file?</legend>
+                  {(
+                    [
+                      {
+                        value: 'ITR2' as const,
+                        label: 'ITR-2',
+                        detail:
+                          'Salary, house property, capital gains, other sources — no business P&L.',
+                      },
+                      {
+                        value: 'ITR3' as const,
+                        label: 'ITR-3',
+                        detail: 'Includes business or profession income and accounts schedules.',
+                      },
+                    ] as const
+                  ).map((option) => (
+                    <label
+                      key={option.value}
+                      className={
+                        data.form === option.value
+                          ? 'ntx-landing-radio is-selected'
+                          : 'ntx-landing-radio'
+                      }
+                    >
+                      <input
+                        type="radio"
+                        name="landing-form"
+                        value={option.value}
+                        checked={data.form === option.value}
+                        onChange={() => update('form', option.value)}
+                      />
+                      <span>
+                        <strong>{option.label}</strong>
+                        <span>{option.detail}</span>
+                      </span>
+                    </label>
+                  ))}
+                  {errors.form ? <p className="ntx-field-error">{errors.form}</p> : null}
+                </fieldset>
+
+                <div>
+                  <label className="ntx-label" htmlFor="landing-ay">
+                    Assessment year
+                  </label>
+                  <select
+                    id="landing-ay"
+                    className="ntx-input"
+                    value={data.assessmentYear}
+                    onChange={(e) => update('assessmentYear', e.target.value)}
+                  >
+                    <option value="2026-27">2026-27 (current)</option>
+                    <option value="2025-26">2025-26</option>
+                    <option value="2024-25">2024-25</option>
+                  </select>
+                  {errors.assessmentYear ? (
+                    <p className="ntx-field-error">{errors.assessmentYear}</p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <label className="ntx-label" htmlFor="landing-filing-type">
+                    Filing type on the portal
+                  </label>
+                  <select
+                    id="landing-filing-type"
+                    className="ntx-input"
+                    value={data.filingType}
+                    onChange={(e) =>
+                      update(
+                        'filingType',
+                        e.target.value as Draft['filingType'],
+                      )
                     }
                   >
-                    <input
-                      type="radio"
-                      name="landing-form"
-                      value={option.value}
-                      checked={data.form === option.value}
-                      onChange={() => update('form', option.value)}
-                    />
-                    <span>
-                      <strong>{option.label}</strong>
-                      <span>{option.detail}</span>
-                    </span>
-                  </label>
-                ))}
-                {errors.form ? <p className="ntx-field-error">{errors.form}</p> : null}
-              </fieldset>
+                    <option value="original">Original (section 139(1))</option>
+                    <option value="belated">Belated</option>
+                    <option value="revised">Revised</option>
+                    <option value="updated">Updated (ITR-U)</option>
+                  </select>
+                </div>
+
+                <fieldset className="ntx-landing-radio-set">
+                  <legend className="ntx-label">
+                    Are you a politically exposed person?
+                  </legend>
+                  <p className="mb-2 text-[var(--caption)] text-[var(--text-muted)]">
+                    The Income Tax portal asks this before opening the return. Most taxpayers
+                    answer No.
+                  </p>
+                  {(
+                    [
+                      { value: 'no' as const, label: 'No' },
+                      { value: 'yes' as const, label: 'Yes' },
+                    ] as const
+                  ).map((option) => (
+                    <label
+                      key={option.value}
+                      className={
+                        data.politicallyExposed === option.value
+                          ? 'ntx-landing-radio is-selected'
+                          : 'ntx-landing-radio'
+                      }
+                    >
+                      <input
+                        type="radio"
+                        name="landing-pep"
+                        value={option.value}
+                        checked={data.politicallyExposed === option.value}
+                        onChange={() => update('politicallyExposed', option.value)}
+                      />
+                      <span>
+                        <strong>{option.label}</strong>
+                      </span>
+                    </label>
+                  ))}
+                  {errors.politicallyExposed ? (
+                    <p className="ntx-field-error">{errors.politicallyExposed}</p>
+                  ) : null}
+                </fieldset>
+              </div>
             ) : null}
 
             {errors.base ? <p className="ntx-field-error">{errors.base}</p> : null}
