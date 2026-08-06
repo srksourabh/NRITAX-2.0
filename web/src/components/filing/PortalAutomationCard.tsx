@@ -251,9 +251,15 @@ export function PortalAutomationCard({
   function ingestJob(next: PortalFetchPublicJob) {
     setJob(next);
     setPhase(next.status);
-    const line = next.message
-      ? `${humanStatus(next.status)} ${next.message}`
-      : humanStatus(next.status);
+    const line =
+      next.message &&
+      (next.status === 'failed' ||
+        next.status === 'timed_out' ||
+        next.status === 'needs_live_assist')
+        ? next.message
+        : next.message
+          ? `${humanStatus(next.status)} ${next.message}`
+          : humanStatus(next.status);
     setDetail(line);
     const statusChanged = lastNoticeStatusRef.current !== next.status;
     if (statusChanged || isTerminalStatus(next.status)) {
