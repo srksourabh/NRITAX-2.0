@@ -113,12 +113,9 @@ export function PortalFetchPanel({
   const identity = genIdentity(data);
   const [panEdit, setPanEdit] = useState<string | null>(sessionSeed?.pan ?? null);
   const [nameEdit, setNameEdit] = useState<string | null>(sessionSeed?.name ?? null);
-  const [dobEdit, setDobEdit] = useState<string | null>(sessionSeed?.dob ?? null);
   const pan = panEdit ?? identity.pan;
   const name = nameEdit ?? identity.name;
-  const dob = dobEdit ?? identity.dob;
   const [password, setPassword] = useState(sessionSeed?.password ?? '');
-  const [mobile, setMobile] = useState(sessionSeed?.mobile ?? '');
   const [consentFetch, setConsentFetch] = useState(Boolean(sessionSeed?.consent));
   const [consentLiability, setConsentLiability] = useState(Boolean(sessionSeed?.consent));
   const [otp, setOtp] = useState('');
@@ -138,9 +135,7 @@ export function PortalFetchPanel({
     consentLiability &&
     /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.trim().toUpperCase()) &&
     name.trim().length > 0 &&
-    dob.trim().length > 0 &&
     password.length > 0 &&
-    (!mobile.trim() || /^\d{10}$/.test(mobile.trim())) &&
     !busy &&
     (!job || isTerminalStatus(job.status));
 
@@ -261,9 +256,9 @@ export function PortalFetchPanel({
         body: JSON.stringify({
           pan: pan.trim().toUpperCase(),
           name: name.trim(),
-          dob: dob.trim(),
+          dob: sessionSeed?.dob || identity.dob || '',
           password,
-          mobile: mobile.trim().replace(/\D/g, ''),
+          mobile: sessionSeed?.mobile || '',
           assessmentYear: data.meta.assessmentYear || ASSESSMENT_YEAR,
           consentFetch: true,
           consentLiability: true,
@@ -443,19 +438,6 @@ export function PortalFetchPanel({
             onChange={(e) => setNameEdit(e.target.value)}
           />
         </div>
-        <div className="ntx-field" style={{ gridColumn: 'span 3' }}>
-          <label className="ntx-label" htmlFor="portal-fetch-dob">
-            Date of birth
-          </label>
-          <input
-            id="portal-fetch-dob"
-            className="ntx-input"
-            type="date"
-            disabled={Boolean(inFlight)}
-            value={dob}
-            onChange={(e) => setDobEdit(e.target.value)}
-          />
-        </div>
         <div className="ntx-field" style={{ gridColumn: 'span 6' }}>
           <label className="ntx-label" htmlFor="portal-fetch-password">
             Income Tax portal password
@@ -468,22 +450,6 @@ export function PortalFetchPanel({
             disabled={Boolean(inFlight)}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        <div className="ntx-field" style={{ gridColumn: 'span 6' }}>
-          <label className="ntx-label" htmlFor="portal-fetch-mobile">
-            Registered mobile (optional)
-          </label>
-          <input
-            id="portal-fetch-mobile"
-            className="ntx-input ntx-figure"
-            inputMode="numeric"
-            maxLength={10}
-            autoComplete="tel"
-            disabled={Boolean(inFlight)}
-            value={mobile}
-            onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-            placeholder="Leave blank if overseas"
           />
         </div>
       </div>

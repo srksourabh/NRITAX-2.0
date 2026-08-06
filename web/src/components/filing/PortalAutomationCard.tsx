@@ -159,9 +159,7 @@ export function PortalAutomationCard({
   const identity = genIdentity(data);
   const [pan, setPan] = useState(sessionSeed?.pan || identity.pan);
   const [name, setName] = useState(sessionSeed?.name || identity.name);
-  const [dob, setDob] = useState(sessionSeed?.dob || identity.dob);
   const [password, setPassword] = useState(sessionSeed?.password ?? '');
-  const [mobile, setMobile] = useState(sessionSeed?.mobile ?? '');
   const [consent, setConsent] = useState(Boolean(sessionSeed?.consent));
   const [assessmentYear, setAssessmentYear] = useState(
     sessionSeed?.assessmentYear || data.meta.assessmentYear || ASSESSMENT_YEAR,
@@ -197,13 +195,7 @@ export function PortalAutomationCard({
     blockers.push('Enter a valid PAN (this is your e-Filing User ID).');
   }
   if (!name.trim()) blockers.push('Enter your name as on the e-Filing portal.');
-  if (!dob.trim()) blockers.push('Enter your date of birth.');
   if (!effectivePassword) blockers.push('Enter your e-Filing password.');
-  if (mobile.trim() && !/^\d{10}$/.test(mobile.trim())) {
-    blockers.push(
-      'If you enter a mobile, use 10 Indian digits. Leave blank for overseas numbers or email OTP.',
-    );
-  }
   if (!consent) blockers.push('Confirm you authorise a one-time portal visit for this session.');
 
   const canStart =
@@ -333,9 +325,9 @@ export function PortalAutomationCard({
         body: JSON.stringify({
           pan: pan.trim().toUpperCase(),
           name: name.trim(),
-          dob: dob.trim(),
+          dob: sessionSeed?.dob || identity.dob || '',
           password: effectivePassword,
-          mobile: mobile.trim().replace(/\D/g, ''),
+          mobile: sessionSeed?.mobile || '',
           assessmentYear,
           formType,
           politicallyExposed: politicallyExposed === 'yes',
@@ -606,38 +598,6 @@ export function PortalAutomationCard({
             disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
             onChange={(e) => setName(e.target.value)}
           />
-        </div>
-        <div>
-          <label className="ntx-label" htmlFor="auto-dob">
-            Date of birth
-          </label>
-          <input
-            id="auto-dob"
-            className="ntx-input"
-            type="date"
-            value={dob}
-            disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
-            onChange={(e) => setDob(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="ntx-label" htmlFor="auto-mobile">
-            Registered mobile (optional)
-          </label>
-          <input
-            id="auto-mobile"
-            className="ntx-input ntx-figure"
-            inputMode="numeric"
-            maxLength={10}
-            value={mobile}
-            disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
-            onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-            placeholder="Indian 10 digits, or leave blank"
-          />
-          <p className="mt-1 text-[var(--caption)] text-[var(--text-muted)]">
-            Leave blank if you use an overseas number. If the portal asks for OTP, enter it below
-            or open live assist.
-          </p>
         </div>
         <div className="sm:col-span-2">
           <label className="ntx-label" htmlFor="auto-password">

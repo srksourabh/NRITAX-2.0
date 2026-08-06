@@ -80,12 +80,6 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  if (!dob) {
-    return NextResponse.json(
-      { ok: false, message: 'Enter date of birth.' },
-      { status: 400 },
-    );
-  }
   if (!password) {
     return NextResponse.json(
       {
@@ -117,7 +111,7 @@ export async function POST(req: Request) {
   const result = await client.start({
     pan,
     name,
-    dob,
+    dob: dob || '',
     password,
     mobile: mobile || '',
     assessmentYear,

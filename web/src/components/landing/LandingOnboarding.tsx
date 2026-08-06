@@ -4,6 +4,11 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { ITD_PORTAL_HOME, ITD_PORTAL_LABEL, ITD_PORTAL_LOGIN } from '@/lib/itd/portal';
+import {
+  FORM_SELECT_QUIZ,
+  resolveFormQuizAnswer,
+  type FormQuizAnswer,
+} from '@/lib/itr/form-select-quiz';
 import type { FormType } from '@/lib/itr/types';
 import {
   isValidPan,
@@ -12,13 +17,14 @@ import {
   type FilingAccessMode,
 } from '@/lib/session/filing-session';
 
+type FormPick = FormType | 'unsure' | '';
+
 type Draft = {
   fullName: string;
-  dob: string;
   pan: string;
   password: string;
-  mobile: string;
   accessMode: FilingAccessMode | '';
+  formPick: FormPick;
   form: FormType | '';
   assessmentYear: string;
   politicallyExposed: 'yes' | 'no' | '';
@@ -32,14 +38,13 @@ const STEPS = ['Identity', 'Portal access', 'Return details'] as const;
 
 const empty: Draft = {
   fullName: '',
-  dob: '',
   pan: '',
   password: '',
-  mobile: '',
   accessMode: '',
+  formPick: '',
   form: '',
   assessmentYear: '2026-27',
-  politicallyExposed: '',
+  politicallyExposed: 'no',
   filingType: 'original',
   consentAutomation: false,
 };
@@ -48,7 +53,6 @@ function validateStep(step: number, data: Draft): Errors {
   const errors: Errors = {};
   if (step === 0) {
     if (data.fullName.trim().length < 2) errors.fullName = 'Enter your full name as on PAN.';
-    if (!data.dob) errors.dob = 'Enter your date of birth.';
     if (!data.pan.trim()) errors.pan = 'Enter your PAN.';
     else if (!isValidPan(data.pan)) {
       errors.pan = 'PAN must be 10 characters, for example ABCDE1234F.';
@@ -59,10 +63,6 @@ function validateStep(step: number, data: Draft): Errors {
       errors.accessMode = 'Choose whether you already have an e-Filing password.';
     } else if (data.accessMode === 'has_password') {
       if (!data.password) errors.password = 'Enter your Income Tax e-Filing password.';
-      if (data.mobile && !/^\d{10}$/.test(data.mobile.replace(/\D/g, ''))) {
-        errors.mobile =
-          'If provided, use a 10-digit Indian mobile registered on the portal. Leave blank for overseas numbers.';
-      }
       if (!data.consentAutomation) {
         errors.consentAutomation =
           'Confirm we may use browser automation with this password for this session only.';
@@ -70,7 +70,13 @@ function validateStep(step: number, data: Draft): Errors {
     }
   }
   if (step === 2) {
-    if (!data.form) errors.form = 'Select ITR-2 or ITR-3.';
+    if (!data.formPick) errors.formPick = 'Select ITR-2, ITR-3, or I’m not sure.';
+    if (data.formPick === 'unsure' && !data.form) {
+      errors.form = 'Answer the questions so we can pick ITR-2 or ITR-3.';
+    }
+    if ((data.formPick === 'ITR2' || data.formPick === 'ITR3') && !data.form) {
+      errors.form = 'Select ITR-2 or ITR-3.';
+    }
     if (!/^\d{4}-\d{2}$/.test(data.assessmentYear)) {
       errors.assessmentYear = 'Select assessment year (for example 2026-27).';
     }
@@ -93,20 +99,54 @@ export function LandingOnboarding({
   const [step, setStep] = useState(0);
   const [data, setData] = useState<Draft>(empty);
   const [errors, setErrors] = useState<Errors>({});
+  const [quizIndex, setQuizIndex] = useState(0);
+  const [quizAmbiguous, setQuizAmbiguous] = useState(false);
 
   const update = <K extends keyof Draft>(field: K, value: Draft[K]) => {
-    setData((prev) => {
-      const next = { ...prev, [field]: value };
-      if (field === 'pan' && typeof value === 'string') {
-        /* user ID is always PAN */
-      }
-      return next;
-    });
+    setData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => {
       const next = { ...prev };
       delete next[field];
       return next;
     });
+  };
+
+  const pickForm = (pick: FormPick) => {
+    setQuizIndex(0);
+    setQuizAmbiguous(false);
+    setData((prev) => ({
+      ...prev,
+      formPick: pick,
+      form: pick === 'ITR2' || pick === 'ITR3' ? pick : '',
+    }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.formPick;
+      delete next.form;
+      return next;
+    });
+  };
+
+  const answerQuiz = (answer: FormQuizAnswer) => {
+    const question = FORM_SELECT_QUIZ[quizIndex];
+    if (!question) return;
+    const result = resolveFormQuizAnswer(question, answer);
+    if (result === 'ITR2' || result === 'ITR3') {
+      setQuizAmbiguous(false);
+      update('form', result);
+      return;
+    }
+    if (result === 'ambiguous') {
+      setQuizAmbiguous(true);
+      update('form', '');
+      return;
+    }
+    if (quizIndex + 1 < FORM_SELECT_QUIZ.length) {
+      setQuizIndex((i) => i + 1);
+      return;
+    }
+    setQuizAmbiguous(true);
+    update('form', '');
   };
 
   const goToStep = (index: number) => {
@@ -132,16 +172,15 @@ export function LandingOnboarding({
     }
 
     const pan = normalizePan(data.pan);
+    const form = (data.form || data.formPick) as FormType;
     try {
       writeFilingSession({
         fullName: data.fullName.trim(),
-        dob: data.dob,
         pan,
         userId: pan,
         password: data.accessMode === 'has_password' ? data.password : undefined,
-        mobile: data.mobile.replace(/\D/g, '') || undefined,
         accessMode: data.accessMode as FilingAccessMode,
-        form: data.form as FormType,
+        form,
         assessmentYear: data.assessmentYear,
         politicallyExposed: data.politicallyExposed === 'yes',
         filingType: data.filingType,
@@ -163,6 +202,8 @@ export function LandingOnboarding({
           : `${primaryHref}${primaryHref.includes('?') ? '&' : '?'}autoPrefill=1`;
     router.push(href);
   };
+
+  const quizQuestion = FORM_SELECT_QUIZ[quizIndex];
 
   return (
     <section id="start" className="ntx-section ntx-landing-anchor" aria-labelledby="start-heading">
@@ -244,19 +285,6 @@ export function LandingOnboarding({
                   {errors.fullName ? <p className="ntx-field-error">{errors.fullName}</p> : null}
                 </div>
                 <div>
-                  <label className="ntx-label" htmlFor="landing-dob">
-                    Date of birth
-                  </label>
-                  <input
-                    id="landing-dob"
-                    className="ntx-input"
-                    type="date"
-                    value={data.dob}
-                    onChange={(e) => update('dob', e.target.value)}
-                  />
-                  {errors.dob ? <p className="ntx-field-error">{errors.dob}</p> : null}
-                </div>
-                <div>
                   <label className="ntx-label" htmlFor="landing-pan">
                     PAN / e-Filing user ID
                   </label>
@@ -270,7 +298,8 @@ export function LandingOnboarding({
                     placeholder="ABCDE1234F"
                   />
                   <p className="mt-1 text-[var(--caption)] text-[var(--text-muted)]">
-                    On the {ITD_PORTAL_LABEL}, the user ID is always your PAN.
+                    On the {ITD_PORTAL_LABEL}, the user ID is always your PAN. Date of birth and
+                    mobile can be filled later in your profile or when a form field needs them.
                   </p>
                   {errors.pan ? <p className="ntx-field-error">{errors.pan}</p> : null}
                 </div>
@@ -339,27 +368,6 @@ export function LandingOnboarding({
                         <p className="ntx-field-error">{errors.password}</p>
                       ) : null}
                     </div>
-                    <div>
-                      <label className="ntx-label" htmlFor="landing-mobile">
-                        Registered mobile (optional)
-                      </label>
-                      <input
-                        id="landing-mobile"
-                        className="ntx-input ntx-figure"
-                        inputMode="numeric"
-                        maxLength={10}
-                        value={data.mobile}
-                        onChange={(e) =>
-                          update('mobile', e.target.value.replace(/\D/g, '').slice(0, 10))
-                        }
-                        placeholder="Optional Indian 10 digits"
-                      />
-                      <p className="mt-1 text-[var(--caption)] text-[var(--text-muted)]">
-                        Leave blank for overseas numbers. OTP may come by email or Aadhaar-linked
-                        mobile when the portal asks.
-                      </p>
-                      {errors.mobile ? <p className="ntx-field-error">{errors.mobile}</p> : null}
-                    </div>
                     <label className="flex items-start gap-2 text-[var(--body-sm)] text-[var(--text-secondary)]">
                       <input
                         type="checkbox"
@@ -401,6 +409,10 @@ export function LandingOnboarding({
               <div className="space-y-5">
                 <fieldset className="ntx-landing-radio-set">
                   <legend className="ntx-label">Which return will you file?</legend>
+                  <p className="mb-2 text-[var(--caption)] text-[var(--text-muted)]">
+                    If you already know, pick ITR-2 or ITR-3. Questions appear only if you choose
+                    I&apos;m not sure.
+                  </p>
                   {(
                     [
                       {
@@ -414,12 +426,17 @@ export function LandingOnboarding({
                         label: 'ITR-3',
                         detail: 'Includes business or profession income and accounts schedules.',
                       },
+                      {
+                        value: 'unsure' as const,
+                        label: "I'm not sure",
+                        detail: 'Answer a few plain questions and we route you.',
+                      },
                     ] as const
                   ).map((option) => (
                     <label
                       key={option.value}
                       className={
-                        data.form === option.value
+                        data.formPick === option.value
                           ? 'ntx-landing-radio is-selected'
                           : 'ntx-landing-radio'
                       }
@@ -428,8 +445,8 @@ export function LandingOnboarding({
                         type="radio"
                         name="landing-form"
                         value={option.value}
-                        checked={data.form === option.value}
-                        onChange={() => update('form', option.value)}
+                        checked={data.formPick === option.value}
+                        onChange={() => pickForm(option.value)}
                       />
                       <span>
                         <strong>{option.label}</strong>
@@ -437,8 +454,91 @@ export function LandingOnboarding({
                       </span>
                     </label>
                   ))}
-                  {errors.form ? <p className="ntx-field-error">{errors.form}</p> : null}
+                  {errors.formPick ? <p className="ntx-field-error">{errors.formPick}</p> : null}
                 </fieldset>
+
+                {data.formPick === 'unsure' ? (
+                  <div className="ntx-panel space-y-3 p-4">
+                    {quizAmbiguous ? (
+                      <>
+                        <p className="text-[var(--body-sm)] text-[var(--text-muted)]">
+                          Your answers are ambiguous. Pick a form deliberately to continue.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="ntx-btn ntx-btn-primary"
+                            onClick={() => {
+                              setQuizAmbiguous(false);
+                              update('form', 'ITR2');
+                            }}
+                          >
+                            Use ITR-2
+                          </button>
+                          <button
+                            type="button"
+                            className="ntx-btn ntx-btn-secondary"
+                            onClick={() => {
+                              setQuizAmbiguous(false);
+                              update('form', 'ITR3');
+                            }}
+                          >
+                            Use ITR-3
+                          </button>
+                        </div>
+                      </>
+                    ) : data.form ? (
+                      <p className="text-[var(--body-sm)] text-[var(--ink)]">
+                        Suggested form:{' '}
+                        <strong>{data.form === 'ITR3' ? 'ITR-3' : 'ITR-2'}</strong>. You can continue,
+                        or{' '}
+                        <button
+                          type="button"
+                          className="font-semibold text-[var(--primary)] underline"
+                          onClick={() => {
+                            update('form', '');
+                            setQuizIndex(0);
+                            setQuizAmbiguous(false);
+                          }}
+                        >
+                          ask again
+                        </button>
+                        .
+                      </p>
+                    ) : quizQuestion ? (
+                      <>
+                        <p className="text-[var(--caption)] font-semibold text-[var(--text-muted)] uppercase">
+                          Question {quizIndex + 1} of {FORM_SELECT_QUIZ.length}
+                        </p>
+                        <p className="text-[var(--body)] text-[var(--ink)]">{quizQuestion.prompt}</p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="ntx-btn ntx-btn-primary"
+                            onClick={() => answerQuiz('yes')}
+                          >
+                            Yes
+                          </button>
+                          <button
+                            type="button"
+                            className="ntx-btn ntx-btn-secondary"
+                            onClick={() => answerQuiz('no')}
+                          >
+                            No
+                          </button>
+                          <button
+                            type="button"
+                            className="ntx-btn ntx-btn-secondary"
+                            onClick={() => answerQuiz('unsure')}
+                          >
+                            Not sure
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+                    {errors.form ? <p className="ntx-field-error">{errors.form}</p> : null}
+                  </div>
+                ) : null}
 
                 <div>
                   <label className="ntx-label" htmlFor="landing-ay">
@@ -468,10 +568,7 @@ export function LandingOnboarding({
                     className="ntx-input"
                     value={data.filingType}
                     onChange={(e) =>
-                      update(
-                        'filingType',
-                        e.target.value as Draft['filingType'],
-                      )
+                      update('filingType', e.target.value as Draft['filingType'])
                     }
                   >
                     <option value="original">Original (section 139(1))</option>
@@ -482,12 +579,10 @@ export function LandingOnboarding({
                 </div>
 
                 <fieldset className="ntx-landing-radio-set">
-                  <legend className="ntx-label">
-                    Are you a politically exposed person?
-                  </legend>
+                  <legend className="ntx-label">Are you a politically exposed person?</legend>
                   <p className="mb-2 text-[var(--caption)] text-[var(--text-muted)]">
-                    The Income Tax portal asks this before opening the return. Most taxpayers
-                    answer No.
+                    The Income Tax portal asks this before opening the return. Most taxpayers answer
+                    No.
                   </p>
                   {(
                     [

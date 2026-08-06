@@ -311,8 +311,10 @@ export function FilingWizard() {
       blank.fields['GEN.surname'] = surname;
       blank.fields['GEN.PAN'] = session.pan;
       blank.fields['GEN.pan'] = session.pan;
-      blank.fields['GEN.DOB'] = session.dob;
-      blank.fields['GEN.dob'] = session.dob;
+      if (session.dob) {
+        blank.fields['GEN.DOB'] = session.dob;
+        blank.fields['GEN.dob'] = session.dob;
+      }
       if (session.mobile) {
         blank.fields['GEN.MobileNo'] = session.mobile;
         blank.fields['GEN.mobile'] = session.mobile;
@@ -338,8 +340,12 @@ export function FilingWizard() {
           'GEN.SurNameOrOrgName': merged.fields['GEN.SurNameOrOrgName'] || surname,
           'GEN.PAN': merged.fields['GEN.PAN'] || session.pan,
           'GEN.pan': merged.fields['GEN.pan'] || session.pan,
-          'GEN.DOB': merged.fields['GEN.DOB'] || session.dob,
-          'GEN.dob': merged.fields['GEN.dob'] || session.dob,
+          ...(session.dob
+            ? {
+                'GEN.DOB': merged.fields['GEN.DOB'] || session.dob,
+                'GEN.dob': merged.fields['GEN.dob'] || session.dob,
+              }
+            : {}),
         };
       }
       setData(merged);

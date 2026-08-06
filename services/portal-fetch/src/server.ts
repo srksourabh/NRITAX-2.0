@@ -116,10 +116,10 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       json(res, 400, { ok: false, message: 'Enter a valid PAN.' });
       return;
     }
-    if (!dob || !password) {
+    if (!password) {
       json(res, 400, {
         ok: false,
-        message: 'PAN, date of birth, and portal password are required.',
+        message: 'PAN and portal password are required.',
       });
       return;
     }
@@ -128,7 +128,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       userId,
       pan,
       name,
-      dob,
+      dob: dob || '',
       mobile,
       password,
       assessmentYear,

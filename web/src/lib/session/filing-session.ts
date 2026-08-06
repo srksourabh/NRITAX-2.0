@@ -13,12 +13,14 @@ export type FilingAccessMode = 'has_password' | 'create_account';
 
 export type FilingSession = {
   fullName: string;
-  dob: string;
+  /** Optional — collect later in profile / when a field needs it. */
+  dob?: string;
   pan: string;
   /** Always the PAN on the Income Tax portal. */
   userId: string;
   /** Present only when accessMode is has_password. */
   password?: string;
+  /** Optional — collect later when OTP / profile needs it. */
   mobile?: string;
   accessMode: FilingAccessMode;
   form?: FormType;
