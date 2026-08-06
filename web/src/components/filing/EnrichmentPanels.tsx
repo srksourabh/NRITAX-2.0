@@ -9,7 +9,7 @@ import { applyCasPipeline } from '@/lib/cas/pipeline';
 import { casFailureMessage, resolveCasPdfPassword } from '@/lib/cas/password';
 import type { CasParseResult } from '@/lib/cas/types';
 import { cn } from '@/lib/cn';
-import { importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
+import { applyPrefillToReturn, importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
 import {
   applyForm16ToReturn,
   applyForm26AsToReturn,
@@ -352,13 +352,11 @@ export function EnrichmentPanels({
     reader.onload = () => {
       try {
         const imported = importPrefillFile(reader.result, { form });
-        setData((prev) => ({
-          ...prev,
-          fields: { ...imported.fields, ...prev.fields },
-          tables: { ...imported.tables, ...prev.tables },
-        }));
+        setData((prev) => applyPrefillToReturn(prev, imported));
         setNotice(
-          `Prefill applied · ${imported.matched} values mapped. Edit anything by hand.`,
+          imported.matched > 0
+            ? `Prefill applied · ${imported.matched} values inserted into your ${imported.form} form. Edit anything by hand.`
+            : 'Prefill file read, but no fields matched. Check it is the portal pre-filled JSON.',
         );
       } catch (error) {
         setNotice(

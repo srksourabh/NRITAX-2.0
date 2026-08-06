@@ -661,6 +661,10 @@ export function FilingWizard() {
           setData={setData}
           setActiveId={setActiveId}
           onStatus={setNotice}
+          onFormChange={(next) => {
+            setForm(next);
+            setPicked(next);
+          }}
           sessionSeed={sessionSeed}
           autoStart={autoPrefill && Boolean(filingSession?.password)}
         />

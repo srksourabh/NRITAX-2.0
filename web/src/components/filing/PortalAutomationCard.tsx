@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
+import { applyPrefillToReturn, importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
 import { ITD_PORTAL_HOME, ITD_PORTAL_LABEL } from '@/lib/itd/portal';
 import { ASSESSMENT_YEAR, type FormType, type ReturnData } from '@/lib/itr/types';
 import {
@@ -130,6 +130,7 @@ export function PortalAutomationCard({
   setData,
   setActiveId,
   onStatus,
+  onFormChange,
   sessionSeed,
   autoStart = false,
 }: {
@@ -138,6 +139,8 @@ export function PortalAutomationCard({
   setData: (next: ReturnData | ((prev: ReturnData) => ReturnData)) => void;
   setActiveId: (id: string) => void;
   onStatus: (message: string | null) => void;
+  /** Switch the wizard schedules when prefill is for a different ITR. */
+  onFormChange?: (form: FormType) => void;
   sessionSeed?: {
     pan?: string;
     name?: string;
@@ -211,24 +214,25 @@ export function PortalAutomationCard({
         form: formType,
         expectPan: genIdentity(dataRef.current).pan || undefined,
       });
-      setData((prev) => ({
-        ...prev,
-        meta: {
-          ...prev.meta,
-          form: formType,
-          ...(assessmentYear === ASSESSMENT_YEAR
-            ? { assessmentYear: ASSESSMENT_YEAR }
-            : {}),
-        },
-        fields: { ...imported.fields, ...prev.fields },
-        tables: { ...imported.tables, ...prev.tables },
-      }));
+      if (imported.matched === 0) {
+        appliedRef.current = jobId;
+        announce(
+          `Prefill downloaded for ${formType}, but none of its fields matched the ${formType} schedules. Upload the JSON manually or use live assist.`,
+          'failed',
+        );
+        return;
+      }
+      onFormChange?.(imported.form);
+      setFormType(imported.form);
+      setData((prev) => applyPrefillToReturn(prev, imported));
       appliedRef.current = jobId;
       setPassword('');
       setOtp('');
       setActiveId('GEN');
+      const warn =
+        imported.warnings.length > 0 ? ` ${imported.warnings[0]}` : '';
       announce(
-        `Visited the Income Tax portal for ${formType} · AY ${assessmentYear} and applied ${imported.matched} prefill values. Review Part A, then continue schedule by schedule.`,
+        `Inserted ${imported.matched} prefill values into your ${imported.form} form (AY ${assessmentYear}). Open Part A — General to review, then continue schedule by schedule.${warn}`,
         'succeeded',
       );
     } catch (error) {
@@ -398,14 +402,27 @@ export function PortalAutomationCard({
         form: formType,
         expectPan: pan || undefined,
       });
-      setData((prev) => ({
-        ...prev,
-        fields: { ...imported.fields, ...prev.fields },
-        tables: { ...imported.tables, ...prev.tables },
-      }));
+      if (imported.matched === 0) {
+        setManualFileNote(
+          'File read, but no fields matched this ITR form. Check it is the pre-filled JSON from the portal.',
+        );
+        announce(
+          'Manual prefill file had no matching fields for this form.',
+          'error',
+        );
+        return;
+      }
+      onFormChange?.(imported.form);
+      setFormType(imported.form);
+      setData((prev) => applyPrefillToReturn(prev, imported));
       setActiveId('GEN');
-      setManualFileNote(`Manual prefill applied · ${imported.matched} values.`);
-      announce(`Manual prefill applied · ${imported.matched} values mapped.`, 'succeeded');
+      setManualFileNote(
+        `Manual prefill applied · ${imported.matched} values inserted into ${imported.form}.`,
+      );
+      announce(
+        `Manual prefill applied · ${imported.matched} values inserted into your ${imported.form} form.`,
+        'succeeded',
+      );
     } catch (error) {
       const msg =
         error instanceof PrefillFileError

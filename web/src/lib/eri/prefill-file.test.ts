@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyPrefillToReturn,
   detectPrefillForm,
   importPrefillFile,
   PrefillFileError,
@@ -119,5 +120,50 @@ describe('importPrefillFile', () => {
     const result = importPrefillFile({ ITR: { ITR2: { Unknown: { Leaf: 1 } } } });
     expect(result.matched).toBe(0);
     expect(result.warnings.join(' ')).toMatch(/Nothing in that file matched/);
+  });
+
+  it('peels Form_ITR2 wrappers so Part A paths still match', () => {
+    const result = importPrefillFile({
+      Form_ITR2: {
+        FormName: 'ITR-2',
+        AssessmentYear: '2026',
+        PartA_GEN1: {
+          PersonalInfo: {
+            AssesseeName: { FirstName: 'PRIYA', SurNameOrOrgName: 'SHARMA' },
+            PAN: 'ABCPS1234F',
+            DOB: '1990-05-15',
+          },
+        },
+      },
+    });
+    expect(result.fields['GEN.firstName']).toBe('PRIYA');
+    expect(result.fields['GEN.pan']).toBe('ABCPS1234F');
+    expect(result.matched).toBeGreaterThan(2);
+  });
+
+  it('inserts prefill into an existing return without losing unmapped draft keys', () => {
+    const imported = importPrefillFile(itr2File);
+    const prev = {
+      meta: {
+        form: 'ITR2' as const,
+        assessmentYear: '2026-27' as const,
+        regime: 'new' as const,
+        status: 'I' as const,
+        residentialStatus: 'NRI' as const,
+        filingSection: '139(1)' as const,
+        filingDate: '2026-07-01',
+        dueDate: '2026-07-31',
+      },
+      fields: {
+        'GEN.notes': 'keep me',
+        'GEN.firstName': 'OLD',
+      },
+      tables: {},
+    };
+    const next = applyPrefillToReturn(prev, imported);
+    expect(next.fields['GEN.notes']).toBe('keep me');
+    expect(next.fields['GEN.firstName']).toBe('ANANYA');
+    expect(next.fields['GEN.pan']).toBe('ABCPB1234K');
+    expect(next.meta.form).toBe('ITR2');
   });
 });

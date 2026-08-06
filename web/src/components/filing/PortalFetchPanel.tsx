@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
+import { applyPrefillToReturn, importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
 import { ASSESSMENT_YEAR, type FormType, type ReturnData } from '@/lib/itr/types';
 import {
   isTerminalStatus,
@@ -166,17 +166,15 @@ export function PortalFetchPanel({
       }
       const expectPan = genIdentity(dataRef.current).pan || undefined;
       const imported = importPrefillFile(parsed, { form, expectPan });
-      setData((prev) => ({
-        ...prev,
-        fields: { ...imported.fields, ...prev.fields },
-        tables: { ...imported.tables, ...prev.tables },
-      }));
+      setData((prev) => applyPrefillToReturn(prev, imported));
       appliedArtifactRef.current = jobId;
       setActiveId('GEN');
       setPassword('');
       setOtp('');
       setNotice(
-        `Portal prefill applied · ${imported.matched} values mapped. Edit anything by hand.`,
+        imported.matched > 0
+          ? `Portal prefill applied · ${imported.matched} values inserted into your ${imported.form} form. Edit anything by hand.`
+          : 'Prefill downloaded but no fields matched this form. Upload JSON manually.',
       );
     } catch (error) {
       appliedArtifactRef.current = jobId;

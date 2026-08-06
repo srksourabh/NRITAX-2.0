@@ -18,11 +18,13 @@ import type {
   FieldDef,
   FieldValue,
   FormType,
+  ReturnData,
   ScheduleDef,
   TableRow,
 } from '@/lib/itr/types';
 import { ITR2_SCHEDULES } from '@/lib/itr/itr2';
 import { ITR3_SCHEDULES } from '@/lib/itr/itr3';
+import { ASSESSMENT_YEAR } from '@/lib/itr/types';
 
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 type JsonObject = { [key: string]: Json };
@@ -274,11 +276,38 @@ function unwrap(raw: unknown, form: FormType): JsonObject | null {
   const itr = asObject(root.ITR);
   if (itr) {
     const named = asObject(itr[form]);
-    if (named) return named;
+    if (named) return peelFormEnvelope(named, form);
     const first = Object.values(itr).map(asObject).find(Boolean);
-    if (first) return first;
+    if (first) return peelFormEnvelope(first, form);
   }
-  return root;
+
+  return peelFormEnvelope(root, form);
+}
+
+/** True when the object looks like return schedules, not only Form_ITR* metadata. */
+function hasScheduleBody(obj: JsonObject): boolean {
+  return Object.keys(obj).some(
+    (key) =>
+      key.startsWith('PartA_') ||
+      key.startsWith('PartB_') ||
+      key.startsWith('Schedule') ||
+      key === 'ITRSchedule' ||
+      key === 'Verification' ||
+      key === 'TaxComputation',
+  );
+}
+
+/**
+ * Portal / specimen files often nest schedules under Form_ITR2 / Form_ITR3.
+ * Schema paths start at PartA_GEN1 / Schedule*, so peel that wrapper when needed.
+ */
+function peelFormEnvelope(obj: JsonObject, form: FormType): JsonObject {
+  const formKey = form === 'ITR3' ? 'Form_ITR3' : 'Form_ITR2';
+  const wrapped = asObject(obj[formKey]);
+  if (wrapped && hasScheduleBody(wrapped)) return wrapped;
+  if (hasScheduleBody(obj)) return obj;
+  if (wrapped) return wrapped;
+  return obj;
 }
 
 function readPan(body: JsonObject): string | null {
@@ -292,10 +321,13 @@ function readPan(body: JsonObject): string | null {
 function readAssessmentYear(body: JsonObject): string | null {
   for (const key of ['Form_ITR2', 'Form_ITR3']) {
     const form = asObject(body[key]);
-    const year = form?.AssessmentYear;
+    const year = form?.AssessmentYear ?? form?.assessmentYear;
     if (typeof year === 'string' && year.trim()) return year.trim();
     if (typeof year === 'number') return String(year);
   }
+  const top = body.AssessmentYear ?? body.assessmentYear;
+  if (typeof top === 'string' && top.trim()) return top.trim();
+  if (typeof top === 'number') return String(top);
   return null;
 }
 
@@ -354,11 +386,47 @@ export function importPrefillFile(
   return {
     form,
     pan,
-    assessmentYear: readAssessmentYear(body),
+    assessmentYear: readAssessmentYear(body) ?? readAssessmentYear(asObject(raw) ?? {}),
     fields: accumulator.fields,
     tables: accumulator.tables,
     matched: accumulator.matched,
     unmatched: accumulator.unmatched,
     warnings,
+  };
+}
+
+/**
+ * Inserts imported prefill values into the live return the taxpayer is editing.
+ * Prefill wins for every key it mapped; untouched keys keep the user's draft.
+ */
+export function applyPrefillToReturn(
+  prev: ReturnData,
+  imported: PrefillFileResult,
+): ReturnData {
+  const ayRaw = imported.assessmentYear?.trim() ?? '';
+  const ayNormalized =
+    /^\d{4}-\d{2}$/.test(ayRaw)
+      ? ayRaw
+      : /^\d{4}$/.test(ayRaw)
+        ? `${ayRaw}-${String((Number(ayRaw) + 1) % 100).padStart(2, '0')}`
+        : null;
+
+  return {
+    ...prev,
+    meta: {
+      ...prev.meta,
+      form: imported.form,
+      ...(ayNormalized === ASSESSMENT_YEAR
+        ? { assessmentYear: ASSESSMENT_YEAR }
+        : {}),
+    },
+    fields: {
+      ...prev.fields,
+      ...imported.fields,
+    },
+    tables: {
+      ...prev.tables,
+      ...imported.tables,
+    },
   };
 }
