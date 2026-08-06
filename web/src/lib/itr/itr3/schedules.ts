@@ -3001,19 +3001,19 @@ export const ITR3_SCHEDULES: ScheduleDef[] = [
           {
             key: 'Rows80IA',
             title: 'Undertaking-wise particulars under section 80-IA',
+            note: 'Worksheet for Form 10CCB. Departmental JSON uses clause-specific arrays (e.g. DeductUs80_IA_4_iv); also enter the total under Schedule VI-A.',
             source: 'audit',
-            path: 'Schedule80_IA/DeductUs80_IA_4_iv/Sch80DeductAmtDtls',
             columns: [
-              { key: 'Clause', label: 'Clause (e.g. 80-IA(4)(iv) — Power)', type: 'text', path: 'SectionClause' },
-              { key: 'Undertaking', label: 'Undertaking reference', type: 'text', path: 'UndertakingRef' },
-              { key: 'Amount', label: 'Deduction claimed', type: 'num', path: 'DeductAmt' },
+              { key: 'Clause', label: 'Clause (e.g. 80-IA(4)(iv) — Power)', type: 'text' },
+              { key: 'Undertaking', label: 'Undertaking reference', type: 'text' },
+              { key: 'Amount', label: 'Deduction claimed', type: 'num' },
             ],
           },
         ],
         fields: [
           {
             key: 'Total80IA', label: 'Total deduction under section 80-IA', type: 'num',
-            source: 'audit', path: 'Schedule80_IA/DeductUs80_IA_4_iv/TotDeductAmt',
+            source: 'audit',
           },
         ],
       },
@@ -3024,19 +3024,19 @@ export const ITR3_SCHEDULES: ScheduleDef[] = [
           {
             key: 'Rows80IB',
             title: 'Undertaking-wise particulars under section 80-IB',
+            note: 'Worksheet only until clause-specific Schedule80_IB arrays are routed. Mirror the total in Schedule VI-A.',
             source: 'audit',
-            path: 'Schedule80_IB/DeductHousUs80_IB_10_Und/Sch80DeductAmtDtls',
             columns: [
-              { key: 'Clause', label: 'Clause (e.g. 80-IB(10) — Housing)', type: 'text', path: 'SectionClause' },
-              { key: 'Undertaking', label: 'Undertaking reference', type: 'text', path: 'UndertakingRef' },
-              { key: 'Amount', label: 'Deduction claimed', type: 'num', path: 'DeductAmt' },
+              { key: 'Clause', label: 'Clause (e.g. 80-IB(10) — Housing)', type: 'text' },
+              { key: 'Undertaking', label: 'Undertaking reference', type: 'text' },
+              { key: 'Amount', label: 'Deduction claimed', type: 'num' },
             ],
           },
         ],
         fields: [
           {
             key: 'Total80IB', label: 'Total deduction under section 80-IB', type: 'num',
-            source: 'audit', path: 'Schedule80_IB/DeductHousUs80_IB_10_Und/TotDeductAmt',
+            source: 'audit',
           },
         ],
       },
@@ -3047,19 +3047,19 @@ export const ITR3_SCHEDULES: ScheduleDef[] = [
           {
             key: 'Rows80IC',
             title: 'State-wise and undertaking-wise particulars under section 80-IC',
+            note: 'Worksheet only until state-specific Schedule80_IC arrays are routed. Mirror the total in Schedule VI-A.',
             source: 'audit',
-            path: 'Schedule80_IC/DeductInNorthEast/Assam_Und/Sch80DeductAmtDtls',
             columns: [
-              { key: 'State', label: 'State / North-Eastern area', type: 'text', path: 'StateCode' },
-              { key: 'Undertaking', label: 'Undertaking reference', type: 'text', path: 'UndertakingRef' },
-              { key: 'Amount', label: 'Deduction claimed', type: 'num', path: 'DeductAmt' },
+              { key: 'State', label: 'State / North-Eastern area', type: 'text' },
+              { key: 'Undertaking', label: 'Undertaking reference', type: 'text' },
+              { key: 'Amount', label: 'Deduction claimed', type: 'num' },
             ],
           },
         ],
         fields: [
           {
             key: 'Total80IC', label: 'Total deduction under section 80-IC', type: 'num',
-            source: 'audit', path: 'Schedule80_IC/DeductInNorthEast/Assam_Und/TotDeductAmt',
+            source: 'audit',
           },
         ],
       },

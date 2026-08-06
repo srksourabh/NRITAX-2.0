@@ -14,16 +14,20 @@ import { readFilingSession } from '@/lib/session/filing-session';
 export function PortalUploadPanel({
   data,
   canUpload,
+  jsonDownloaded = false,
   onNotice,
   onDownloaded,
 }: {
   data: ReturnData;
   canUpload: boolean;
+  /** True when JSON was already downloaded from the workspace header. */
+  jsonDownloaded?: boolean;
   onNotice: (message: string) => void;
   onDownloaded?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  const readyToUpload = downloaded || jsonDownloaded;
 
   function downloadJson() {
     const built = buildReturnJson(data);
@@ -112,7 +116,7 @@ export function PortalUploadPanel({
         <button
           type="button"
           className="ntx-btn ntx-btn-primary"
-          disabled={busy || !canUpload || !downloaded}
+          disabled={busy || !canUpload || !readyToUpload}
           onClick={() => void startUploadAutomation()}
         >
           {busy ? 'Starting upload…' : 'Upload via browser automation'}

@@ -799,6 +799,7 @@ export function FilingWizard() {
               <PortalUploadPanel
                 data={data}
                 canUpload={Boolean(staged?.canUpload)}
+                jsonDownloaded={jsonDownloaded}
                 onNotice={setNotice}
                 onDownloaded={() => setJsonDownloaded(true)}
               />
