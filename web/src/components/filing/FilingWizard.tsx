@@ -10,6 +10,9 @@ import {
   journeyTargetSchedule,
 } from '@/components/filing/FilingJourneyMap';
 import { FormSelectionStep } from '@/components/filing/FormSelectionStep';
+import { JuktiYuktiPanel } from '@/components/filing/JuktiYuktiPanel';
+import { PortalAutomationCard } from '@/components/filing/PortalAutomationCard';
+import { PortalUploadPanel } from '@/components/filing/PortalUploadPanel';
 import { PostValidatePanel } from '@/components/filing/PostValidatePanel';
 import { RegimeComparePanel } from '@/components/filing/RegimeComparePanel';
 import { RegimeStatusBanner } from '@/components/filing/RegimeStatusBanner';
@@ -38,6 +41,11 @@ import {
 } from '@/lib/itr/types';
 import { isVisible } from '@/lib/itr/validate';
 import { validateReturnStaged, type StagedValidationReport } from '@/lib/itr/validate-staged';
+import {
+  readFilingSession,
+  splitFullName,
+  type FilingSession,
+} from '@/lib/session/filing-session';
 
 type Step = 'choose' | 'residency' | 'file' | 'regime';
 
@@ -142,11 +150,30 @@ export function FilingWizard() {
   const [draftStatus, setDraftStatus] = useState<DraftStatus>('idle');
   const [draftMessage, setDraftMessage] = useState<string | null>(null);
   const [draftBusy, setDraftBusy] = useState(false);
+  const [filingSession, setFilingSession] = useState<FilingSession | null>(null);
+  const [autoPrefill, setAutoPrefill] = useState(false);
   const skipAutosaveRef = useRef(false);
+  const sessionAppliedRef = useRef(false);
 
   const schedules = useMemo(() => schedulesFor(form), [form]);
   const visibleSchedules = schedules.filter((s) => isVisible(s.showIf, data));
   const active = visibleSchedules.find((s) => s.id === activeId) ?? visibleSchedules[0];
+
+  useEffect(() => {
+    const session = readFilingSession();
+    setFilingSession(session);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('autoPrefill') === '1') setAutoPrefill(true);
+    } catch {
+      /* ignore */
+    }
+    if (session?.form && !sessionAppliedRef.current) {
+      sessionAppliedRef.current = true;
+      setPicked(session.form);
+      setStep('residency');
+    }
+  }, []);
 
   const journeyIndex = useMemo(
     () =>
@@ -275,6 +302,24 @@ export function FilingWizard() {
     skipAutosaveRef.current = true;
 
     const blank = blankReturn(next);
+    const session = filingSession ?? readFilingSession();
+    if (session) {
+      const { first, surname } = splitFullName(session.fullName);
+      blank.fields['GEN.FirstName'] = first;
+      blank.fields['GEN.SurNameOrOrgName'] = surname;
+      blank.fields['GEN.firstName'] = first;
+      blank.fields['GEN.surname'] = surname;
+      blank.fields['GEN.PAN'] = session.pan;
+      blank.fields['GEN.pan'] = session.pan;
+      if (session.dob) {
+        blank.fields['GEN.DOB'] = session.dob;
+        blank.fields['GEN.dob'] = session.dob;
+      }
+      if (session.mobile) {
+        blank.fields['GEN.MobileNo'] = session.mobile;
+        blank.fields['GEN.mobile'] = session.mobile;
+      }
+    }
     if (residency) {
       blank.meta.residentialStatus = residency.status;
       blank.meta.residencyFacts = residency.facts;
@@ -286,20 +331,39 @@ export function FilingWizard() {
 
     const restored = await loadDraftFor(next);
     if (restored) {
-      setData(restored.data);
+      const merged = restored.data;
+      if (session) {
+        const { first, surname } = splitFullName(session.fullName);
+        merged.fields = {
+          ...merged.fields,
+          'GEN.FirstName': merged.fields['GEN.FirstName'] || first,
+          'GEN.SurNameOrOrgName': merged.fields['GEN.SurNameOrOrgName'] || surname,
+          'GEN.PAN': merged.fields['GEN.PAN'] || session.pan,
+          'GEN.pan': merged.fields['GEN.pan'] || session.pan,
+          ...(session.dob
+            ? {
+                'GEN.DOB': merged.fields['GEN.DOB'] || session.dob,
+                'GEN.dob': merged.fields['GEN.dob'] || session.dob,
+              }
+            : {}),
+        };
+      }
+      setData(merged);
       const when = formatSavedAt(restored.updatedAt);
       setNotice(
         when
-          ? `Draft restored · saved ${when}. Helpers stay optional — edit by hand anytime.`
-          : 'Draft restored. Helpers stay optional — edit by hand anytime.',
+          ? `Draft restored · saved ${when}. Portal automation uses your session password when available.`
+          : 'Draft restored. Portal automation uses your session password when available.',
       );
       setDraftStatus('saved');
       setDraftMessage(when ? `Draft saved · ${when}` : 'Draft restored');
     } else {
       setNotice(
-        residency
-          ? `Residential status set to ${residencyLabel(residency.status)}. Helpers are optional — enter particulars by hand anytime.`
-          : 'Helpers are optional. Skip prefill, Sandbox or CAS anytime and enter particulars by hand.',
+        session?.password
+          ? `Identity loaded from your session. Browser automation will fetch prefill next — complete OTP if asked.`
+          : residency
+            ? `Residential status set to ${residencyLabel(residency.status)}. Helpers are optional — enter particulars by hand anytime.`
+            : 'Helpers are optional. Skip prefill anytime and enter particulars by hand.',
       );
     }
 
@@ -337,6 +401,35 @@ export function FilingWizard() {
     }, 2000);
     return () => window.clearTimeout(timer);
   }, [data, step]);
+
+  // After each fill-up: quiet validation (Jukti Yukti reads the same report)
+  useEffect(() => {
+    if (step !== 'file') return;
+    if (skipAutosaveRef.current) return;
+    const timer = window.setTimeout(() => {
+      try {
+        const nextStaged = validateReturnStaged(data);
+        setStaged(nextStaged);
+        setReport(nextStaged.internal);
+      } catch {
+        /* keep prior report */
+      }
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [data, step, activeId]);
+
+  function selectSchedule(id: string) {
+    if (step === 'file' && id !== activeId) {
+      try {
+        const nextStaged = validateReturnStaged(data);
+        setStaged(nextStaged);
+        setReport(nextStaged.internal);
+      } catch {
+        /* ignore */
+      }
+    }
+    setActiveId(id);
+  }
 
   function setField(fq: string, value: FieldValue) {
     setData((prev) => {
@@ -416,15 +509,19 @@ export function FilingWizard() {
     );
   }
 
-  function journeyChrome(right: ReactNode, body: ReactNode) {
+  function journeyChrome(right: ReactNode, body: ReactNode, opts?: { bare?: boolean }) {
     return (
       <AppShell right={right}>
         <div className="ntx-page pb-8">
           <FilingJourneyMap compact current={journeyIndex} />
-          <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8">
-            <FilingJourneyMap current={journeyIndex} onStep={goToJourneyStep} />
-            <div className="min-w-0">{body}</div>
-          </div>
+          {opts?.bare ? (
+            body
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8">
+              <FilingJourneyMap current={journeyIndex} onStep={goToJourneyStep} />
+              <div className="min-w-0">{body}</div>
+            </div>
+          )}
         </div>
       </AppShell>
     );
@@ -484,6 +581,21 @@ export function FilingWizard() {
     );
   }
 
+  const sessionSeed = filingSession
+    ? {
+        pan: filingSession.pan,
+        name: filingSession.fullName,
+        dob: filingSession.dob,
+        password: filingSession.password,
+        mobile: filingSession.mobile,
+        consent: filingSession.consentAutomation,
+        assessmentYear: filingSession.assessmentYear,
+        formType: filingSession.form,
+        politicallyExposed: filingSession.politicallyExposed,
+        filingType: filingSession.filingType,
+      }
+    : undefined;
+
   return journeyChrome(
     <>
       <span className="ntx-badge ntx-badge-draft">
@@ -494,119 +606,135 @@ export function FilingWizard() {
       </button>
     </>,
     <>
-        <div className="flex flex-col gap-3 border-b border-[var(--rule)] pb-4 sm:gap-4 sm:pb-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <p className="text-[var(--caption)] font-semibold tracking-[0.18em] text-[var(--text-muted)] uppercase">
-              Filing workspace
-            </p>
-            <h1 className="ntx-display-sm mt-1 text-[var(--ink)] sm:mt-2">
-              {form} for AY {ASSESSMENT_YEAR}
-            </h1>
-            <p className="mt-1 max-w-2xl text-[var(--body-sm)] text-[var(--text-muted)] sm:mt-2 sm:text-[length:var(--body)]">
-              Helpers are optional. Tap ? on a field for what to enter. Use the filing route on the
-              left to see where you are.
-            </p>
-          </div>
-          <div className="flex flex-col items-stretch gap-2 sm:items-end">
-            <div className="flex flex-wrap gap-2 sm:justify-end">
-              <button
-                type="button"
-                className="ntx-btn ntx-btn-quiet"
-                disabled={draftBusy}
-                onClick={() => void saveDraftNow()}
-              >
-                {draftBusy ? 'Saving…' : 'Save draft'}
-              </button>
-              <button type="button" className="ntx-btn ntx-btn-secondary" onClick={runValidation}>
-                Validate
-              </button>
-              <button
-                type="button"
-                className="ntx-btn ntx-btn-primary"
-                onClick={downloadJson}
-              >
-                Download JSON
-              </button>
-            </div>
-            {draftMessage ? (
-              <p
-                className={cn(
-                  'text-[var(--caption)] sm:text-right',
-                  draftStatus === 'error'
-                    ? 'text-[var(--notice)]'
-                    : 'text-[var(--text-muted)]',
-                )}
-              >
-                {draftMessage}
-              </p>
-            ) : null}
-            <details className="text-[var(--caption)] text-[var(--text-muted)] sm:text-right">
-              <summary className="cursor-pointer select-none font-semibold text-[var(--primary)]">
-                Developer tools
-              </summary>
-              <button
-                type="button"
-                className="ntx-btn ntx-btn-secondary ntx-btn-compact mt-2"
-                onClick={loadSampleData}
-              >
-                Load sample data
-              </button>
-            </details>
-          </div>
+      <div className="flex flex-col gap-3 border-b border-[var(--rule)] pb-4 sm:flex-row sm:items-end sm:justify-between sm:pb-5">
+        <div className="min-w-0">
+          <p className="text-[var(--caption)] font-semibold tracking-[0.18em] text-[var(--text-muted)] uppercase">
+            Your return
+          </p>
+          <h1 className="ntx-display-sm mt-1 text-[var(--ink)]">
+            {form} · AY {ASSESSMENT_YEAR}
+          </h1>
+          <p className="mt-1 max-w-lg text-[var(--body-sm)] text-[var(--text-muted)]">
+            Prefill first, then one schedule at a time. You only file when you are ready.
+          </p>
         </div>
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <button
+              type="button"
+              className="ntx-btn ntx-btn-quiet"
+              disabled={draftBusy}
+              onClick={() => void saveDraftNow()}
+            >
+              {draftBusy ? 'Saving…' : 'Save draft'}
+            </button>
+            <button type="button" className="ntx-btn ntx-btn-secondary" onClick={runValidation}>
+              Validate
+            </button>
+            <button type="button" className="ntx-btn ntx-btn-primary" onClick={downloadJson}>
+              Download JSON
+            </button>
+          </div>
+          {draftMessage ? (
+            <p
+              className={cn(
+                'text-[var(--caption)] sm:text-right',
+                draftStatus === 'error' ? 'text-[var(--notice)]' : 'text-[var(--text-muted)]',
+              )}
+            >
+              {draftMessage}
+            </p>
+          ) : null}
+          <details className="text-[var(--caption)] text-[var(--text-muted)] sm:text-right">
+            <summary className="cursor-pointer select-none font-semibold text-[var(--primary)]">
+              Developer tools
+            </summary>
+            <button
+              type="button"
+              className="ntx-btn ntx-btn-secondary ntx-btn-compact mt-2"
+              onClick={loadSampleData}
+            >
+              Load sample data
+            </button>
+          </details>
+        </div>
+      </div>
 
-        <RegimeStatusBanner data={data} onReview={() => setStep('regime')} />
-
-        <EnrichmentPanels
+      <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
+        <PortalAutomationCard
+          key={filingSession?.savedAt ?? 'no-session'}
           form={form}
           data={data}
           setData={setData}
           setActiveId={setActiveId}
-          setNotice={setNotice}
+          onStatus={setNotice}
+          onFormChange={(next) => {
+            setForm(next);
+            setPicked(next);
+          }}
+          sessionSeed={sessionSeed}
+          autoStart={autoPrefill && Boolean(filingSession?.password)}
         />
 
         {notice ? (
-          <p className="ntx-panel mt-4 px-3 py-2.5 text-[var(--body-sm)] text-[var(--info-text)] sm:px-4 sm:py-3">
+          <p
+            className="ntx-panel px-3 py-2.5 text-[var(--body-sm)] text-[var(--ink)] sm:px-4 sm:py-3"
+            role="status"
+          >
             {notice}
           </p>
         ) : null}
 
-        <div className="mt-6 grid gap-4 lg:mt-8 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
-          <nav className="ntx-panel p-2 lg:sticky lg:top-4 lg:max-h-[70vh] lg:overflow-auto">
-            <div className="ntx-schedule-nav-scroll">
-              {visibleSchedules.map((schedule) => {
-                const filled = scheduleHasData(schedule, data);
-                return (
-                  <button
-                    key={schedule.id}
-                    type="button"
-                    className="ntx-nav-item"
-                    aria-current={active?.id === schedule.id ? 'page' : undefined}
-                    onClick={() => setActiveId(schedule.id)}
-                  >
-                    <span className="flex items-start justify-between gap-2">
-                      <span className="min-w-0">
-                        <span className="block text-[10px] tracking-wide text-[var(--text-muted)]">
-                          {schedule.no}
-                        </span>
-                        <span className="line-clamp-1">{schedule.name}</span>
-                      </span>
-                      <span
-                        className={cn(
-                          'ntx-schedule-dot mt-1 shrink-0',
-                          filled ? 'ntx-schedule-dot-filled' : 'ntx-schedule-dot-empty',
-                        )}
-                        title={filled ? 'Has data' : 'Not started'}
-                        aria-hidden="true"
-                      />
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
+        <RegimeStatusBanner data={data} onReview={() => setStep('regime')} compact />
 
-          <div className="min-w-0 space-y-6 lg:space-y-8">
+        <div className="ntx-filing-calm">
+          <aside className="ntx-filing-rail">
+            <nav className="ntx-panel p-2" aria-label="Schedules">
+              <p className="px-2 pb-2 text-[var(--caption)] font-semibold tracking-[0.14em] text-[var(--text-muted)] uppercase">
+                Schedules
+              </p>
+              <div className="ntx-schedule-nav-scroll">
+                {visibleSchedules.map((schedule) => {
+                  const filled = scheduleHasData(schedule, data);
+                  return (
+                    <button
+                      key={schedule.id}
+                      type="button"
+                      className="ntx-nav-item"
+                      aria-current={active?.id === schedule.id ? 'page' : undefined}
+                      onClick={() => selectSchedule(schedule.id)}
+                    >
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="min-w-0">
+                          <span className="block text-[10px] tracking-wide text-[var(--text-muted)]">
+                            {schedule.no}
+                          </span>
+                          <span className="line-clamp-1">{schedule.name}</span>
+                        </span>
+                        <span
+                          className={cn(
+                            'ntx-schedule-dot mt-1 shrink-0',
+                            filled ? 'ntx-schedule-dot-filled' : 'ntx-schedule-dot-empty',
+                          )}
+                          title={filled ? 'Has data' : 'Not started'}
+                          aria-hidden="true"
+                        />
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+            <div className="hidden lg:block">
+              <JuktiYuktiPanel form={form} data={data} schedule={active} />
+            </div>
+          </aside>
+
+          <div className="min-w-0 space-y-5 lg:space-y-6">
+            <div className="lg:hidden">
+              <JuktiYuktiPanel form={form} data={data} schedule={active} />
+            </div>
+
             {active ? (
               <SchedulePanel
                 schedule={active}
@@ -673,12 +801,39 @@ export function FilingWizard() {
               </div>
             ) : null}
 
-            <div id="post-validate-panel">
+            <div id="post-validate-panel" className="space-y-4">
+              <PortalUploadPanel
+                data={data}
+                canUpload={Boolean(staged?.canUpload)}
+                jsonDownloaded={jsonDownloaded}
+                onNotice={setNotice}
+                onDownloaded={() => setJsonDownloaded(true)}
+              />
               <PostValidatePanel data={data} onNotice={setNotice} />
             </div>
+
+            <details className="ntx-panel p-3 sm:p-4">
+              <summary className="cursor-pointer select-none text-[var(--body-sm)] font-semibold text-[var(--primary)]">
+                More ways to import (AIS, Form 26AS, Excel)
+              </summary>
+              <div className="mt-3">
+                <EnrichmentPanels
+                  form={form}
+                  data={data}
+                  setData={setData}
+                  setActiveId={setActiveId}
+                  setNotice={setNotice}
+                  layout="grid"
+                  autoPrefill={false}
+                  hidePortalFetch
+                />
+              </div>
+            </details>
           </div>
         </div>
+      </div>
     </>,
+    { bare: true },
   );
 }
 

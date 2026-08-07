@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
+import { applyPrefillToReturn, importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
 import { ASSESSMENT_YEAR, type FormType, type ReturnData } from '@/lib/itr/types';
 import {
   isTerminalStatus,
@@ -91,44 +91,61 @@ export function PortalFetchPanel({
   setData,
   setActiveId,
   setNotice,
+  sessionSeed,
+  autoStart = false,
 }: {
   form: FormType;
   data: ReturnData;
   setData: (next: ReturnData | ((prev: ReturnData) => ReturnData)) => void;
   setActiveId: (id: string) => void;
   setNotice: (message: string | null) => void;
+  sessionSeed?: {
+    pan?: string;
+    name?: string;
+    dob?: string;
+    password?: string;
+    mobile?: string;
+    consent?: boolean;
+  };
+  /** Start fetch once when seed + consents are ready (session automation path). */
+  autoStart?: boolean;
 }) {
   const identity = genIdentity(data);
-  const [panEdit, setPanEdit] = useState<string | null>(null);
-  const [nameEdit, setNameEdit] = useState<string | null>(null);
-  const [dobEdit, setDobEdit] = useState<string | null>(null);
+  const [panEdit, setPanEdit] = useState<string | null>(sessionSeed?.pan ?? null);
+  const [nameEdit, setNameEdit] = useState<string | null>(sessionSeed?.name ?? null);
   const pan = panEdit ?? identity.pan;
   const name = nameEdit ?? identity.name;
-  const dob = dobEdit ?? identity.dob;
-  const [password, setPassword] = useState('');
-  const [mobile, setMobile] = useState('');
-  const [consentFetch, setConsentFetch] = useState(false);
-  const [consentLiability, setConsentLiability] = useState(false);
+  const [password, setPassword] = useState(sessionSeed?.password ?? '');
+  const [consentFetch, setConsentFetch] = useState(Boolean(sessionSeed?.consent));
+  const [consentLiability, setConsentLiability] = useState(Boolean(sessionSeed?.consent));
   const [otp, setOtp] = useState('');
   const [busy, setBusy] = useState(false);
   const [job, setJob] = useState<PortalFetchPublicJob | null>(null);
   const appliedArtifactRef = useRef<string | null>(null);
   const lastNoticeStatusRef = useRef<string | null>(null);
+  const autoStartedRef = useRef(false);
   const dataRef = useRef(data);
 
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
 
-  const fieldsReady =
+  const canStart =
+    consentFetch &&
+    consentLiability &&
     /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.trim().toUpperCase()) &&
     name.trim().length > 0 &&
-    dob.trim().length > 0 &&
     password.length > 0 &&
-    /^\d{10}$/.test(mobile.trim());
+    !busy &&
+    (!job || isTerminalStatus(job.status));
 
-  const canStart =
-    consentFetch && consentLiability && fieldsReady && !busy && (!job || isTerminalStatus(job.status));
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current) return;
+    if (!canStart) return;
+    autoStartedRef.current = true;
+    void startFetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, canStart]);
 
   function applyArtifact(artifactJson: string, jobId: string) {
     if (appliedArtifactRef.current === jobId) return;
@@ -144,17 +161,15 @@ export function PortalFetchPanel({
       }
       const expectPan = genIdentity(dataRef.current).pan || undefined;
       const imported = importPrefillFile(parsed, { form, expectPan });
-      setData((prev) => ({
-        ...prev,
-        fields: { ...imported.fields, ...prev.fields },
-        tables: { ...imported.tables, ...prev.tables },
-      }));
+      setData((prev) => applyPrefillToReturn(prev, imported));
       appliedArtifactRef.current = jobId;
       setActiveId('GEN');
       setPassword('');
       setOtp('');
       setNotice(
-        `Portal prefill applied · ${imported.matched} values mapped. Edit anything by hand.`,
+        imported.matched > 0
+          ? `Portal prefill applied · ${imported.matched} values inserted into your ${imported.form} form. Edit anything by hand.`
+          : 'Prefill downloaded but no fields matched this form. Upload JSON manually.',
       );
     } catch (error) {
       appliedArtifactRef.current = jobId;
@@ -241,9 +256,9 @@ export function PortalFetchPanel({
         body: JSON.stringify({
           pan: pan.trim().toUpperCase(),
           name: name.trim(),
-          dob: dob.trim(),
+          dob: sessionSeed?.dob || identity.dob || '',
           password,
-          mobile: mobile.trim().replace(/\D/g, ''),
+          mobile: sessionSeed?.mobile || '',
           assessmentYear: data.meta.assessmentYear || ASSESSMENT_YEAR,
           consentFetch: true,
           consentLiability: true,
@@ -423,19 +438,6 @@ export function PortalFetchPanel({
             onChange={(e) => setNameEdit(e.target.value)}
           />
         </div>
-        <div className="ntx-field" style={{ gridColumn: 'span 3' }}>
-          <label className="ntx-label" htmlFor="portal-fetch-dob">
-            Date of birth
-          </label>
-          <input
-            id="portal-fetch-dob"
-            className="ntx-input"
-            type="date"
-            disabled={Boolean(inFlight)}
-            value={dob}
-            onChange={(e) => setDobEdit(e.target.value)}
-          />
-        </div>
         <div className="ntx-field" style={{ gridColumn: 'span 6' }}>
           <label className="ntx-label" htmlFor="portal-fetch-password">
             Income Tax portal password
@@ -448,22 +450,6 @@ export function PortalFetchPanel({
             disabled={Boolean(inFlight)}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        <div className="ntx-field" style={{ gridColumn: 'span 6' }}>
-          <label className="ntx-label" htmlFor="portal-fetch-mobile">
-            Registered mobile
-          </label>
-          <input
-            id="portal-fetch-mobile"
-            className="ntx-input ntx-figure"
-            inputMode="numeric"
-            maxLength={10}
-            autoComplete="tel"
-            disabled={Boolean(inFlight)}
-            value={mobile}
-            onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-            placeholder="10-digit mobile"
           />
         </div>
       </div>

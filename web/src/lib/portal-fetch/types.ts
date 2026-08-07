@@ -26,6 +26,7 @@ export interface PortalFetchPublicJob {
   id: string;
   status: PortalFetchStatus;
   assessmentYear: string;
+  formType?: 'ITR2' | 'ITR3';
   panMasked: string;
   message?: string;
   liveViewUrl?: string;
@@ -40,6 +41,9 @@ export interface PortalFetchStartInput {
   password: string;
   mobile: string;
   assessmentYear: string;
+  formType: 'ITR2' | 'ITR3';
+  politicallyExposed: boolean;
+  filingType: 'original' | 'revised' | 'belated' | 'updated';
   /** Both must be true; enforced by API and UI. */
   consentFetch: boolean;
   consentLiability: boolean;

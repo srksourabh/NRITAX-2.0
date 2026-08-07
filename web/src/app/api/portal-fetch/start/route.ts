@@ -10,14 +10,6 @@ export const dynamic = 'force-dynamic';
  * Password is forwarded to the worker only -- never logged or stored here.
  */
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json(
-      { ok: false, message: 'Sign in to fetch prefill.' },
-      { status: 401 },
-    );
-  }
-
   let body: {
     pan?: string;
     name?: string;
@@ -25,6 +17,9 @@ export async function POST(req: Request) {
     password?: string;
     mobile?: string;
     assessmentYear?: string;
+    formType?: string;
+    politicallyExposed?: boolean | string;
+    filingType?: string;
     consentFetch?: boolean;
     consentLiability?: boolean;
   };
@@ -58,22 +53,30 @@ export async function POST(req: Request) {
     .trim()
     .replace(/\D/g, '');
   const assessmentYear = String(body.assessmentYear ?? '2026-27').trim();
+  const formType =
+    String(body.formType ?? 'ITR2').toUpperCase() === 'ITR3' ? 'ITR3' : 'ITR2';
+  const pepRaw = body.politicallyExposed;
+  const politicallyExposed =
+    pepRaw === true ||
+    pepRaw === 'true' ||
+    pepRaw === 'yes' ||
+    pepRaw === 'Y' ||
+    pepRaw === 'y';
+  const filingRaw = String(body.filingType ?? 'original').toLowerCase();
+  const filingType =
+    filingRaw === 'revised' || filingRaw === 'belated' || filingRaw === 'updated'
+      ? filingRaw
+      : 'original';
 
   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) {
     return NextResponse.json(
-      { ok: false, message: 'Enter a valid PAN.' },
+      { ok: false, message: 'Enter a valid PAN (this is your e-Filing User ID).' },
       { status: 400 },
     );
   }
   if (!name) {
     return NextResponse.json(
       { ok: false, message: 'Enter your name as on the e-Filing portal.' },
-      { status: 400 },
-    );
-  }
-  if (!dob) {
-    return NextResponse.json(
-      { ok: false, message: 'Enter date of birth.' },
       { status: 400 },
     );
   }
@@ -87,27 +90,37 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  if (!/^\d{10}$/.test(mobile)) {
+  if (mobile && !/^\d{10}$/.test(mobile)) {
     return NextResponse.json(
       {
         ok: false,
-        message: 'Enter the 10-digit mobile registered on the e-Filing portal.',
+        message:
+          'If you enter a mobile, use the 10-digit Indian number registered on the e-Filing portal. Leave it blank if you use an overseas number or email OTP.',
       },
       { status: 400 },
     );
   }
 
+  const session = await auth();
+  const userId =
+    session?.user?.id ??
+    session?.user?.email ??
+    `guest:${pan}`;
+
   const client = createPortalFetchClient();
   const result = await client.start({
     pan,
     name,
-    dob,
+    dob: dob || '',
     password,
-    mobile,
+    mobile: mobile || '',
     assessmentYear,
+    formType,
+    politicallyExposed,
+    filingType,
     consentFetch: true,
     consentLiability: true,
-    userId: session.user.id ?? session.user.email ?? 'unknown',
+    userId,
   });
 
   if (!result.ok) {

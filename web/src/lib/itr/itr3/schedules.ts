@@ -419,6 +419,86 @@ export const ITR3_SCHEDULES: ScheduleDef[] = [
   },
 
   {
+    id: 'U8A',
+    code: 'PartA_139_8A',
+    no: 'A-1a',
+    name: 'Part A — Updated Return under Section 139(8A)',
+    part: 'Part A — General',
+    forms: ['ITR3'],
+    showIf: { field: 'GEN.ReturnFileSec', equals: '21' },
+    sections: [
+      {
+        key: 'main',
+        title: 'Updated return under section 139(8A)',
+        note: 'Complete only when the return is filed under section 139(8A). Reasons for updating income and any reduction of carried-forward loss or unabsorbed depreciation must be stated.',
+        fields: [
+          {
+            key: 'PrevFiled',
+            label: 'Was a return previously filed for this assessment year?',
+            type: 'sel', required: true,
+            options: [{ value: 'Y', label: 'Yes' }, { value: 'N', label: 'No' }],
+            source: 'user',
+          },
+          {
+            key: 'EligibleUpdated',
+            label: 'Eligible to file an updated return under the provisos to section 139(8A)?',
+            type: 'sel', required: true,
+            options: [{ value: 'Y', label: 'Yes' }, { value: 'N', label: 'No' }],
+            source: 'user',
+          },
+          {
+            key: 'ReasonsUpdating',
+            label: 'Reasons for updating income',
+            type: 'longtext', span: 12, source: 'user',
+          },
+          {
+            key: 'FilingPeriod',
+            label: 'Period in which the updated return is being filed',
+            type: 'sel',
+            options: [
+              { value: 'P1', label: 'Within 12 months from the end of the relevant assessment year' },
+              { value: 'P2', label: 'Between 12 and 24 months' },
+              { value: 'P3', label: 'Between 24 and 36 months' },
+              { value: 'P4', label: 'Between 36 and 48 months' },
+            ],
+            source: 'user',
+          },
+          {
+            key: 'ReduceCFL',
+            label: 'Filing to reduce carried-forward loss, unabsorbed depreciation or tax credit?',
+            type: 'sel',
+            options: [{ value: 'Y', label: 'Yes' }, { value: 'N', label: 'No' }],
+            source: 'user',
+          },
+        ],
+        tables: [
+          {
+            key: 'U8AReasonsRows',
+            title: 'Reasons for updating income (one row per reason)',
+            source: 'user',
+            path: 'PartA_139_8A/UpdatingInc/ReasonsForUpdatingIncDtls',
+            columns: [
+              { key: 'Reason', label: 'Reason', type: 'text', path: 'ReasonsForUpdatingInc' },
+            ],
+          },
+          {
+            key: 'U8AUDYearRows',
+            title: 'Assessment years where carried-forward loss or unabsorbed depreciation is affected',
+            source: 'user',
+            showIf: { field: 'U8A.ReduceCFL', equals: 'Y' },
+            path: 'PartA_139_8A/RetrntoRedCarriedFL/UDYear/UnabsorbedDepreciationYearDtls',
+            columns: [
+              { key: 'AY', label: 'Assessment year', type: 'text', path: 'AssYr' },
+              { key: 'OrigFiled', label: 'Original / revised return filed for that year?', type: 'text', path: 'OrigRevRetFiledFlg' },
+              { key: 'UpdatedFiled', label: 'Updated return filed for that year?', type: 'text', path: 'UpdatedRetFiledFlg' },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+
+  {
     id: 'NOB',
     code: 'NatOfBus',
     no: 'A-2',
@@ -2905,6 +2985,88 @@ export const ITR3_SCHEDULES: ScheduleDef[] = [
   },
 
   {
+    id: 'D80IA',
+    code: 'Schedule80_IA',
+    no: 'D-9a',
+    name: 'Schedules 80-IA, 80-IB and 80-IC — Undertaking Deductions',
+    part: 'Part D — Deductions',
+    forms: ['ITR3'],
+    showIf: { field: 'GEN.OptOutNewTaxRegime', equals: 'Y' },
+    sections: [
+      {
+        key: 'ia',
+        title: 'Schedule 80-IA — Deductions in respect of profits of certain undertakings',
+        note: 'Supported by Form 10CCB. Leave blank under the new tax regime. Totals must agree with Schedule VI-A.',
+        tables: [
+          {
+            key: 'Rows80IA',
+            title: 'Undertaking-wise particulars under section 80-IA',
+            note: 'Worksheet for Form 10CCB. Departmental JSON uses clause-specific arrays (e.g. DeductUs80_IA_4_iv); also enter the total under Schedule VI-A.',
+            source: 'audit',
+            columns: [
+              { key: 'Clause', label: 'Clause (e.g. 80-IA(4)(iv) — Power)', type: 'text' },
+              { key: 'Undertaking', label: 'Undertaking reference', type: 'text' },
+              { key: 'Amount', label: 'Deduction claimed', type: 'num' },
+            ],
+          },
+        ],
+        fields: [
+          {
+            key: 'Total80IA', label: 'Total deduction under section 80-IA', type: 'num',
+            source: 'audit',
+          },
+        ],
+      },
+      {
+        key: 'ib',
+        title: 'Schedule 80-IB — Deductions in respect of profits of certain industrial undertakings',
+        tables: [
+          {
+            key: 'Rows80IB',
+            title: 'Undertaking-wise particulars under section 80-IB',
+            note: 'Worksheet only until clause-specific Schedule80_IB arrays are routed. Mirror the total in Schedule VI-A.',
+            source: 'audit',
+            columns: [
+              { key: 'Clause', label: 'Clause (e.g. 80-IB(10) — Housing)', type: 'text' },
+              { key: 'Undertaking', label: 'Undertaking reference', type: 'text' },
+              { key: 'Amount', label: 'Deduction claimed', type: 'num' },
+            ],
+          },
+        ],
+        fields: [
+          {
+            key: 'Total80IB', label: 'Total deduction under section 80-IB', type: 'num',
+            source: 'audit',
+          },
+        ],
+      },
+      {
+        key: 'ic',
+        title: 'Schedule 80-IC — Special provisions for certain undertakings in North-Eastern States',
+        tables: [
+          {
+            key: 'Rows80IC',
+            title: 'State-wise and undertaking-wise particulars under section 80-IC',
+            note: 'Worksheet only until state-specific Schedule80_IC arrays are routed. Mirror the total in Schedule VI-A.',
+            source: 'audit',
+            columns: [
+              { key: 'State', label: 'State / North-Eastern area', type: 'text' },
+              { key: 'Undertaking', label: 'Undertaking reference', type: 'text' },
+              { key: 'Amount', label: 'Deduction claimed', type: 'num' },
+            ],
+          },
+        ],
+        fields: [
+          {
+            key: 'Total80IC', label: 'Total deduction under section 80-IC', type: 'num',
+            source: 'audit',
+          },
+        ],
+      },
+    ],
+  },
+
+  {
     id: 'VIA',
     code: 'ScheduleVIA',
     no: 'D-10',
@@ -3323,7 +3485,7 @@ export const ITR3_SCHEDULES: ScheduleDef[] = [
         tables: [
           {
             key: 'FSIRows',
-            title: 'Country-wise and head-wise particulars',
+            title: 'Country-wise and head-wise particulars (Schedule FSI)',
             source: 'user',
             path: 'ScheduleFSI/ScheduleFSIDtls',
             columns: [
@@ -3346,6 +3508,20 @@ export const ITR3_SCHEDULES: ScheduleDef[] = [
                 path: 'TotalCountryWise/TaxReliefinInd',
               },
               { key: 'Section', label: 'Relief claimed under section 90, 90A or 91', type: 'text' },
+            ],
+          },
+          {
+            key: 'TRRows',
+            title: 'Schedule TR — Summary of tax relief claimed for taxes paid outside India',
+            note: 'Totals by country must agree with Schedule FSI. Form 67 is compulsory for relief under section 90 or 90A.',
+            source: 'user',
+            path: 'ScheduleTR1/ScheduleTR',
+            columns: [
+              { key: 'Country', label: 'Country code', type: 'text', path: 'CountryCodeExcludingIndia' },
+              { key: 'TIN', label: 'Taxpayer identification number', type: 'text', path: 'TaxPayerinCountry' },
+              { key: 'TaxPaid', label: 'Total taxes paid outside India', type: 'num', path: 'TaxPaidOutsideIndia' },
+              { key: 'Relief', label: 'Total tax relief available', type: 'num', path: 'TaxReliefOutsideIndia' },
+              { key: 'Section', label: 'Section 90, 90A or 91', type: 'text', path: 'ReliefClaimedUsSection' },
             ],
           },
         ],
@@ -3864,15 +4040,106 @@ export const ITR3_SCHEDULES: ScheduleDef[] = [
         tables: [
           {
             key: 'BankRows',
-            title: 'Particulars of all bank accounts held in India at any time during the previous year — nominate one for refund',
-            note: 'At least one account held in India is compulsory. The IFSC is checked against the Reserve Bank directory on upload.',
+            title: 'Schedule BA — Bank accounts held in India at any time during the previous year (nominate one for refund)',
+            note: 'At least one account held in India is compulsory. The IFSC is checked against the Reserve Bank directory on upload. Enter every account held, including accounts opened or closed during the year.',
             source: 'user',
             path: 'PartB_TTI/Refund/BankAccountDtls/AddtnlBankDetails',
             columns: [
               { key: 'IFSC', label: 'Indian Financial System Code', type: 'ifsc', path: 'IFSCCode' },
               { key: 'BankName', label: 'Name of the bank', type: 'text', path: 'BankName' },
+              {
+                key: 'JointHolders',
+                label: 'Name of joint holder(s), if any (worksheet only — not in departmental JSON)',
+                type: 'text',
+              },
               { key: 'AccountNo', label: 'Account number', type: 'text', path: 'BankAccountNo' },
+              {
+                key: 'AccountStatus',
+                label: 'Account status (worksheet only — not in departmental JSON)',
+                type: 'text',
+              },
+              {
+                key: 'Balance31Mar',
+                label: 'Account balance as on 31 March (worksheet only — not in departmental JSON)',
+                type: 'num',
+              },
               { key: 'Nominate', label: 'Nominated for refund', type: 'text', path: 'UseForRefund' },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: 'ATI',
+    code: 'PartB-ATI',
+    no: 'F-3',
+    name: 'Part B-ATI — Computation of Total Updated Income and Tax Payable',
+    part: 'Part F — Computation',
+    forms: ['ITR3'],
+    showIf: { field: 'GEN.ReturnFileSec', equals: '21' },
+    sections: [
+      {
+        key: 'main',
+        title: 'Part B-ATI — Updated income and additional tax',
+        note: 'Applies only to updated returns under section 139(8A). Additional income-tax under section 140B is 25%, 50%, 60% or 70% of the aggregate liability on additional income, depending on when the return is filed.',
+        fields: [
+          {
+            key: 'AddlSalary', label: 'Additional income — Salaries', type: 'num', source: 'user',
+          },
+          {
+            key: 'AddlHP', label: 'Additional income — House property', type: 'num', source: 'user',
+          },
+          {
+            key: 'AddlBP', label: 'Additional income — Business or profession', type: 'num',
+            source: 'user',
+          },
+          {
+            key: 'AddlCG', label: 'Additional income — Capital gains', type: 'num', source: 'user',
+          },
+          {
+            key: 'AddlOS', label: 'Additional income — Other sources', type: 'num', source: 'user',
+          },
+          {
+            key: 'TotalAddl', label: 'Total additional income', type: 'num', source: 'user',
+          },
+          {
+            key: 'TotalIncomeLatest', label: 'Total income as per latest valid return', type: 'num',
+            source: 'user',
+          },
+          {
+            key: 'TotalIncomeBTI', label: 'Total income as per Part B-TI', type: 'num', source: 'user',
+          },
+          {
+            key: 'PayableUpdated', label: 'Amount payable as per Part B-TTI of the updated return',
+            type: 'num', source: 'user',
+          },
+          {
+            key: 'RefundUpdated', label: 'Refund as per Part B-TTI of the updated return',
+            type: 'num', source: 'user',
+          },
+          {
+            key: 'AddlTax140B', label: 'Additional income-tax liability under section 140B',
+            type: 'num', source: 'user',
+          },
+          {
+            key: 'TaxPaid140B', label: 'Tax paid under section 140B', type: 'num', source: 'user',
+          },
+          {
+            key: 'TaxDueATI', label: 'Tax due on the updated return', type: 'num', source: 'user',
+          },
+        ],
+        tables: [
+          {
+            key: 'ATI140BRows',
+            title: 'Tax payments under section 140B',
+            source: 'user',
+            path: 'PartB-ATI/ScheduleIT1/TaxPayment1/TaxPayments',
+            columns: [
+              { key: 'DepositDate', label: 'Date of deposit', type: 'date', path: 'DateDep' },
+              { key: 'Challan', label: 'Serial number of challan', type: 'text', path: 'SrlNoOfChaln' },
+              { key: 'Amount', label: 'Amount', type: 'num', path: 'Amt' },
             ],
           },
         ],

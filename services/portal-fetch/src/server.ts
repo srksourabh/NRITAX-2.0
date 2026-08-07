@@ -97,18 +97,29 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     const name = String(body.name ?? '').trim() || 'TAXPAYER';
     const dob = String(body.dob ?? '').trim();
     const password = String(body.password ?? '');
-    const mobile = String(body.mobile ?? '').replace(/\D/g, '') || '0000000000';
+    const mobile = String(body.mobile ?? '').replace(/\D/g, '');
     const assessmentYear = String(body.assessmentYear ?? '2026-27').trim();
+    const formType = String(body.formType ?? 'ITR2').toUpperCase() === 'ITR3' ? 'ITR3' : 'ITR2';
+    const politicallyExposed =
+      body.politicallyExposed === true ||
+      body.politicallyExposed === 'true' ||
+      body.politicallyExposed === 'yes' ||
+      body.politicallyExposed === 'Y';
+    const filingRaw = String(body.filingType ?? 'original').toLowerCase();
+    const filingType =
+      filingRaw === 'revised' || filingRaw === 'belated' || filingRaw === 'updated'
+        ? filingRaw
+        : 'original';
     const userId = String(body.userId ?? 'unknown');
 
     if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) {
       json(res, 400, { ok: false, message: 'Enter a valid PAN.' });
       return;
     }
-    if (!dob || !password) {
+    if (!password) {
       json(res, 400, {
         ok: false,
-        message: 'PAN, date of birth, and portal password are required.',
+        message: 'PAN and portal password are required.',
       });
       return;
     }
@@ -117,10 +128,13 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       userId,
       pan,
       name,
-      dob,
+      dob: dob || '',
       mobile,
       password,
       assessmentYear,
+      formType,
+      politicallyExposed,
+      filingType,
     });
     startPrefetch(job.id);
     json(res, 200, store.toPublic(job));

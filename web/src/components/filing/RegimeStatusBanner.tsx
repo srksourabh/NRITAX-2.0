@@ -8,9 +8,11 @@ import { money, type ReturnData } from '@/lib/itr/types';
 export function RegimeStatusBanner({
   data,
   onReview,
+  compact = false,
 }: {
   data: ReturnData;
   onReview: () => void;
+  compact?: boolean;
 }) {
   const comparison = useMemo(() => {
     try {
@@ -31,6 +33,26 @@ export function RegimeStatusBanner({
     } else {
       detail = 'Both regimes cost about the same on these figures.';
     }
+  }
+
+  if (compact) {
+    return (
+      <div className="ntx-panel space-y-2 p-3">
+        <p className="text-[var(--caption)] font-semibold tracking-[0.12em] text-[var(--text-muted)] uppercase">
+          Tax regime
+        </p>
+        <p className="text-[var(--caption)] text-[var(--ink)]">
+          <span className="font-semibold">{chosenLabel}</span>. {detail}
+        </p>
+        <button
+          type="button"
+          className="ntx-btn ntx-btn-secondary ntx-btn-compact w-full"
+          onClick={onReview}
+        >
+          Review regime
+        </button>
+      </div>
+    );
   }
 
   return (
