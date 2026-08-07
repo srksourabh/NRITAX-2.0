@@ -33,10 +33,20 @@ export async function runPrefillDownload(
 ): Promise<PrefillDownloadResult | null> {
   const ay = job.assessmentYear || '2026-27';
 
-  const menu = await runDownloadPrefillDataPage(page, ay);
-  if (menu) return menu;
+  // Primary: dedicated Download Prefilled Data page (confirmed URL).
+  try {
+    const menu = await runDownloadPrefillDataPage(page, ay);
+    if (menu) return menu;
+  } catch {
+    /* File ITR fallback */
+  }
 
-  return runFileItrPrefillDownload(page, job);
+  // Fallback only — slower multi-step wizard.
+  try {
+    return await runFileItrPrefillDownload(page, job);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -46,8 +56,6 @@ export async function runDownloadPrefillDataPage(
   page: Page,
   ay: string,
 ): Promise<PrefillDownloadResult | null> {
-  const apiWait = waitForPrefillApi(page, 90_000);
-
   let opened = false;
   for (const url of DOWNLOAD_PREFILL_URLS) {
     await page
@@ -58,7 +66,7 @@ export async function runDownloadPrefillDataPage(
       await page
         .getByText(/download pre-?filled data/i)
         .first()
-        .isVisible({ timeout: 2000 })
+        .isVisible({ timeout: 2500 })
         .catch(() => false)
     ) {
       opened = true;
@@ -93,21 +101,84 @@ export async function runDownloadPrefillDataPage(
   }
 
   await selectAssessmentYear(page, ay);
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(1000);
 
-  const downloaded = await tryClickDownload(page);
-  if (downloaded) return { artifactJson: downloaded, source: 'download' };
+  return tryCapturePrefillAfterDownloadClick(page);
+}
 
-  const lateApi = await apiWait;
-  if (lateApi) {
-    try {
-      const body = await lateApi.json();
-      const artifact = extractJsonArtifact(body);
-      if (artifact) return { artifactJson: artifact, source: 'api' };
-    } catch {
-      /* ignore */
-    }
+/**
+ * Click Download and capture either a file download or an XHR/JSON body.
+ * Browserbase often serves JSON via API rather than a Playwright download event.
+ */
+async function tryCapturePrefillAfterDownloadClick(
+  page: Page,
+): Promise<PrefillDownloadResult | null> {
+  const btn = page
+    .getByRole('button', { name: /^download$/i })
+    .or(page.getByRole('button', { name: /download/i }))
+    .first();
+  if (!(await btn.isVisible({ timeout: 5000 }).catch(() => false))) return null;
+
+  for (let i = 0; i < 12; i += 1) {
+    const disabled =
+      (await btn.getAttribute('disabled')) != null ||
+      (await btn.getAttribute('aria-disabled')) === 'true' ||
+      (await btn.isDisabled().catch(() => false));
+    if (!disabled) break;
+    await page.waitForTimeout(400);
   }
+
+  const apiPromise = page
+    .waitForResponse(
+      (res) => {
+        if (res.request().method() === 'OPTIONS') return false;
+        if (res.status() >= 400) return false;
+        return /prefill|preFilled|pre-?fill|download/i.test(res.url());
+      },
+      { timeout: 45_000 },
+    )
+    .catch(() => null);
+
+  const downloadPromise = page
+    .waitForEvent('download', { timeout: 45_000 })
+    .then(async (download) => {
+      const path = await download.path();
+      if (!path) return null;
+      const { readFile } = await import('node:fs/promises');
+      const text = await readFile(path, 'utf8');
+      if (text.trim().startsWith('{') || text.trim().startsWith('[')) return text;
+      return null;
+    })
+    .catch(() => null);
+
+  await btn.click().catch(() => undefined);
+
+  const winner = await Promise.race([
+    downloadPromise.then((json) => (json ? ({ kind: 'file' as const, json }) : null)),
+    apiPromise.then(async (res) => {
+      if (!res) return null;
+      try {
+        const text = await res.text();
+        if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+          const artifact = extractJsonArtifact(JSON.parse(text)) ?? text;
+          return { kind: 'api' as const, json: artifact };
+        }
+      } catch {
+        /* ignore */
+      }
+      return null;
+    }),
+  ]);
+
+  if (winner?.json) {
+    return {
+      artifactJson: winner.json,
+      source: winner.kind === 'file' ? 'download' : 'api',
+    };
+  }
+
+  const fileLater = await downloadPromise;
+  if (fileLater) return { artifactJson: fileLater, source: 'download' };
 
   return null;
 }
@@ -180,6 +251,9 @@ export async function runFileItrPrefillDownload(
   );
   await clickIfVisible(page, /offline|json submission|upload json/i, 'link', 3000);
 
+  const captured = await tryCapturePrefillAfterDownloadClick(page);
+  if (captured) return captured;
+
   const apiRes = await apiWait;
   if (apiRes) {
     try {
@@ -189,12 +263,9 @@ export async function runFileItrPrefillDownload(
         return { artifactJson: artifact, source: 'api' };
       }
     } catch {
-      /* try download path */
+      /* ignore */
     }
   }
-
-  const downloaded = await tryClickDownload(page);
-  if (downloaded) return { artifactJson: downloaded, source: 'download' };
 
   return null;
 }
@@ -223,39 +294,6 @@ async function selectAssessmentYear(page: Page, ay: string): Promise<void> {
     new RegExp(`${escapeRegExp(ay)}|current\\s*a\\.?y`, 'i'),
   );
   await clickTextOption(page, ay);
-}
-
-async function tryClickDownload(page: Page): Promise<string | null> {
-  const btn = page
-    .getByRole('button', { name: /^download$/i })
-    .or(page.getByRole('button', { name: /download/i }))
-    .or(page.getByRole('link', { name: /download/i }))
-    .first();
-  if (!(await btn.isVisible({ timeout: 5000 }).catch(() => false))) return null;
-
-  for (let i = 0; i < 10; i += 1) {
-    const disabled =
-      (await btn.getAttribute('disabled')) != null ||
-      (await btn.getAttribute('aria-disabled')) === 'true' ||
-      (await btn.isDisabled().catch(() => false));
-    if (!disabled) break;
-    await page.waitForTimeout(500);
-  }
-
-  try {
-    const [download] = await Promise.all([
-      page.waitForEvent('download', { timeout: 60_000 }),
-      btn.click(),
-    ]);
-    const path = await download.path();
-    if (!path) return null;
-    const { readFile } = await import('node:fs/promises');
-    const text = await readFile(path, 'utf8');
-    if (text.trim().startsWith('{') || text.trim().startsWith('[')) return text;
-  } catch {
-    return null;
-  }
-  return null;
 }
 
 function extractJsonArtifact(body: unknown): string | null {
