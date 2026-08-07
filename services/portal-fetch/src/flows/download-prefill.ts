@@ -13,7 +13,7 @@ import {
   formatPortalFailure,
   isPortalAuthFailure,
 } from './portal-messages.js';
-import { runFileItrPrefillDownload } from './file-itr-prefill.js';
+import { runPrefillDownload } from './file-itr-prefill.js';
 import { formTypeLabel } from './prefill-answers.js';
 
 const OTP_WAIT_MS = 5 * 60 * 1000;
@@ -255,11 +255,11 @@ async function downloadPrefill(
 ): Promise<void> {
   const formLabel = formTypeLabel(job.formType ?? 'ITR2');
   store.apply(jobId, { type: 'START_DOWNLOAD' }, {
-    message: `Opening File ITR for ${formLabel} · AY ${job.assessmentYear}…`,
+    message: `Downloading prefill JSON · AY ${job.assessmentYear} (${formLabel})…`,
   });
 
   try {
-    const result = await runFileItrPrefillDownload(page, job);
+    const result = await runPrefillDownload(page, job);
     if (result?.artifactJson) {
       store.apply(jobId, { type: 'SUCCESS' }, {
         message: `Prefill downloaded (${result.source}) for ${formLabel}. Review every field before filing.`,
@@ -303,7 +303,7 @@ async function downloadPrefill(
     await escalateLive(
       jobId,
       live,
-      `Could not finish ${formLabel} prefill automatically. Complete File ITR → download prefill in live assist, then click Done.`,
+      `Could not finish ${formLabel} prefill automatically. Open e-File → Income Tax Return → Download Prefilled Data, pick AY, download JSON, then click Done.`,
     );
     return;
   }
@@ -402,6 +402,8 @@ async function tryFillLogin(
   }
   if (!passFilled) return 'missing_fields';
 
+  await confirmSecureAccessMessage(page);
+
   await clickContinue(page);
   await page.waitForTimeout(1800);
 
@@ -414,6 +416,38 @@ async function tryFillLogin(
   }
 
   return 'ok';
+}
+
+async function confirmSecureAccessMessage(page: Page): Promise<void> {
+  // ITD password step often requires: "Please confirm your secure access message…"
+  const byLabel = page
+    .getByLabel(/secure access message|confirm your secure access/i)
+    .first();
+  if (await byLabel.isVisible({ timeout: 1500 }).catch(() => false)) {
+    const checked = await byLabel.isChecked().catch(() => false);
+    if (!checked) await byLabel.check({ force: true }).catch(() => byLabel.click());
+    return;
+  }
+
+  const checkbox = page
+    .locator(
+      'input[type="checkbox"], mat-checkbox input, .mat-mdc-checkbox input, [role="checkbox"]',
+    )
+    .first();
+  if (await checkbox.isVisible({ timeout: 1500 }).catch(() => false)) {
+    const checked =
+      (await checkbox.getAttribute('aria-checked')) === 'true' ||
+      (await checkbox.isChecked().catch(() => false));
+    if (!checked) {
+      await checkbox.check({ force: true }).catch(() => checkbox.click());
+    }
+    return;
+  }
+
+  const text = page.getByText(/confirm your secure access message/i).first();
+  if (await text.isVisible({ timeout: 800 }).catch(() => false)) {
+    await text.click().catch(() => undefined);
+  }
 }
 
 async function clickContinue(page: Page): Promise<void> {
