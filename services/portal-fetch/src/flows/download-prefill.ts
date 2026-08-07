@@ -11,6 +11,7 @@ import { store } from '../store.js';
 import {
   extractPortalMessage,
   formatPortalFailure,
+  isPortalAccountLocked,
   isPortalAuthFailure,
 } from './portal-messages.js';
 import { runPrefillDownload } from './file-itr-prefill.js';
@@ -74,13 +75,28 @@ export async function runBrowserbasePrefill(jobId: string): Promise<void> {
 
     const loginResult = await tryFillLogin(page, job);
     if (loginResult === 'auth_failed') {
-      const portalText = await readPortalMessage(page);
-      store.apply(jobId, { type: 'FAIL' }, {
-        message: formatPortalFailure(
-          portalText,
-          'Login failed. Check your PAN (User ID) and e-Filing password, or upload JSON manually.',
-        ),
-      });
+      if (await visibleAccountLocked(page)) {
+        const portalText = await readPortalMessage(page);
+        store.apply(jobId, { type: 'FAIL' }, {
+          message: formatPortalFailure(
+            portalText,
+            'Login failed. Check your PAN (User ID) and e-Filing password, or upload JSON manually.',
+          ),
+        });
+        return;
+      }
+      if (await looksLikeBadPassword(page)) {
+        store.apply(jobId, { type: 'FAIL' }, {
+          message:
+            'Income Tax portal rejected the password. Check your e-Filing password, or upload JSON manually.',
+        });
+        return;
+      }
+      await escalateLive(
+        jobId,
+        liveViewUrl,
+        'Login did not complete automatically. Finish login in live assist, then click Done.',
+      );
       return;
     }
     if (loginResult === 'missing_fields') {
@@ -99,23 +115,12 @@ export async function runBrowserbasePrefill(jobId: string): Promise<void> {
       return;
     }
 
-    {
-      const portalText = await readPortalMessage(page);
-      if (portalText && isPortalAuthFailure(portalText)) {
-        store.apply(jobId, { type: 'FAIL' }, {
-          message: formatPortalFailure(portalText, 'Login failed. Check your portal password.'),
-        });
-        return;
-      }
-      if (await looksLikeBadPassword(page)) {
-        store.apply(jobId, { type: 'FAIL' }, {
-          message: formatPortalFailure(
-            portalText,
-            'Income Tax portal rejected the password. Check your e-Filing password, or upload JSON manually.',
-          ),
-        });
-        return;
-      }
+    if (await looksLikeBadPassword(page)) {
+      store.apply(jobId, { type: 'FAIL' }, {
+        message:
+          'Income Tax portal rejected the password. Check your e-Filing password, or upload JSON manually.',
+      });
+      return;
     }
 
     if (await looksLikeOtp(page)) {
@@ -144,8 +149,8 @@ export async function runBrowserbasePrefill(jobId: string): Promise<void> {
         return;
       }
       await page.waitForTimeout(2000);
-      const otpMsg = await readPortalMessage(page);
-      if (otpMsg && isPortalAuthFailure(otpMsg)) {
+      if (await looksLikeBadPassword(page) || (await visibleAccountLocked(page))) {
+        const otpMsg = await readPortalMessage(page);
         store.apply(jobId, { type: 'FAIL' }, {
           message: formatPortalFailure(otpMsg, 'OTP was rejected by the Income Tax portal.'),
         });
@@ -158,13 +163,21 @@ export async function runBrowserbasePrefill(jobId: string): Promise<void> {
         await escalateLive(jobId, liveViewUrl, 'Complete login in live assist, then click Done.');
         return;
       }
-      const portalText = await readPortalMessage(page);
-      store.apply(jobId, { type: 'FAIL' }, {
-        message: formatPortalFailure(
-          portalText,
-          'Portal login did not complete. Check PAN/password, or upload JSON manually.',
-        ),
-      });
+      if (await visibleAccountLocked(page)) {
+        const portalText = await readPortalMessage(page);
+        store.apply(jobId, { type: 'FAIL' }, {
+          message: formatPortalFailure(
+            portalText,
+            'Portal login did not complete. Check PAN/password, or upload JSON manually.',
+          ),
+        });
+        return;
+      }
+      await escalateLive(
+        jobId,
+        liveViewUrl,
+        'Portal login did not finish automatically. Complete login in live assist, then click Done.',
+      );
       return;
     }
 
@@ -404,29 +417,45 @@ async function tryFillLogin(
 
   await confirmSecureAccessMessage(page);
   // Give Angular forms a beat to enable Continue after checkbox + password.
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(800);
 
-  await clickContinue(page);
-  await page.waitForTimeout(2500);
-
-  // Success signals: left the password step.
-  const url = page.url();
-  if (!/#\/login/i.test(url) || /dashboard|otp|fileIncome|home/i.test(url)) {
-    return 'ok';
+  // Wait until Continue is enabled, then click.
+  const continueBtn = page.getByRole('button', { name: /^continue/i }).first();
+  for (let i = 0; i < 12; i += 1) {
+    const visible = await continueBtn.isVisible({ timeout: 500 }).catch(() => false);
+    if (!visible) break;
+    const disabled =
+      (await continueBtn.getAttribute('disabled')) != null ||
+      (await continueBtn.getAttribute('aria-disabled')) === 'true' ||
+      (await continueBtn.isDisabled().catch(() => false));
+    if (!disabled) break;
+    await page.waitForTimeout(400);
   }
-  if (await looksLoggedIn(page)) return 'ok';
-  if (await looksLikeOtp(page)) return 'ok';
+  await clickContinue(page);
+
+  // Wait for navigation away from the password step (OTP / dashboard).
+  for (let i = 0; i < 20; i += 1) {
+    await page.waitForTimeout(500);
+    if (await visibleAccountLocked(page)) return 'auth_failed';
+    if (await looksLikeOtp(page)) return 'ok';
+    if (await looksLoggedIn(page)) return 'ok';
+    const url = page.url();
+    if (!/#\/login(\/password)?\/?$/i.test(url) && !/#\/login$/i.test(url)) {
+      if (!/#\/login/i.test(url)) return 'ok';
+    }
+  }
+
+  if (await visibleAccountLocked(page)) return 'auth_failed';
 
   const afterPassword = await readPortalMessage(page);
-  if (afterPassword && isPortalAuthFailure(afterPassword)) {
+  if (afterPassword && isPortalAuthFailure(afterPassword) && !/#\/login\/password/i.test(page.url())) {
     return 'auth_failed';
   }
   if (await looksLikeBadPassword(page)) {
     return 'auth_failed';
   }
 
-  // Still on login/password with no clear error — let the outer flow decide
-  // (OTP / captcha / live assist) instead of inventing a lock.
+  // Still on password with no clear visible error — outer flow can escalate live.
   return 'ok';
 }
 
@@ -488,7 +517,7 @@ async function openLoginIfNeeded(page: Page): Promise<void> {
 async function readPortalMessage(page: Page): Promise<string | null> {
   // Prefer visible dialog / alert text — SPA HTML embeds unused i18n lock copy.
   const dialog = page
-    .locator('[role="alertdialog"], [role="alert"], .mat-mdc-dialog-content, mat-dialog-content')
+    .locator('[role="alertdialog"], [role="alert"], .mat-mdc-dialog-container, mat-dialog-container, .mat-mdc-dialog-content, mat-dialog-content')
     .first();
   if (await dialog.isVisible({ timeout: 800 }).catch(() => false)) {
     const dialogText = (await dialog.innerText().catch(() => '')) || '';
@@ -496,13 +525,28 @@ async function readPortalMessage(page: Page): Promise<string | null> {
     if (fromDialog) return fromDialog;
   }
 
+  if (await visibleAccountLocked(page)) {
+    const t =
+      (await page
+        .getByText(/Your e-filing account has been locked/i)
+        .first()
+        .innerText()
+        .catch(() => '')) || '';
+    return t || 'Your e-filing account has been locked due to security reasons';
+  }
+
+  // Visible body text only for credential errors (not lock templates).
   const text = (await page.locator('body').innerText().catch(() => '')) || '';
   const fromText = extractPortalMessage(text);
-  if (fromText) return fromText;
+  if (fromText && !isPortalAccountLocked(fromText)) return fromText;
+  if (fromText && (await visibleAccountLocked(page))) return fromText;
 
-  // Last resort: HTML, but scripts are stripped inside extractPortalMessage.
-  const html = (await page.content().catch(() => '')) || '';
-  return extractPortalMessage(html);
+  return null;
+}
+
+async function visibleAccountLocked(page: Page): Promise<boolean> {
+  const loc = page.getByText(/Your e-filing account has been locked/i).first();
+  return loc.isVisible({ timeout: 800 }).catch(() => false);
 }
 
 async function tryFillOtp(page: Page, otp: string): Promise<boolean> {
@@ -545,30 +589,41 @@ async function waitForOtp(jobId: string, timeoutMs: number): Promise<string | nu
 }
 
 async function looksLikeOtp(page: Page): Promise<boolean> {
-  const text = ((await page.content().catch(() => '')) || '').toLowerCase();
-  return /otp|one.?time|verification code/.test(text);
+  if (/#\/login\/.*(otp|passcode)/i.test(page.url())) return true;
+  const otpField = page
+    .locator('input[name*="otp" i], input[id*="otp" i], input[placeholder*="OTP" i], input[autocomplete="one-time-code"]')
+    .first();
+  return otpField.isVisible({ timeout: 800 }).catch(() => false);
 }
 
 async function looksLikeCaptcha(page: Page): Promise<boolean> {
-  const text = ((await page.content().catch(() => '')) || '').toLowerCase();
-  return /captcha|recaptcha|hcaptcha|cf-turnstile/.test(text);
+  const frame = page.locator('iframe[src*="captcha" i], iframe[src*="recaptcha" i], iframe[src*="hcaptcha" i]').first();
+  if (await frame.isVisible({ timeout: 500 }).catch(() => false)) return true;
+  const text = (await page.locator('body').innerText().catch(() => '')) || '';
+  return /verify you are human|complete the captcha/i.test(text);
 }
 
 async function looksLikeBotWall(page: Page): Promise<boolean> {
-  const text = ((await page.content().catch(() => '')) || '').toLowerCase();
-  return /access denied|bot detection|unusual traffic|cloudflare/.test(text);
+  const text = (await page.locator('body').innerText().catch(() => '')) || '';
+  return /access denied|bot detection|unusual traffic|cloudflare/i.test(text);
 }
 
 async function looksLikeBadPassword(page: Page): Promise<boolean> {
-  const message = await readPortalMessage(page);
-  return Boolean(message && isPortalAuthFailure(message));
+  if (await visibleAccountLocked(page)) return true;
+  const invalid = page.getByText(/invalid credentials|incorrect password|wrong password/i).first();
+  return invalid.isVisible({ timeout: 600 }).catch(() => false);
 }
 
 async function looksLoggedIn(page: Page): Promise<boolean> {
-  const text = ((await page.content().catch(() => '')) || '').toLowerCase();
-  return /dashboard|logout|log out|my account|e-file|file income tax return/.test(
-    text,
+  const url = page.url();
+  if (/#\/dashboard/i.test(url)) return true;
+  if (/#\/login/i.test(url)) return false;
+  const logout = page.getByRole('link', { name: /log ?out/i }).or(
+    page.getByRole('button', { name: /log ?out/i }),
   );
+  if (await logout.first().isVisible({ timeout: 600 }).catch(() => false)) return true;
+  const profile = page.getByText(/session time/i).first();
+  return profile.isVisible({ timeout: 600 }).catch(() => false);
 }
 
 // silence unused LIVE_WAIT if we later poll live; keep export for Mode B wait helper
