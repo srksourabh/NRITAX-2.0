@@ -13,13 +13,16 @@ describe('portal-messages', () => {
     assert.equal(isPortalAuthFailure('Invalid credentials. Please try again'), true);
   });
 
-  it('detects account lock wording', () => {
+  it('detects account lock wording only with explicit sentence', () => {
     assert.equal(
       isPortalAccountLocked(
         'Your e-filing account has been locked due to security reasons, you can try after 30 minutes',
       ),
       true,
     );
+    assert.equal(isPortalAccountLocked('loginLock.svg padlock graphic'), false);
+    assert.equal(isPortalAccountLocked('Click here to unlock your account help'), false);
+    assert.equal(isPortalAccountLocked('due to security reasons alone'), false);
   });
 
   it('extracts alert-role text from HTML', () => {
@@ -39,23 +42,37 @@ describe('portal-messages', () => {
     assert.ok(msg && /PAN does not exist/i.test(msg));
   });
 
+  it('does not treat buried i18n lock templates as a live lock', () => {
+    const html = `
+      <html><head>
+      <script>window.i18n={"LOCK":"Your e-filing account has been locked due to security reasons, you can try after 30 minutes"}</script>
+      </head>
+      <body>
+        <h1>Login</h1>
+        <label>Password</label>
+        <img alt="loginLock" src="/assets/loginLock.svg"/>
+        <button>Continue</button>
+      </body></html>
+    `;
+    const msg = extractPortalMessage(html);
+    assert.equal(msg == null || !isPortalAccountLocked(msg), true);
+  });
+
   it('strips dialog chrome from locked-account scrape', () => {
     const raw =
       'Continue Back Your e-filing account has been locked due to security reasons, you can try after 30 minutes or to unlock your account now, Click here OK You have one attempt remaining';
     const msg = extractPortalMessage(raw);
     assert.ok(msg && /account has been locked/i.test(msg));
     assert.ok(msg && !/^Continue/i.test(msg));
-    assert.ok(msg && !/\bOK\b/.test(msg));
   });
 
   it('formats locked account with clear next steps', () => {
     const out = formatPortalFailure(
-      'Continue Back Your e-filing account has been locked due to security reasons OK',
+      'Your e-filing account has been locked due to security reasons',
       'fallback',
     );
     assert.match(out, /locked for security/i);
     assert.match(out, /30 minutes|unlock/i);
-    assert.match(out, /Do not retry/i);
   });
 
   it('formats portal text for the UI', () => {

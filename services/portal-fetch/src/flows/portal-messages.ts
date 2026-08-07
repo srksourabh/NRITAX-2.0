@@ -1,23 +1,27 @@
 /**
  * Best-effort extraction of visible Income Tax portal error / status text.
  * Prefer surfacing the portal's own wording over a generic NRITAX message.
+ *
+ * IMPORTANT: Do not treat decorative padlock assets or i18n template strings
+ * buried in page HTML as a live account-lock dialog.
  */
 
 const AUTH_FAILURE =
-  /invalid credentials|incorrect password|wrong password|login failed|invalid (user|password)|pan does not exist|user id does not exist|account (has been )?locked|too many (unsuccessful|failed)|authentication failed|please try again|one attempt remaining|attempts? remaining/i;
+  /invalid credentials|incorrect password|wrong password|login failed|invalid (user|password)|pan does not exist|user id does not exist|authentication failed/i;
 
+/** Require the explicit lock sentence — not "loginLock" assets or unlock-help copy. */
 const ACCOUNT_LOCKED =
-  /account (has been )?locked|try after \d+\s*minutes|unlock your account|due to security reasons/i;
+  /your e-filing account has been locked|e-filing account has been locked due to security/i;
 
 const NOISE =
-  /cookie|javascript|browser|copyright|income tax department|government of india|skip to main/i;
+  /cookie|javascript|browser|copyright|income tax department|government of india|skip to main|loginLock/i;
 
 /** Dialog chrome scraped with the real message. */
 const UI_CHROME =
   /^(continue|back|ok|cancel|close|click here|yes|no|submit|login|sign in)(\s+|$)/i;
 
 export function isPortalAuthFailure(text: string): boolean {
-  return AUTH_FAILURE.test(text);
+  return AUTH_FAILURE.test(text) || isPortalAccountLocked(text);
 }
 
 export function isPortalAccountLocked(text: string): boolean {
@@ -34,7 +38,7 @@ export function extractPortalMessage(raw: string): string | null {
   // Prefer role=alert / error-ish class snippets from HTML.
   const alertMatches = [
     ...raw.matchAll(
-      /(?:role=["']alert["']|class=["'][^"']*(?:error|alert|toast|mat-error|invalid|mat-dialog)[^"']*["'])[^>]*>([^<]{8,280})</gi,
+      /(?:role=["']alert["']|class=["'][^"']*(?:error|alert|toast|mat-error|invalid|mat-dialog-content)[^"']*["'])[^>]*>([^<]{8,280})</gi,
     ),
   ]
     .map((m) => cleanChrome(m[1] ?? ''))
@@ -42,18 +46,26 @@ export function extractPortalMessage(raw: string): string | null {
 
   const lockedAlert = alertMatches.find((s) => isPortalAccountLocked(s));
   if (lockedAlert) return truncate(lockedAlert);
+  if (alertMatches[0] && isPortalAuthFailure(alertMatches[0])) {
+    return truncate(alertMatches[0]);
+  }
   if (alertMatches[0]) return truncate(alertMatches[0]);
 
-  // Fall back: first line that looks like a portal auth error.
+  // Strip scripts/styles/JSON blobs before scanning body text — SPA bundles
+  // embed lock-copy templates that are not visible on screen.
   const text = raw
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+    .replace(/application\/json[\s\S]*?</gi, '<')
     .replace(/<[^>]+>/g, '\n')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ');
 
   const cleaned = cleanChrome(text);
+
+  // Lock: only the explicit sentence, never loose "locked"/"security" tokens.
   if (isPortalAccountLocked(cleaned)) {
     const lockedSentence = pickLockedSentence(cleaned);
     if (lockedSentence) return truncate(lockedSentence);
@@ -71,11 +83,11 @@ export function extractPortalMessage(raw: string): string | null {
     if (isPortalAuthFailure(line)) return truncate(line);
   }
 
-  // Broader: any short "error-ish" sentence near login wording.
+  // Broader: credential errors only (not "locked" / "security" alone).
   for (const line of lines) {
     if (
-      /password|user id|pan|otp|locked|credentials|attempt/i.test(line) &&
-      /invalid|incorrect|fail|error|locked|exist|remaining|security/i.test(line)
+      /password|user id|pan|otp|credentials/i.test(line) &&
+      /invalid|incorrect|fail|error|exist/i.test(line)
     ) {
       return truncate(line);
     }
@@ -102,14 +114,12 @@ export function formatPortalFailure(portalText: string | null, fallback: string)
 
 function pickLockedSentence(text: string): string | null {
   const match = text.match(
-    /Your e-filing account has been locked[\s\S]*?(?:try after \d+\s*minutes[^.]*)?/i,
+    /Your e-filing account has been locked[\s\S]{0,160}?try after \d+\s*minutes/i,
   );
-  if (!match?.[0]) {
-    const alt = text.match(/account has been locked[^.]{0,160}/i);
-    if (!alt?.[0]) return null;
-    return finalizeLocked(cleanChrome(alt[0]), text);
-  }
-  return finalizeLocked(cleanChrome(match[0]), text);
+  if (match?.[0]) return finalizeLocked(cleanChrome(match[0]), text);
+  const alt = text.match(/Your e-filing account has been locked[^.]{0,120}/i);
+  if (!alt?.[0]) return null;
+  return finalizeLocked(cleanChrome(alt[0]), text);
 }
 
 function finalizeLocked(core: string, full: string): string {
@@ -131,11 +141,9 @@ function finalizeLocked(core: string, full: string): string {
 
 function cleanChrome(s: string): string {
   let out = clean(s);
-  // Strip leading/trailing dialog button labels scraped into the body text.
   out = out.replace(/^(Continue|Back|OK|Cancel|Close|Click here)\s+/gi, '');
   out = out.replace(/\s+(Continue|Back|OK|Cancel|Close|Click here)\s+/gi, ' ');
   out = out.replace(/\s+(Continue|Back|OK|Cancel|Close)\s*$/gi, '');
-  // Collapse repeated chrome tokens left in the middle.
   while (UI_CHROME.test(out)) {
     const next = out.replace(UI_CHROME, '').trim();
     if (next === out) break;

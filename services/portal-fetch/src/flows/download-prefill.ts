@@ -403,9 +403,19 @@ async function tryFillLogin(
   if (!passFilled) return 'missing_fields';
 
   await confirmSecureAccessMessage(page);
+  // Give Angular forms a beat to enable Continue after checkbox + password.
+  await page.waitForTimeout(600);
 
   await clickContinue(page);
-  await page.waitForTimeout(1800);
+  await page.waitForTimeout(2500);
+
+  // Success signals: left the password step.
+  const url = page.url();
+  if (!/#\/login/i.test(url) || /dashboard|otp|fileIncome|home/i.test(url)) {
+    return 'ok';
+  }
+  if (await looksLoggedIn(page)) return 'ok';
+  if (await looksLikeOtp(page)) return 'ok';
 
   const afterPassword = await readPortalMessage(page);
   if (afterPassword && isPortalAuthFailure(afterPassword)) {
@@ -415,38 +425,36 @@ async function tryFillLogin(
     return 'auth_failed';
   }
 
+  // Still on login/password with no clear error — let the outer flow decide
+  // (OTP / captcha / live assist) instead of inventing a lock.
   return 'ok';
 }
 
 async function confirmSecureAccessMessage(page: Page): Promise<void> {
-  // ITD password step often requires: "Please confirm your secure access message…"
-  const byLabel = page
-    .getByLabel(/secure access message|confirm your secure access/i)
-    .first();
-  if (await byLabel.isVisible({ timeout: 1500 }).catch(() => false)) {
-    const checked = await byLabel.isChecked().catch(() => false);
-    if (!checked) await byLabel.check({ force: true }).catch(() => byLabel.click());
-    return;
-  }
-
-  const checkbox = page
-    .locator(
-      'input[type="checkbox"], mat-checkbox input, .mat-mdc-checkbox input, [role="checkbox"]',
-    )
-    .first();
-  if (await checkbox.isVisible({ timeout: 1500 }).catch(() => false)) {
-    const checked =
-      (await checkbox.getAttribute('aria-checked')) === 'true' ||
-      (await checkbox.isChecked().catch(() => false));
-    if (!checked) {
-      await checkbox.check({ force: true }).catch(() => checkbox.click());
+  // ITD password step: "Please confirm your secure access message…"
+  const label = page.getByText(/confirm your secure access message/i).first();
+  if (await label.isVisible({ timeout: 2000 }).catch(() => false)) {
+    const row = label.locator(
+      'xpath=ancestor::*[contains(@class,"checkbox") or self::mat-checkbox or self::label][1]',
+    );
+    const box = row.locator('input[type="checkbox"], [role="checkbox"]').first();
+    if (await box.isVisible({ timeout: 800 }).catch(() => false)) {
+      const checked =
+        (await box.getAttribute('aria-checked')) === 'true' ||
+        (await box.isChecked().catch(() => false));
+      if (!checked) await box.click({ force: true }).catch(() => label.click());
+    } else {
+      await label.click().catch(() => undefined);
     }
     return;
   }
 
-  const text = page.getByText(/confirm your secure access message/i).first();
-  if (await text.isVisible({ timeout: 800 }).catch(() => false)) {
-    await text.click().catch(() => undefined);
+  const byLabel = page
+    .getByLabel(/secure access message|confirm your secure access/i)
+    .first();
+  if (await byLabel.isVisible({ timeout: 1000 }).catch(() => false)) {
+    const checked = await byLabel.isChecked().catch(() => false);
+    if (!checked) await byLabel.check({ force: true }).catch(() => byLabel.click());
   }
 }
 
@@ -478,11 +486,23 @@ async function openLoginIfNeeded(page: Page): Promise<void> {
 }
 
 async function readPortalMessage(page: Page): Promise<string | null> {
-  const html = (await page.content().catch(() => '')) || '';
-  const fromHtml = extractPortalMessage(html);
-  if (fromHtml) return fromHtml;
+  // Prefer visible dialog / alert text — SPA HTML embeds unused i18n lock copy.
+  const dialog = page
+    .locator('[role="alertdialog"], [role="alert"], .mat-mdc-dialog-content, mat-dialog-content')
+    .first();
+  if (await dialog.isVisible({ timeout: 800 }).catch(() => false)) {
+    const dialogText = (await dialog.innerText().catch(() => '')) || '';
+    const fromDialog = extractPortalMessage(dialogText);
+    if (fromDialog) return fromDialog;
+  }
+
   const text = (await page.locator('body').innerText().catch(() => '')) || '';
-  return extractPortalMessage(text);
+  const fromText = extractPortalMessage(text);
+  if (fromText) return fromText;
+
+  // Last resort: HTML, but scripts are stripped inside extractPortalMessage.
+  const html = (await page.content().catch(() => '')) || '';
+  return extractPortalMessage(html);
 }
 
 async function tryFillOtp(page: Page, otp: string): Promise<boolean> {
