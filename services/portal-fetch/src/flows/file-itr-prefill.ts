@@ -32,6 +32,7 @@ export async function runPrefillDownload(
   job: JobRecord,
 ): Promise<PrefillDownloadResult | null> {
   const ay = job.assessmentYear || '2026-27';
+  await dismissPortalModals(page);
 
   // Primary: dedicated Download Prefilled Data page (confirmed URL).
   try {
@@ -283,15 +284,41 @@ function waitForPrefillApi(page: Page, timeout: number) {
 }
 
 async function selectAssessmentYear(page: Page, ay: string): Promise<void> {
+  await dismissPortalModals(page);
+
+  // Prefer the dedicated AY mat-select on Download Prefilled Data / File ITR pages.
+  const mat = page
+    .locator('mat-select#filterStyleForChip, mat-select:not(#langMatSelect)')
+    .first();
+  if (await mat.isVisible({ timeout: 2500 }).catch(() => false)) {
+    await mat.click();
+    await page.waitForTimeout(600);
+    const opt = page
+      .locator('mat-option')
+      .filter({ hasText: new RegExp(`${escapeRegExp(ay)}|current\\s*a\\.?y`, 'i') })
+      .first();
+    if (await opt.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await opt.click();
+      await page.waitForTimeout(800);
+      return;
+    }
+  }
+
   await selectOptionByLabel(page, /assessment year/i, ay);
-  const opened = await clickTextOption(
-    page,
-    /select assessment year|assessment year/i,
-  );
-  if (opened) await page.waitForTimeout(400);
+  const field = page.locator('mat-form-field').filter({ hasText: /assessment year/i }).first();
+  if (await field.isVisible({ timeout: 1500 }).catch(() => false)) {
+    await field.click().catch(() => undefined);
+    await page.waitForTimeout(500);
+  } else {
+    const opened = await clickTextOption(
+      page,
+      /select assessment year|assessment year/i,
+    );
+    if (opened) await page.waitForTimeout(400);
+  }
   await clickTextOption(
     page,
-    new RegExp(`${escapeRegExp(ay)}|current\\s*a\\.?y`, 'i'),
+    new RegExp(`${escapeRegExp(ay)}.*current\\s*a\\.?y|${escapeRegExp(ay)}`, 'i'),
   );
   await clickTextOption(page, ay);
 }
@@ -402,6 +429,58 @@ async function clickTextOption(
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function dismissPortalModals(page: Page): Promise<void> {
+  for (let i = 0; i < 5; i += 1) {
+    if (
+      await page
+        .getByText(/sure you want to Logout/i)
+        .first()
+        .isVisible({ timeout: 400 })
+        .catch(() => false)
+    ) {
+      await page
+        .getByRole('button', { name: /^no$/i })
+        .first()
+        .click({ force: true })
+        .catch(() => undefined);
+      await page.waitForTimeout(400);
+      continue;
+    }
+    const security = page.locator(
+      '#securityReasonPopup.modal.show, #securityReasonPopup.show, #securityReasonPopup',
+    );
+    if (await security.first().isVisible({ timeout: 400 }).catch(() => false)) {
+      const text = (await security.first().innerText().catch(() => '')) || '';
+      if (/logout/i.test(text)) {
+        await security
+          .first()
+          .getByRole('button', { name: /^no$/i })
+          .click({ force: true })
+          .catch(() => undefined);
+      } else {
+        const btn = security
+          .first()
+          .getByRole('button', { name: /ok|continue|close|got it|confirm|agree/i })
+          .first();
+        if (await btn.isVisible({ timeout: 500 }).catch(() => false)) {
+          await btn.click({ force: true }).catch(() => undefined);
+        } else {
+          await page.keyboard.press('Escape').catch(() => undefined);
+        }
+      }
+      await page.waitForTimeout(300);
+      continue;
+    }
+    const confirm = page.locator('#continueBtnNav, #confirmBtnFooter, #efNotificationPopUp_continue').first();
+    if (await confirm.isVisible({ timeout: 250 }).catch(() => false)) {
+      await confirm.click({ force: true }).catch(() => undefined);
+      await page.waitForTimeout(250);
+      continue;
+    }
+    break;
+  }
 }
 
 async function clickIfVisible(

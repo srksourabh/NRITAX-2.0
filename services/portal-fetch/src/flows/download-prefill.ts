@@ -272,6 +272,7 @@ async function downloadPrefill(
   });
 
   try {
+    await dismissBlockingModals(page);
     const result = await runPrefillDownload(page, job);
     if (result?.artifactJson) {
       store.apply(jobId, { type: 'SUCCESS' }, {
@@ -356,17 +357,19 @@ async function tryFillLogin(
   if (!password) return 'missing_fields';
 
   const userSelectors = [
+    'input[placeholder*="User ID" i]',
     'input[name="userId"]',
     'input[name="userid"]',
     'input[id*="userId" i]',
     'input[id*="userid" i]',
-    'input[placeholder*="User ID" i]',
     'input[placeholder*="PAN" i]',
     'input[aria-label*="User ID" i]',
     'input[aria-label*="PAN" i]',
     'input[type="text"]',
   ];
   const passSelectors = [
+    '#loginPasswordField',
+    'input[name="loginPasswordField"]',
     'input[type="password"]',
     'input[name="password"]',
     'input[id*="pass" i]',
@@ -404,24 +407,35 @@ async function tryFillLogin(
     return 'auth_failed';
   }
 
+  // Checkbox first — Angular Material keeps Continue disabled until it is checked.
+  await confirmSecureAccessMessage(page);
+
   let passFilled = false;
   for (const sel of passSelectors) {
     const el = page.locator(sel).first();
     if (await el.isVisible({ timeout: 4000 }).catch(() => false)) {
-      await el.fill(password);
+      await el.click();
+      await el.fill('');
+      // pressSequentially fires key events Angular Material needs to mark ng-valid.
+      await el.pressSequentially(password, { delay: 35 });
+      await el.blur().catch(() => undefined);
       passFilled = true;
       break;
     }
   }
   if (!passFilled) return 'missing_fields';
 
+  // Re-assert checkbox in case password focus cleared it.
   await confirmSecureAccessMessage(page);
   // Give Angular forms a beat to enable Continue after checkbox + password.
   await page.waitForTimeout(800);
 
   // Wait until Continue is enabled, then click.
-  const continueBtn = page.getByRole('button', { name: /^continue/i }).first();
-  for (let i = 0; i < 12; i += 1) {
+  const continueBtn = page
+    .locator('button.large-button-primary', { hasText: /^Continue/i })
+    .or(page.getByRole('button', { name: /^continue/i }))
+    .first();
+  for (let i = 0; i < 16; i += 1) {
     const visible = await continueBtn.isVisible({ timeout: 500 }).catch(() => false);
     if (!visible) break;
     const disabled =
@@ -429,19 +443,30 @@ async function tryFillLogin(
       (await continueBtn.getAttribute('aria-disabled')) === 'true' ||
       (await continueBtn.isDisabled().catch(() => false));
     if (!disabled) break;
+    if (i === 6) await confirmSecureAccessMessage(page);
     await page.waitForTimeout(400);
   }
-  await clickContinue(page);
+  await continueBtn.click({ force: true }).catch(() => clickContinue(page));
+
+  // Dual login: "Session already active" → click Login Here to take over.
+  await handleDualLogin(page);
 
   // Wait for navigation away from the password step (OTP / dashboard).
-  for (let i = 0; i < 20; i += 1) {
+  for (let i = 0; i < 24; i += 1) {
     await page.waitForTimeout(500);
+    await handleDualLogin(page);
     if (await visibleAccountLocked(page)) return 'auth_failed';
     if (await looksLikeOtp(page)) return 'ok';
-    if (await looksLoggedIn(page)) return 'ok';
+    if (await looksLoggedIn(page)) {
+      await dismissBlockingModals(page);
+      return 'ok';
+    }
     const url = page.url();
     if (!/#\/login(\/password)?\/?$/i.test(url) && !/#\/login$/i.test(url)) {
-      if (!/#\/login/i.test(url)) return 'ok';
+      if (!/#\/login/i.test(url)) {
+        await dismissBlockingModals(page);
+        return 'ok';
+      }
     }
   }
 
@@ -460,9 +485,27 @@ async function tryFillLogin(
 }
 
 async function confirmSecureAccessMessage(page: Page): Promise<void> {
+  // Stable ITD ids: #passwordCheckBox / #passwordCheckBox-input
+  const mat = page.locator('#passwordCheckBox');
+  const native = page.locator('#passwordCheckBox-input');
+  if (await mat.isVisible({ timeout: 2000 }).catch(() => false)) {
+    const checked = await native.isChecked().catch(() => false);
+    if (!checked) {
+      await mat.click({ force: true }).catch(() => undefined);
+      await page.waitForTimeout(200);
+    }
+    if (!(await native.isChecked().catch(() => false))) {
+      await page
+        .locator('label[for="passwordCheckBox-input"]')
+        .click({ force: true })
+        .catch(() => undefined);
+    }
+    return;
+  }
+
   // ITD password step: "Please confirm your secure access message…"
   const label = page.getByText(/confirm your secure access message/i).first();
-  if (await label.isVisible({ timeout: 2000 }).catch(() => false)) {
+  if (await label.isVisible({ timeout: 1500 }).catch(() => false)) {
     const row = label.locator(
       'xpath=ancestor::*[contains(@class,"checkbox") or self::mat-checkbox or self::label][1]',
     );
@@ -485,6 +528,80 @@ async function confirmSecureAccessMessage(page: Page): Promise<void> {
     const checked = await byLabel.isChecked().catch(() => false);
     if (!checked) await byLabel.check({ force: true }).catch(() => byLabel.click());
   }
+}
+
+/** Close post-login security / disclaimer / accidental logout prompts. */
+async function dismissBlockingModals(page: Page): Promise<void> {
+  for (let i = 0; i < 5; i += 1) {
+    // Accidental logout confirm — always choose No.
+    if (
+      await page
+        .getByText(/sure you want to Logout/i)
+        .first()
+        .isVisible({ timeout: 500 })
+        .catch(() => false)
+    ) {
+      await page
+        .getByRole('button', { name: /^no$/i })
+        .first()
+        .click({ force: true })
+        .catch(() => undefined);
+      await page.waitForTimeout(500);
+      continue;
+    }
+
+    const security = page.locator('#securityReasonPopup.modal.show, #securityReasonPopup.show');
+    if (await security.isVisible({ timeout: 500 }).catch(() => false)) {
+      const text = (await security.innerText().catch(() => '')) || '';
+      if (/logout/i.test(text)) {
+        await security
+          .getByRole('button', { name: /^no$/i })
+          .click({ force: true })
+          .catch(() => undefined);
+      } else {
+        const ok = security
+          .getByRole('button', { name: /ok|continue|close|got it|confirm|agree/i })
+          .first();
+        if (await ok.isVisible({ timeout: 600 }).catch(() => false)) {
+          await ok.click({ force: true }).catch(() => undefined);
+        } else {
+          await page.keyboard.press('Escape').catch(() => undefined);
+        }
+      }
+      await page.waitForTimeout(400);
+      continue;
+    }
+
+    const disclaimerConfirm = page.locator('#continueBtnNav, #confirmBtnFooter').first();
+    if (await disclaimerConfirm.isVisible({ timeout: 300 }).catch(() => false)) {
+      await disclaimerConfirm.click({ force: true }).catch(() => undefined);
+      await page.waitForTimeout(300);
+      continue;
+    }
+
+    const notif = page.locator('#efNotificationPopUp_continue');
+    if (await notif.isVisible({ timeout: 300 }).catch(() => false)) {
+      await notif.click({ force: true }).catch(() => undefined);
+      await page.waitForTimeout(300);
+      continue;
+    }
+    break;
+  }
+}
+
+/** EF00177 Session already active — Dual Login Detected dialog. */
+async function handleDualLogin(page: Page): Promise<boolean> {
+  const dual =
+    (await page.getByText(/Dual Login Detected/i).isVisible({ timeout: 600 }).catch(() => false)) ||
+    (await page.getByText(/session is currently active in another/i).isVisible({ timeout: 400 }).catch(() => false));
+  if (!dual) return false;
+  const loginHere = page.getByRole('button', { name: /login here/i }).first();
+  if (await loginHere.isVisible({ timeout: 1500 }).catch(() => false)) {
+    await loginHere.click({ force: true }).catch(() => undefined);
+    await page.waitForTimeout(2000);
+    return true;
+  }
+  return false;
 }
 
 async function clickContinue(page: Page): Promise<void> {
