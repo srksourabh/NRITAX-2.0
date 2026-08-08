@@ -46,6 +46,8 @@ import {
   splitFullName,
   type FilingSession,
 } from '@/lib/session/filing-session';
+import { readPrefillArtifact } from '@/lib/session/prefill-artifact';
+import { applyDownloadedPrefill } from '@/lib/eri/apply-downloaded-prefill';
 
 type Step = 'choose' | 'residency' | 'file' | 'regime';
 
@@ -154,10 +156,13 @@ export function FilingWizard() {
   const [autoPrefill, setAutoPrefill] = useState(false);
   const skipAutosaveRef = useRef(false);
   const sessionAppliedRef = useRef(false);
+  const artifactAppliedRef = useRef(false);
+  const selectingScheduleRef = useRef(false);
 
   const schedules = useMemo(() => schedulesFor(form), [form]);
   const visibleSchedules = schedules.filter((s) => isVisible(s.showIf, data));
   const active = visibleSchedules.find((s) => s.id === activeId) ?? visibleSchedules[0];
+  const scheduleIdKey = visibleSchedules.map((s) => s.id).join('|');
 
   useEffect(() => {
     const session = readFilingSession();
@@ -174,6 +179,64 @@ export function FilingWizard() {
       setStep('residency');
     }
   }, []);
+
+  // Re-apply session-cached portal JSON after refresh (when the form is still empty).
+  useEffect(() => {
+    if (step !== 'file' || artifactAppliedRef.current) return;
+    const cached = readPrefillArtifact();
+    if (!cached?.artifactJson) return;
+    const panFilled = String(data.fields['GEN.PAN'] ?? data.fields['GEN.pan'] ?? '').trim();
+    if (panFilled) {
+      artifactAppliedRef.current = true;
+      return;
+    }
+    try {
+      const result = applyDownloadedPrefill(data, cached.artifactJson, {
+        form: cached.form || form,
+        expectPan: cached.pan || filingSession?.pan,
+        assessmentYear: cached.assessmentYear || ASSESSMENT_YEAR,
+        cache: false,
+      });
+      if (result.matched > 0) {
+        artifactAppliedRef.current = true;
+        setForm(result.form);
+        setPicked(result.form);
+        setData(result.data);
+        setNotice(result.message);
+        setActiveId('GEN');
+      }
+    } catch {
+      /* leave blank; user can re-fetch */
+    }
+    // Intentional: run when entering file with empty identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, form]);
+
+  // Keep left-nav highlight in sync with scroll position on the continuous form.
+  useEffect(() => {
+    if (step !== 'file') return;
+    const nodes = scheduleIdKey
+      .split('|')
+      .filter(Boolean)
+      .map((id) => document.getElementById(`schedule-${id}`))
+      .filter((el): el is HTMLElement => Boolean(el));
+    if (!nodes.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (selectingScheduleRef.current) return;
+        const hit = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!hit) return;
+        const id = hit.target.id.replace(/^schedule-/, '');
+        if (id) setActiveId((prev) => (prev === id ? prev : id));
+      },
+      { rootMargin: '-15% 0px -60% 0px', threshold: [0.05, 0.2, 0.4, 0.6] },
+    );
+    nodes.forEach((n) => observer.observe(n));
+    return () => observer.disconnect();
+  }, [step, scheduleIdKey, form]);
 
   const journeyIndex = useMemo(
     () =>
@@ -204,7 +267,10 @@ export function FilingWizard() {
     if (index >= 1 && index <= 3) {
       setStep('file');
       const target = journeyTargetSchedule(index);
-      if (target) setActiveId(target);
+      if (target) {
+        setActiveId(target);
+        scrollToId(`schedule-${target}`);
+      }
       return;
     }
 
@@ -429,6 +495,13 @@ export function FilingWizard() {
       }
     }
     setActiveId(id);
+    if (step === 'file') {
+      selectingScheduleRef.current = true;
+      scrollToId(`schedule-${id}`);
+      window.setTimeout(() => {
+        selectingScheduleRef.current = false;
+      }, 800);
+    }
   }
 
   function setField(fq: string, value: FieldValue) {
@@ -615,7 +688,8 @@ export function FilingWizard() {
             {form} · AY {ASSESSMENT_YEAR}
           </h1>
           <p className="mt-1 max-w-lg text-[var(--body-sm)] text-[var(--text-muted)]">
-            Prefill first, then one schedule at a time. You only file when you are ready.
+            Prefill first, then review one continuous form. Left tabs jump between sections; you can
+            edit anything after the portal data lands.
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">
@@ -735,14 +809,17 @@ export function FilingWizard() {
               <JuktiYuktiPanel form={form} data={data} schedule={active} />
             </div>
 
-            {active ? (
-              <SchedulePanel
-                schedule={active}
-                data={data}
-                onField={setField}
-                onTable={setTable}
-              />
-            ) : null}
+            <div className="ntx-continuous-form space-y-5 lg:space-y-8">
+              {visibleSchedules.map((schedule) => (
+                <SchedulePanel
+                  key={schedule.id}
+                  schedule={schedule}
+                  data={data}
+                  onField={setField}
+                  onTable={setTable}
+                />
+              ))}
+            </div>
 
             {report ? (
               <div id="validation-report" className="ntx-panel space-y-3 p-4 sm:p-5">
@@ -849,8 +926,14 @@ function SchedulePanel({
   onTable: (key: string, rows: TableRow[]) => void;
 }) {
   return (
-    <section className="ntx-panel space-y-5 p-4 sm:space-y-6 sm:p-5 lg:space-y-8 lg:p-6">
+    <section
+      id={`schedule-${schedule.id}`}
+      className="ntx-panel ntx-schedule-section space-y-5 p-4 sm:space-y-6 sm:p-5 lg:space-y-8 lg:p-6"
+    >
       <div>
+        <p className="text-[var(--caption)] font-semibold tracking-[0.14em] text-[var(--text-muted)] uppercase">
+          {schedule.no}
+        </p>
         <h2 className="text-[1.25rem] font-semibold leading-tight text-[var(--ink)] sm:text-[length:var(--h2)]">
           {schedule.name}
         </h2>

@@ -100,16 +100,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     const mobile = String(body.mobile ?? '').replace(/\D/g, '');
     const assessmentYear = String(body.assessmentYear ?? '2026-27').trim();
     const formType = String(body.formType ?? 'ITR2').toUpperCase() === 'ITR3' ? 'ITR3' : 'ITR2';
-    const politicallyExposed =
-      body.politicallyExposed === true ||
-      body.politicallyExposed === 'true' ||
-      body.politicallyExposed === 'yes' ||
-      body.politicallyExposed === 'Y';
-    const filingRaw = String(body.filingType ?? 'original').toLowerCase();
-    const filingType =
-      filingRaw === 'revised' || filingRaw === 'belated' || filingRaw === 'updated'
-        ? filingRaw
-        : 'original';
+    // Always offline original + non-political — client cannot override.
+    const politicallyExposed = false;
+    const filingType = 'original' as const;
     const userId = String(body.userId ?? 'unknown');
 
     if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) {

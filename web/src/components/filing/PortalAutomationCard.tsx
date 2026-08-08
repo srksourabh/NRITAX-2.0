@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { applyPrefillToReturn, importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
+import { PrefillFileError } from '@/lib/eri/prefill-file';
+import { applyDownloadedPrefill } from '@/lib/eri/apply-downloaded-prefill';
 import { ITD_PORTAL_HOME, ITD_PORTAL_LABEL } from '@/lib/itd/portal';
 import { ASSESSMENT_YEAR, type FormType, type ReturnData } from '@/lib/itr/types';
 import {
@@ -158,19 +159,13 @@ export function PortalAutomationCard({
 }) {
   const identity = genIdentity(data);
   const [pan, setPan] = useState(sessionSeed?.pan || identity.pan);
-  const [name, setName] = useState(sessionSeed?.name || identity.name);
   const [password, setPassword] = useState(sessionSeed?.password ?? '');
   const [consent, setConsent] = useState(Boolean(sessionSeed?.consent));
   const [assessmentYear, setAssessmentYear] = useState(
     sessionSeed?.assessmentYear || data.meta.assessmentYear || ASSESSMENT_YEAR,
   );
-  const [formType, setFormType] = useState<FormType>(sessionSeed?.formType || form);
-  const [politicallyExposed, setPoliticallyExposed] = useState(
-    sessionSeed?.politicallyExposed === true ? 'yes' : 'no',
-  );
-  const [filingType, setFilingType] = useState<
-    'original' | 'revised' | 'belated' | 'updated'
-  >(sessionSeed?.filingType ?? 'original');
+  /** Form follows the return being prepared; not a separate user prompt. */
+  const formType = sessionSeed?.formType || form;
   const [otp, setOtp] = useState('');
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'blocked' | 'error' | PortalFetchStatus>('idle');
@@ -190,11 +185,15 @@ export function PortalAutomationCard({
   const effectivePassword =
     password || sessionSeed?.password || readFilingSession()?.password || '';
 
+  const displayName =
+    sessionSeed?.name?.trim() ||
+    identity.name.trim() ||
+    'TAXPAYER';
+
   const blockers: string[] = [];
   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.trim().toUpperCase())) {
     blockers.push('Enter a valid PAN (this is your e-Filing User ID).');
   }
-  if (!name.trim()) blockers.push('Enter your name as on the e-Filing portal.');
   if (!effectivePassword) blockers.push('Enter your e-Filing password.');
   if (!consent) blockers.push('Confirm you authorise a one-time portal visit for this session.');
 
@@ -210,33 +209,32 @@ export function PortalAutomationCard({
   function applyArtifact(artifactJson: string, jobId: string) {
     if (appliedRef.current === jobId) return;
     try {
-      const parsed = JSON.parse(artifactJson) as unknown;
-      const imported = importPrefillFile(parsed, {
+      const expectPan =
+        genIdentity(dataRef.current).pan ||
+        sessionSeed?.pan ||
+        readFilingSession()?.pan ||
+        undefined;
+      const result = applyDownloadedPrefill(dataRef.current, artifactJson, {
         form: formType,
-        expectPan: genIdentity(dataRef.current).pan || undefined,
+        expectPan,
+        assessmentYear,
       });
-      if (imported.matched === 0) {
+      if (result.matched === 0) {
         appliedRef.current = jobId;
-        announce(
-          `Prefill downloaded for ${formType}, but none of its fields matched the ${formType} schedules. Upload the JSON manually or use live assist.`,
-          'failed',
-        );
+        announce(result.message, 'failed');
         return;
       }
-      onFormChange?.(imported.form);
-      setFormType(imported.form);
-      setData((prev) => applyPrefillToReturn(prev, imported));
+      onFormChange?.(result.form);
+      setData(result.data);
       appliedRef.current = jobId;
-      // Clear the in-memory field for display, but keep session password for retry/upload.
       setPassword('');
       setOtp('');
       setActiveId('GEN');
-      const warn =
-        imported.warnings.length > 0 ? ` ${imported.warnings[0]}` : '';
-      announce(
-        `Inserted ${imported.matched} prefill values into your ${imported.form} form (AY ${assessmentYear}). Open Part A — General to review, then continue schedule by schedule.${warn}`,
-        'succeeded',
-      );
+      announce(result.message, 'succeeded');
+      // Jump the continuous form to Part A after prefill lands.
+      requestAnimationFrame(() => {
+        document.getElementById('schedule-GEN')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } catch (error) {
       appliedRef.current = jobId;
       announce(
@@ -330,19 +328,19 @@ export function PortalAutomationCard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pan: pan.trim().toUpperCase(),
-          name: name.trim(),
+          name: displayName,
           dob: sessionSeed?.dob || identity.dob || '',
           password: effectivePassword,
           mobile: sessionSeed?.mobile || '',
           assessmentYear,
           formType,
-          politicallyExposed: politicallyExposed === 'yes',
-          filingType,
+          // Fixed agent defaults: offline original return, never PEP.
+          politicallyExposed: false,
+          filingType: 'original',
           consentFetch: true,
           consentLiability: true,
         }),
-      });
-      const json = await readSoftJson(res);
+      });      const json = await readSoftJson(res);
       const next = asJob(json);
       if (!next) {
         announce(
@@ -463,32 +461,24 @@ export function PortalAutomationCard({
     if (!file) return;
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text) as unknown;
-      const imported = importPrefillFile(parsed, {
+      const result = applyDownloadedPrefill(dataRef.current, text, {
         form: formType,
         expectPan: pan || undefined,
+        assessmentYear,
       });
-      if (imported.matched === 0) {
-        setManualFileNote(
-          'File read, but no fields matched this ITR form. Check it is the pre-filled JSON from the portal.',
-        );
-        announce(
-          'Manual prefill file had no matching fields for this form.',
-          'error',
-        );
+      if (result.matched === 0) {
+        setManualFileNote(result.message);
+        announce(result.message, 'error');
         return;
       }
-      onFormChange?.(imported.form);
-      setFormType(imported.form);
-      setData((prev) => applyPrefillToReturn(prev, imported));
+      onFormChange?.(result.form);
+      setData(result.data);
       setActiveId('GEN');
-      setManualFileNote(
-        `Manual prefill applied · ${imported.matched} values inserted into ${imported.form}.`,
-      );
-      announce(
-        `Manual prefill applied · ${imported.matched} values inserted into your ${imported.form} form.`,
-        'succeeded',
-      );
+      setManualFileNote(result.message);
+      announce(result.message, 'succeeded');
+      requestAnimationFrame(() => {
+        document.getElementById('schedule-GEN')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } catch (error) {
       const msg =
         error instanceof PrefillFileError
@@ -525,10 +515,9 @@ export function PortalAutomationCard({
           Fetch your data from the Income Tax portal
         </h2>
         <p className="mt-1 max-w-2xl text-[var(--body-sm)] text-[var(--text-muted)]">
-          We open the official {ITD_PORTAL_LABEL}, sign in with your PAN as User ID and password,
-          then walk File ITR with the answers below (form, assessment year, filing type,
-          politically exposed). Prefill JSON is pulled into your {formType} schedules. Mobile is
-          optional for overseas numbers.
+          Enter your PAN (User ID), e-Filing password, and assessment year. We sign in on the
+          official {ITD_PORTAL_LABEL}, run an offline original {formType} download (non-political by
+          default), and fill your continuous form from the prefill JSON.
         </p>
       </div>
 
@@ -564,7 +553,7 @@ export function PortalAutomationCard({
         {detail ? <p className="mt-1 text-[var(--text-secondary)]">{detail}</p> : null}
         {job?.panMasked ? (
           <p className="mt-1 font-[family-name:var(--font-figure)] text-[var(--caption)] text-[var(--text-muted)]">
-            Job · {job.panMasked} · AY {job.assessmentYear}
+            Job · {job.panMasked} · AY {job.assessmentYear} · offline · original · non-political
           </p>
         ) : null}
       </div>
@@ -594,16 +583,20 @@ export function PortalAutomationCard({
           />
         </div>
         <div>
-          <label className="ntx-label" htmlFor="auto-name">
-            Full name
+          <label className="ntx-label" htmlFor="auto-ay">
+            Assessment year
           </label>
-          <input
-            id="auto-name"
+          <select
+            id="auto-ay"
             className="ntx-input"
-            value={name}
+            value={assessmentYear}
             disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
-            onChange={(e) => setName(e.target.value)}
-          />
+            onChange={(e) => setAssessmentYear(e.target.value)}
+          >
+            <option value="2026-27">2026-27 (current)</option>
+            <option value="2025-26">2025-26</option>
+            <option value="2024-25">2024-25</option>
+          </select>
         </div>
         <div className="sm:col-span-2">
           <label className="ntx-label" htmlFor="auto-password">
@@ -619,73 +612,12 @@ export function PortalAutomationCard({
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        <div>
-          <label className="ntx-label" htmlFor="auto-form">
-            ITR form
-          </label>
-          <select
-            id="auto-form"
-            className="ntx-input"
-            value={formType}
-            disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
-            onChange={(e) => setFormType(e.target.value as FormType)}
-          >
-            <option value="ITR2">ITR-2</option>
-            <option value="ITR3">ITR-3</option>
-          </select>
-        </div>
-        <div>
-          <label className="ntx-label" htmlFor="auto-ay">
-            Assessment year
-          </label>
-          <select
-            id="auto-ay"
-            className="ntx-input"
-            value={assessmentYear}
-            disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
-            onChange={(e) => setAssessmentYear(e.target.value)}
-          >
-            <option value="2026-27">2026-27</option>
-            <option value="2025-26">2025-26</option>
-            <option value="2024-25">2024-25</option>
-          </select>
-        </div>
-        <div>
-          <label className="ntx-label" htmlFor="auto-filing-type">
-            Filing type
-          </label>
-          <select
-            id="auto-filing-type"
-            className="ntx-input"
-            value={filingType}
-            disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
-            onChange={(e) =>
-              setFilingType(e.target.value as typeof filingType)
-            }
-          >
-            <option value="original">Original</option>
-            <option value="belated">Belated</option>
-            <option value="revised">Revised</option>
-            <option value="updated">Updated</option>
-          </select>
-        </div>
-        <div>
-          <label className="ntx-label" htmlFor="auto-pep">
-            Politically exposed person?
-          </label>
-          <select
-            id="auto-pep"
-            className="ntx-input"
-            value={politicallyExposed}
-            disabled={busy && Boolean(job && !isTerminalStatus(job.status))}
-            onChange={(e) => setPoliticallyExposed(e.target.value as 'yes' | 'no')}
-          >
-            <option value="no">No</option>
-            <option value="yes">Yes</option>
-          </select>
-        </div>
       </div>
 
+      <p className="text-[var(--caption)] text-[var(--text-muted)]">
+        Agent defaults (sent automatically): {formType} · offline · original return · not politically
+        exposed.
+      </p>
       <label className="flex items-start gap-2 text-[var(--body-sm)] text-[var(--text-secondary)]">
         <input
           type="checkbox"

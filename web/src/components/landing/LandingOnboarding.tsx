@@ -52,7 +52,7 @@ const empty: Draft = {
 function validateStep(step: number, data: Draft): Errors {
   const errors: Errors = {};
   if (step === 0) {
-    if (data.fullName.trim().length < 2) errors.fullName = 'Enter your full name as on PAN.';
+    // Name is optional — portal login only needs PAN (User ID) + password + AY.
     if (!data.pan.trim()) errors.pan = 'Enter your PAN.';
     else if (!isValidPan(data.pan)) {
       errors.pan = 'PAN must be 10 characters, for example ABCDE1234F.';
@@ -79,10 +79,6 @@ function validateStep(step: number, data: Draft): Errors {
     }
     if (!/^\d{4}-\d{2}$/.test(data.assessmentYear)) {
       errors.assessmentYear = 'Select assessment year (for example 2026-27).';
-    }
-    if (!data.politicallyExposed) {
-      errors.politicallyExposed =
-        'Say whether you are a politically exposed person (portal asks this).';
     }
   }
   return errors;
@@ -175,15 +171,15 @@ export function LandingOnboarding({
     const form = (data.form || data.formPick) as FormType;
     try {
       writeFilingSession({
-        fullName: data.fullName.trim(),
+        fullName: data.fullName.trim() || 'TAXPAYER',
         pan,
         userId: pan,
         password: data.accessMode === 'has_password' ? data.password : undefined,
         accessMode: data.accessMode as FilingAccessMode,
         form,
         assessmentYear: data.assessmentYear,
-        politicallyExposed: data.politicallyExposed === 'yes',
-        filingType: data.filingType,
+        politicallyExposed: false,
+        filingType: 'original',
         consentAutomation: data.accessMode === 'has_password' ? data.consentAutomation : false,
         savedAt: new Date().toISOString(),
       });
@@ -271,19 +267,6 @@ export function LandingOnboarding({
           <div className="ntx-landing-form-body">
             {step === 0 ? (
               <>
-                <div>
-                  <label className="ntx-label" htmlFor="landing-name">
-                    Full name (as on PAN)
-                  </label>
-                  <input
-                    id="landing-name"
-                    className="ntx-input"
-                    autoComplete="name"
-                    value={data.fullName}
-                    onChange={(e) => update('fullName', e.target.value)}
-                  />
-                  {errors.fullName ? <p className="ntx-field-error">{errors.fullName}</p> : null}
-                </div>
                 <div>
                   <label className="ntx-label" htmlFor="landing-pan">
                     PAN / e-Filing user ID
@@ -557,63 +540,11 @@ export function LandingOnboarding({
                   {errors.assessmentYear ? (
                     <p className="ntx-field-error">{errors.assessmentYear}</p>
                   ) : null}
-                </div>
-
-                <div>
-                  <label className="ntx-label" htmlFor="landing-filing-type">
-                    Filing type on the portal
-                  </label>
-                  <select
-                    id="landing-filing-type"
-                    className="ntx-input"
-                    value={data.filingType}
-                    onChange={(e) =>
-                      update('filingType', e.target.value as Draft['filingType'])
-                    }
-                  >
-                    <option value="original">Original (section 139(1))</option>
-                    <option value="belated">Belated</option>
-                    <option value="revised">Revised</option>
-                    <option value="updated">Updated (ITR-U)</option>
-                  </select>
-                </div>
-
-                <fieldset className="ntx-landing-radio-set">
-                  <legend className="ntx-label">Are you a politically exposed person?</legend>
-                  <p className="mb-2 text-[var(--caption)] text-[var(--text-muted)]">
-                    The Income Tax portal asks this before opening the return. Most taxpayers answer
-                    No.
+                  <p className="mt-2 text-[var(--caption)] text-[var(--text-muted)]">
+                    Portal automation always uses offline original filing and answers not
+                    politically exposed.
                   </p>
-                  {(
-                    [
-                      { value: 'no' as const, label: 'No' },
-                      { value: 'yes' as const, label: 'Yes' },
-                    ] as const
-                  ).map((option) => (
-                    <label
-                      key={option.value}
-                      className={
-                        data.politicallyExposed === option.value
-                          ? 'ntx-landing-radio is-selected'
-                          : 'ntx-landing-radio'
-                      }
-                    >
-                      <input
-                        type="radio"
-                        name="landing-pep"
-                        value={option.value}
-                        checked={data.politicallyExposed === option.value}
-                        onChange={() => update('politicallyExposed', option.value)}
-                      />
-                      <span>
-                        <strong>{option.label}</strong>
-                      </span>
-                    </label>
-                  ))}
-                  {errors.politicallyExposed ? (
-                    <p className="ntx-field-error">{errors.politicallyExposed}</p>
-                  ) : null}
-                </fieldset>
+                </div>
               </div>
             ) : null}
 

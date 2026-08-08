@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { applyPrefillToReturn, importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
+import { PrefillFileError } from '@/lib/eri/prefill-file';
+import { applyDownloadedPrefill } from '@/lib/eri/apply-downloaded-prefill';
 import { ASSESSMENT_YEAR, type FormType, type ReturnData } from '@/lib/itr/types';
 import {
   isTerminalStatus,
@@ -112,9 +113,7 @@ export function PortalFetchPanel({
 }) {
   const identity = genIdentity(data);
   const [panEdit, setPanEdit] = useState<string | null>(sessionSeed?.pan ?? null);
-  const [nameEdit, setNameEdit] = useState<string | null>(sessionSeed?.name ?? null);
   const pan = panEdit ?? identity.pan;
-  const name = nameEdit ?? identity.name;
   const [password, setPassword] = useState(sessionSeed?.password ?? '');
   const [consentFetch, setConsentFetch] = useState(Boolean(sessionSeed?.consent));
   const [consentLiability, setConsentLiability] = useState(Boolean(sessionSeed?.consent));
@@ -134,7 +133,6 @@ export function PortalFetchPanel({
     consentFetch &&
     consentLiability &&
     /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.trim().toUpperCase()) &&
-    name.trim().length > 0 &&
     password.length > 0 &&
     !busy &&
     (!job || isTerminalStatus(job.status));
@@ -150,27 +148,21 @@ export function PortalFetchPanel({
   function applyArtifact(artifactJson: string, jobId: string) {
     if (appliedArtifactRef.current === jobId) return;
     try {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(artifactJson) as unknown;
-      } catch {
-        throw new PrefillFileError(
-          'That file is not JSON we can read.',
-          'NOT_JSON',
-        );
-      }
       const expectPan = genIdentity(dataRef.current).pan || undefined;
-      const imported = importPrefillFile(parsed, { form, expectPan });
-      setData((prev) => applyPrefillToReturn(prev, imported));
+      const result = applyDownloadedPrefill(dataRef.current, artifactJson, {
+        form,
+        expectPan,
+        assessmentYear: ASSESSMENT_YEAR,
+      });
+      setData(result.data);
       appliedArtifactRef.current = jobId;
       setActiveId('GEN');
       setPassword('');
       setOtp('');
-      setNotice(
-        imported.matched > 0
-          ? `Portal prefill applied · ${imported.matched} values inserted into your ${imported.form} form. Edit anything by hand.`
-          : 'Prefill downloaded but no fields matched this form. Upload JSON manually.',
-      );
+      setNotice(result.message);
+      requestAnimationFrame(() => {
+        document.getElementById('schedule-GEN')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } catch (error) {
       appliedArtifactRef.current = jobId;
       setNotice(
@@ -255,11 +247,14 @@ export function PortalFetchPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pan: pan.trim().toUpperCase(),
-          name: name.trim(),
+          name: sessionSeed?.name?.trim() || identity.name.trim() || 'TAXPAYER',
           dob: sessionSeed?.dob || identity.dob || '',
           password,
           mobile: sessionSeed?.mobile || '',
           assessmentYear: data.meta.assessmentYear || ASSESSMENT_YEAR,
+          formType: form,
+          politicallyExposed: false,
+          filingType: 'original',
           consentFetch: true,
           consentLiability: true,
         }),
@@ -409,7 +404,7 @@ export function PortalFetchPanel({
       <div className="ntx-field-grid mt-4">
         <div className="ntx-field" style={{ gridColumn: 'span 4' }}>
           <label className="ntx-label" htmlFor="portal-fetch-pan">
-            PAN
+            PAN (e-Filing User ID)
           </label>
           <input
             id="portal-fetch-pan"
@@ -425,20 +420,7 @@ export function PortalFetchPanel({
             placeholder="ABCDE1234F"
           />
         </div>
-        <div className="ntx-field" style={{ gridColumn: 'span 5' }}>
-          <label className="ntx-label" htmlFor="portal-fetch-name">
-            Name as on e-Filing
-          </label>
-          <input
-            id="portal-fetch-name"
-            className="ntx-input"
-            autoComplete="name"
-            disabled={Boolean(inFlight)}
-            value={name}
-            onChange={(e) => setNameEdit(e.target.value)}
-          />
-        </div>
-        <div className="ntx-field" style={{ gridColumn: 'span 6' }}>
+        <div className="ntx-field" style={{ gridColumn: 'span 8' }}>
           <label className="ntx-label" htmlFor="portal-fetch-password">
             Income Tax portal password
           </label>
