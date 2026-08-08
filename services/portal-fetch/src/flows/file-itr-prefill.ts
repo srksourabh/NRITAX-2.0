@@ -109,18 +109,21 @@ export async function runDownloadPrefillDataPage(
 
 /**
  * Click Download and capture either a file download or an XHR/JSON body.
- * Browserbase often serves JSON via API rather than a Playwright download event.
+ * Live portal serves getPrefillCurrentYr JSON (often wrapped in { content }).
+ * Browserbase often cancels Playwright saveAs — prefer the network body.
  */
 async function tryCapturePrefillAfterDownloadClick(
   page: Page,
 ): Promise<PrefillDownloadResult | null> {
   const btn = page
-    .getByRole('button', { name: /^download$/i })
+    .locator('button.large-button-primary')
+    .filter({ hasText: /^\s*Download\s*$/i })
+    .or(page.getByRole('button', { name: /^download$/i }))
     .or(page.getByRole('button', { name: /download/i }))
     .first();
   if (!(await btn.isVisible({ timeout: 5000 }).catch(() => false))) return null;
 
-  for (let i = 0; i < 12; i += 1) {
+  for (let i = 0; i < 25; i += 1) {
     const disabled =
       (await btn.getAttribute('disabled')) != null ||
       (await btn.getAttribute('aria-disabled')) === 'true' ||
@@ -129,25 +132,31 @@ async function tryCapturePrefillAfterDownloadClick(
     await page.waitForTimeout(400);
   }
 
+  const isPrefillResponse = (url: string) =>
+    /getPrefillCurrentYr|getPrefill|preFilled|pre-?fill/i.test(url) &&
+    !/static\.incometax|i18n|chunk\/map|preLoginMenu/i.test(url);
+
   const apiPromise = page
     .waitForResponse(
       (res) => {
         if (res.request().method() === 'OPTIONS') return false;
         if (res.status() >= 400) return false;
-        return /prefill|preFilled|pre-?fill|download/i.test(res.url());
+        return isPrefillResponse(res.url());
       },
-      { timeout: 45_000 },
+      { timeout: 60_000 },
     )
     .catch(() => null);
 
   const downloadPromise = page
-    .waitForEvent('download', { timeout: 45_000 })
+    .waitForEvent('download', { timeout: 60_000 })
     .then(async (download) => {
       const path = await download.path();
       if (!path) return null;
       const { readFile } = await import('node:fs/promises');
       const text = await readFile(path, 'utf8');
-      if (text.trim().startsWith('{') || text.trim().startsWith('[')) return text;
+      if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+        return unwrapPrefillText(text);
+      }
       return null;
     })
     .catch(() => null);
@@ -160,10 +169,8 @@ async function tryCapturePrefillAfterDownloadClick(
       if (!res) return null;
       try {
         const text = await res.text();
-        if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
-          const artifact = extractJsonArtifact(JSON.parse(text)) ?? text;
-          return { kind: 'api' as const, json: artifact };
-        }
+        const artifact = unwrapPrefillText(text);
+        if (artifact) return { kind: 'api' as const, json: artifact };
       } catch {
         /* ignore */
       }
@@ -180,6 +187,16 @@ async function tryCapturePrefillAfterDownloadClick(
 
   const fileLater = await downloadPromise;
   if (fileLater) return { artifactJson: fileLater, source: 'download' };
+
+  const apiLater = await apiPromise;
+  if (apiLater) {
+    try {
+      const artifact = unwrapPrefillText(await apiLater.text());
+      if (artifact) return { artifactJson: artifact, source: 'api' };
+    } catch {
+      /* ignore */
+    }
+  }
 
   return null;
 }
@@ -258,8 +275,7 @@ export async function runFileItrPrefillDownload(
   const apiRes = await apiWait;
   if (apiRes) {
     try {
-      const body = await apiRes.json();
-      const artifact = extractJsonArtifact(body);
+      const artifact = unwrapPrefillText(await apiRes.text());
       if (artifact) {
         return { artifactJson: artifact, source: 'api' };
       }
@@ -275,7 +291,8 @@ function waitForPrefillApi(page: Page, timeout: number) {
   return page
     .waitForResponse(
       (res) =>
-        /getPrefill|prefill|preFilled|pre-?fill/i.test(res.url()) &&
+        /getPrefillCurrentYr|getPrefill|prefill|preFilled|pre-?fill/i.test(res.url()) &&
+        !/static\.incometax|i18n|chunk\/map|preLoginMenu/i.test(res.url()) &&
         res.request().method() !== 'OPTIONS' &&
         res.status() < 500,
       { timeout },
@@ -286,13 +303,16 @@ function waitForPrefillApi(page: Page, timeout: number) {
 async function selectAssessmentYear(page: Page, ay: string): Promise<void> {
   await dismissPortalModals(page);
 
-  // Prefer the dedicated AY mat-select on Download Prefilled Data / File ITR pages.
+  // Live portal: required mat-select on Download Prefill / File ITR (not language).
   const mat = page
-    .locator('mat-select#filterStyleForChip, mat-select:not(#langMatSelect)')
+    .locator('mat-select.mat-mdc-select-required')
+    .or(page.locator('mat-select#filterStyleForChip'))
+    .or(page.locator('mat-select:not(#langMatSelect)'))
     .first();
   if (await mat.isVisible({ timeout: 2500 }).catch(() => false)) {
-    await mat.click();
+    await mat.click({ force: true });
     await page.waitForTimeout(600);
+    await dismissPortalModals(page);
     const opt = page
       .locator('mat-option')
       .filter({ hasText: new RegExp(`${escapeRegExp(ay)}|current\\s*a\\.?y`, 'i') })
@@ -323,21 +343,55 @@ async function selectAssessmentYear(page: Page, ay: string): Promise<void> {
   await clickTextOption(page, ay);
 }
 
-function extractJsonArtifact(body: unknown): string | null {
+/** Turn getPrefillCurrentYr (or file) body into importer-ready JSON text. */
+export function unwrapPrefillText(text: string): string | null {
+  const t = text.trim();
+  if (!t.startsWith('{') && !t.startsWith('[')) return null;
+  try {
+    const parsed = JSON.parse(t) as unknown;
+    return extractJsonArtifact(parsed) ?? (looksLikePrefillObject(parsed) ? t : null);
+  } catch {
+    return looksLikePrefillRaw(t) ? t : null;
+  }
+}
+
+function looksLikePrefillRaw(t: string): boolean {
+  return /Form_ITR|personalInfo|PersonalInfo|AssessmentYear|"ITR3"|"ITR2"/i.test(t);
+}
+
+function looksLikePrefillObject(obj: unknown): boolean {
+  if (!obj || typeof obj !== 'object') return false;
+  const o = obj as Record<string, unknown>;
+  return (
+    'Form_ITR2' in o ||
+    'Form_ITR3' in o ||
+    'personalInfo' in o ||
+    'PersonalInfo' in o ||
+    'ITR' in o
+  );
+}
+
+export function extractJsonArtifact(body: unknown): string | null {
   if (body == null) return null;
   if (typeof body === 'string') {
     const t = body.trim();
-    if (t.startsWith('{') || t.startsWith('[')) return t;
-    return null;
+    if (!(t.startsWith('{') || t.startsWith('['))) return null;
+    try {
+      return extractJsonArtifact(JSON.parse(t)) ?? (looksLikePrefillRaw(t) ? t : null);
+    } catch {
+      return looksLikePrefillRaw(t) ? t : null;
+    }
   }
   if (typeof body !== 'object') return null;
   const obj = body as Record<string, unknown>;
 
-  if ('Form_ITR2' in obj || 'Form_ITR3' in obj) {
+  if (looksLikePrefillObject(obj)) {
     return JSON.stringify(obj);
   }
 
+  // getPrefillCurrentYr: { responseCode, content: "<json string>" }
   for (const key of [
+    'content',
     'data',
     'prefillData',
     'prefill',
@@ -348,6 +402,8 @@ function extractJsonArtifact(body: unknown): string | null {
   ]) {
     const nested = obj[key];
     if (typeof nested === 'string' && nested.trim().startsWith('{')) {
+      const inner = extractJsonArtifact(nested);
+      if (inner) return inner;
       return nested;
     }
     if (nested && typeof nested === 'object') {

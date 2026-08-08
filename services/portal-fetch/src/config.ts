@@ -34,3 +34,8 @@ export function browserbaseProjectId(): string {
 export const PORTAL_HOME =
   process.env.ITD_PORTAL_URL ??
   'https://www.incometax.gov.in/iec/foportal/';
+
+/** Direct SPA login (more reliable than homepage → Login link). */
+export const PORTAL_LOGIN =
+  process.env.ITD_PORTAL_LOGIN_URL ??
+  'https://eportal.incometax.gov.in/iec/foservices/#/login';

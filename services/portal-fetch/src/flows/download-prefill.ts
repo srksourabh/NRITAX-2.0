@@ -5,8 +5,8 @@ import {
   browserbaseApiKey,
   browserbaseProjectId,
   PORTAL_HOME,
-} from '../config.js';
-import type { JobRecord } from '../store.js';
+  PORTAL_LOGIN,
+} from '../config.js';import type { JobRecord } from '../store.js';
 import { store } from '../store.js';
 import {
   extractPortalMessage,
@@ -65,8 +65,36 @@ export async function runBrowserbasePrefill(jobId: string): Promise<void> {
     const context = browser.contexts()[0] ?? (await browser.newContext());
     const page = context.pages()[0] ?? (await context.newPage());
 
+    // Browserbase: allow downloads into the session downloads dir (API ZIP fallback).
+    try {
+      const cdp = await context.newCDPSession(page);
+      await cdp.send('Browser.setDownloadBehavior', {
+        behavior: 'allow',
+        downloadPath: 'downloads',
+        eventsEnabled: true,
+      });
+    } catch {
+      /* optional */
+    }
+
     await page.goto(PORTAL_HOME, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     await openLoginIfNeeded(page);
+    // Prefer the SPA login hash — homepage Login can land before Angular mounts inputs.
+    if (
+      !(await page
+        .locator('input[placeholder*="User ID" i], input[name="userId"], input[type="text"]')
+        .first()
+        .isVisible({ timeout: 4000 })
+        .catch(() => false))
+    ) {
+      await page.goto(PORTAL_LOGIN, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+      await page.waitForTimeout(1500);
+    }
+    await page
+      .locator('input[placeholder*="User ID" i], input[name="userId"], input[type="text"]')
+      .first()
+      .waitFor({ state: 'visible', timeout: 45_000 })
+      .catch(() => undefined);
 
     if (await looksLikeCaptcha(page)) {
       await escalateLive(jobId, liveViewUrl, 'CAPTCHA detected. Complete login in live assist.');
@@ -379,10 +407,20 @@ async function tryFillLogin(
   let userFilled = false;
   for (const sel of userSelectors) {
     const el = page.locator(sel).first();
-    if (await el.isVisible({ timeout: 2500 }).catch(() => false)) {
+    if (await el.isVisible({ timeout: 4000 }).catch(() => false)) {
       await el.fill(job.pan);
       userFilled = true;
       break;
+    }
+  }
+  if (!userFilled) {
+    // Last resort: go straight to SPA login.
+    await page.goto(PORTAL_LOGIN, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    await page.waitForTimeout(2000);
+    const el = page.locator('input[placeholder*="User ID" i], input[type="text"]').first();
+    if (await el.isVisible({ timeout: 15_000 }).catch(() => false)) {
+      await el.fill(job.pan);
+      userFilled = true;
     }
   }
   if (!userFilled) return 'missing_fields';

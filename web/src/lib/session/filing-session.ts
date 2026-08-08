@@ -77,4 +77,9 @@ export function clearFilingSessionPassword(): void {
 export function clearFilingSession(): void {
   if (typeof window === 'undefined') return;
   sessionStorage.removeItem(FILING_SESSION_KEY);
+  try {
+    sessionStorage.removeItem('nritax.prefillArtifact');
+  } catch {
+    /* ignore */
+  }
 }

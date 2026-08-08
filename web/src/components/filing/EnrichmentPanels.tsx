@@ -9,13 +9,15 @@ import { applyCasPipeline } from '@/lib/cas/pipeline';
 import { casFailureMessage, resolveCasPdfPassword } from '@/lib/cas/password';
 import type { CasParseResult } from '@/lib/cas/types';
 import { cn } from '@/lib/cn';
-import { applyPrefillToReturn, importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
+import { PrefillFileError } from '@/lib/eri/prefill-file';
+import { applyDownloadedPrefill } from '@/lib/eri/apply-downloaded-prefill';
 import {
   applyForm16ToReturn,
   applyForm26AsToReturn,
 } from '@/lib/sandbox/apply-ocr';
 import type { Form16Result, Form26AsResult, OcrKind } from '@/lib/sandbox/ocr-types';
 import type { FormType, ReturnData } from '@/lib/itr/types';
+import { ASSESSMENT_YEAR } from '@/lib/itr/types';
 
 function RailWrap({
   layout,
@@ -351,13 +353,16 @@ export function EnrichmentPanels({
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const imported = importPrefillFile(reader.result, { form });
-        setData((prev) => applyPrefillToReturn(prev, imported));
-        setNotice(
-          imported.matched > 0
-            ? `Prefill applied · ${imported.matched} values inserted into your ${imported.form} form. Edit anything by hand.`
-            : 'Prefill file read, but no fields matched. Check it is the portal pre-filled JSON.',
-        );
+        const text = typeof reader.result === 'string' ? reader.result : '';
+        setData((prev) => {
+          const result = applyDownloadedPrefill(prev, text, {
+            form,
+            assessmentYear: ASSESSMENT_YEAR,
+          });
+          setNotice(result.message);
+          if (result.matched > 0) setActiveId('GEN');
+          return result.data;
+        });
       } catch (error) {
         setNotice(
           error instanceof PrefillFileError

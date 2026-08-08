@@ -1938,12 +1938,24 @@ a:hover {
   gap: 0.75rem;
 }
 
+.ntx-schedule-section {
+  scroll-margin-top: 1.25rem;
+}
+
+.ntx-continuous-form {
+  min-width: 0;
+}
+
 @media (min-width: 1024px) {
   .ntx-filing-rail {
     position: sticky;
     top: 1rem;
     max-height: calc(100vh - 5rem);
     overflow: auto;
+  }
+
+  .ntx-schedule-section {
+    scroll-margin-top: 1.5rem;
   }
 }
 

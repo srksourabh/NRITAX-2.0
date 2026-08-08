@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { applyPrefillToReturn, importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
+import { PrefillFileError } from '@/lib/eri/prefill-file';
+import { applyDownloadedPrefill } from '@/lib/eri/apply-downloaded-prefill';
 import { ASSESSMENT_YEAR, type FormType, type ReturnData } from '@/lib/itr/types';
 import {
   isTerminalStatus,
@@ -150,27 +151,21 @@ export function PortalFetchPanel({
   function applyArtifact(artifactJson: string, jobId: string) {
     if (appliedArtifactRef.current === jobId) return;
     try {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(artifactJson) as unknown;
-      } catch {
-        throw new PrefillFileError(
-          'That file is not JSON we can read.',
-          'NOT_JSON',
-        );
-      }
       const expectPan = genIdentity(dataRef.current).pan || undefined;
-      const imported = importPrefillFile(parsed, { form, expectPan });
-      setData((prev) => applyPrefillToReturn(prev, imported));
+      const result = applyDownloadedPrefill(dataRef.current, artifactJson, {
+        form,
+        expectPan,
+        assessmentYear: ASSESSMENT_YEAR,
+      });
+      setData(result.data);
       appliedArtifactRef.current = jobId;
       setActiveId('GEN');
       setPassword('');
       setOtp('');
-      setNotice(
-        imported.matched > 0
-          ? `Portal prefill applied · ${imported.matched} values inserted into your ${imported.form} form. Edit anything by hand.`
-          : 'Prefill downloaded but no fields matched this form. Upload JSON manually.',
-      );
+      setNotice(result.message);
+      requestAnimationFrame(() => {
+        document.getElementById('schedule-GEN')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } catch (error) {
       appliedArtifactRef.current = jobId;
       setNotice(

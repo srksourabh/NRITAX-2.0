@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { applyPrefillToReturn, importPrefillFile, PrefillFileError } from '@/lib/eri/prefill-file';
+import { PrefillFileError } from '@/lib/eri/prefill-file';
+import { applyDownloadedPrefill } from '@/lib/eri/apply-downloaded-prefill';
 import { ITD_PORTAL_HOME, ITD_PORTAL_LABEL } from '@/lib/itd/portal';
 import { ASSESSMENT_YEAR, type FormType, type ReturnData } from '@/lib/itr/types';
 import {
@@ -210,33 +211,33 @@ export function PortalAutomationCard({
   function applyArtifact(artifactJson: string, jobId: string) {
     if (appliedRef.current === jobId) return;
     try {
-      const parsed = JSON.parse(artifactJson) as unknown;
-      const imported = importPrefillFile(parsed, {
+      const expectPan =
+        genIdentity(dataRef.current).pan ||
+        sessionSeed?.pan ||
+        readFilingSession()?.pan ||
+        undefined;
+      const result = applyDownloadedPrefill(dataRef.current, artifactJson, {
         form: formType,
-        expectPan: genIdentity(dataRef.current).pan || undefined,
+        expectPan,
+        assessmentYear,
       });
-      if (imported.matched === 0) {
+      if (result.matched === 0) {
         appliedRef.current = jobId;
-        announce(
-          `Prefill downloaded for ${formType}, but none of its fields matched the ${formType} schedules. Upload the JSON manually or use live assist.`,
-          'failed',
-        );
+        announce(result.message, 'failed');
         return;
       }
-      onFormChange?.(imported.form);
-      setFormType(imported.form);
-      setData((prev) => applyPrefillToReturn(prev, imported));
+      onFormChange?.(result.form);
+      setFormType(result.form);
+      setData(result.data);
       appliedRef.current = jobId;
-      // Clear the in-memory field for display, but keep session password for retry/upload.
       setPassword('');
       setOtp('');
       setActiveId('GEN');
-      const warn =
-        imported.warnings.length > 0 ? ` ${imported.warnings[0]}` : '';
-      announce(
-        `Inserted ${imported.matched} prefill values into your ${imported.form} form (AY ${assessmentYear}). Open Part A — General to review, then continue schedule by schedule.${warn}`,
-        'succeeded',
-      );
+      announce(result.message, 'succeeded');
+      // Jump the continuous form to Part A after prefill lands.
+      requestAnimationFrame(() => {
+        document.getElementById('schedule-GEN')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } catch (error) {
       appliedRef.current = jobId;
       announce(
@@ -463,32 +464,25 @@ export function PortalAutomationCard({
     if (!file) return;
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text) as unknown;
-      const imported = importPrefillFile(parsed, {
+      const result = applyDownloadedPrefill(dataRef.current, text, {
         form: formType,
         expectPan: pan || undefined,
+        assessmentYear,
       });
-      if (imported.matched === 0) {
-        setManualFileNote(
-          'File read, but no fields matched this ITR form. Check it is the pre-filled JSON from the portal.',
-        );
-        announce(
-          'Manual prefill file had no matching fields for this form.',
-          'error',
-        );
+      if (result.matched === 0) {
+        setManualFileNote(result.message);
+        announce(result.message, 'error');
         return;
       }
-      onFormChange?.(imported.form);
-      setFormType(imported.form);
-      setData((prev) => applyPrefillToReturn(prev, imported));
+      onFormChange?.(result.form);
+      setFormType(result.form);
+      setData(result.data);
       setActiveId('GEN');
-      setManualFileNote(
-        `Manual prefill applied · ${imported.matched} values inserted into ${imported.form}.`,
-      );
-      announce(
-        `Manual prefill applied · ${imported.matched} values inserted into your ${imported.form} form.`,
-        'succeeded',
-      );
+      setManualFileNote(result.message);
+      announce(result.message, 'succeeded');
+      requestAnimationFrame(() => {
+        document.getElementById('schedule-GEN')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } catch (error) {
       const msg =
         error instanceof PrefillFileError
