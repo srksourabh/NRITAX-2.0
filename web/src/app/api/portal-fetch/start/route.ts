@@ -55,18 +55,9 @@ export async function POST(req: Request) {
   const assessmentYear = String(body.assessmentYear ?? '2026-27').trim();
   const formType =
     String(body.formType ?? 'ITR2').toUpperCase() === 'ITR3' ? 'ITR3' : 'ITR2';
-  const pepRaw = body.politicallyExposed;
-  const politicallyExposed =
-    pepRaw === true ||
-    pepRaw === 'true' ||
-    pepRaw === 'yes' ||
-    pepRaw === 'Y' ||
-    pepRaw === 'y';
-  const filingRaw = String(body.filingType ?? 'original').toLowerCase();
-  const filingType =
-    filingRaw === 'revised' || filingRaw === 'belated' || filingRaw === 'updated'
-      ? filingRaw
-      : 'original';
+  // Agent always drives offline original + non-political answers.
+  const politicallyExposed = false;
+  const filingType = 'original' as const;
 
   if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) {
     return NextResponse.json(
@@ -74,22 +65,14 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  if (!name) {
-    return NextResponse.json(
-      { ok: false, message: 'Enter your name as on the e-Filing portal.' },
-      { status: 400 },
-    );
-  }
   if (!password) {
     return NextResponse.json(
-      {
-        ok: false,
-        message:
-          'Enter your e-Filing portal password for automated fetch (Mode A).',
-      },
+      { ok: false, message: 'Password is required for portal login.' },
       { status: 400 },
     );
   }
+
+  const resolvedName = name || 'TAXPAYER';
   if (mobile && !/^\d{10}$/.test(mobile)) {
     return NextResponse.json(
       {
@@ -110,7 +93,7 @@ export async function POST(req: Request) {
   const client = createPortalFetchClient();
   const result = await client.start({
     pan,
-    name,
+    name: resolvedName,
     dob: dob || '',
     password,
     mobile: mobile || '',

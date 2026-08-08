@@ -113,9 +113,7 @@ export function PortalFetchPanel({
 }) {
   const identity = genIdentity(data);
   const [panEdit, setPanEdit] = useState<string | null>(sessionSeed?.pan ?? null);
-  const [nameEdit, setNameEdit] = useState<string | null>(sessionSeed?.name ?? null);
   const pan = panEdit ?? identity.pan;
-  const name = nameEdit ?? identity.name;
   const [password, setPassword] = useState(sessionSeed?.password ?? '');
   const [consentFetch, setConsentFetch] = useState(Boolean(sessionSeed?.consent));
   const [consentLiability, setConsentLiability] = useState(Boolean(sessionSeed?.consent));
@@ -135,7 +133,6 @@ export function PortalFetchPanel({
     consentFetch &&
     consentLiability &&
     /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan.trim().toUpperCase()) &&
-    name.trim().length > 0 &&
     password.length > 0 &&
     !busy &&
     (!job || isTerminalStatus(job.status));
@@ -250,11 +247,14 @@ export function PortalFetchPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pan: pan.trim().toUpperCase(),
-          name: name.trim(),
+          name: sessionSeed?.name?.trim() || identity.name.trim() || 'TAXPAYER',
           dob: sessionSeed?.dob || identity.dob || '',
           password,
           mobile: sessionSeed?.mobile || '',
           assessmentYear: data.meta.assessmentYear || ASSESSMENT_YEAR,
+          formType: form,
+          politicallyExposed: false,
+          filingType: 'original',
           consentFetch: true,
           consentLiability: true,
         }),
@@ -404,7 +404,7 @@ export function PortalFetchPanel({
       <div className="ntx-field-grid mt-4">
         <div className="ntx-field" style={{ gridColumn: 'span 4' }}>
           <label className="ntx-label" htmlFor="portal-fetch-pan">
-            PAN
+            PAN (e-Filing User ID)
           </label>
           <input
             id="portal-fetch-pan"
@@ -420,20 +420,7 @@ export function PortalFetchPanel({
             placeholder="ABCDE1234F"
           />
         </div>
-        <div className="ntx-field" style={{ gridColumn: 'span 5' }}>
-          <label className="ntx-label" htmlFor="portal-fetch-name">
-            Name as on e-Filing
-          </label>
-          <input
-            id="portal-fetch-name"
-            className="ntx-input"
-            autoComplete="name"
-            disabled={Boolean(inFlight)}
-            value={name}
-            onChange={(e) => setNameEdit(e.target.value)}
-          />
-        </div>
-        <div className="ntx-field" style={{ gridColumn: 'span 6' }}>
+        <div className="ntx-field" style={{ gridColumn: 'span 8' }}>
           <label className="ntx-label" htmlFor="portal-fetch-password">
             Income Tax portal password
           </label>

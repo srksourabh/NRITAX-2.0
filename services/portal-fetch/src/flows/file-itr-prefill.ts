@@ -211,8 +211,9 @@ export async function runFileItrPrefillDownload(
 ): Promise<PrefillDownloadResult | null> {
   const formType = (job.formType ?? 'ITR2') as PortalFormType;
   const ay = job.assessmentYear || '2026-27';
-  const pep = Boolean(job.politicallyExposed);
-  const filingType = (job.filingType ?? 'original') as PortalFilingType;
+  // Product defaults: offline path, original return, never politically exposed.
+  const pep = false;
+  const filingType: PortalFilingType = 'original';
 
   const apiWait = waitForPrefillApi(page, 90_000);
 
